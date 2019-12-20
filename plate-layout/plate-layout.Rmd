@@ -1,0 +1,192 @@
+# 2019-12-19
+
+```{r}
+library(tidyverse)
+library(googlesheets4)
+library(here)
+# https://github.com/crukci-bioinformatics/PlateLayout
+library(PlateLayout) # used for plotting only
+library(cowplot)
+```
+
+## Create plate via randomization
+
+
+Manually assign certain wells: The universal T. mobilis controls, and the 8
+non-universal samples. Put the 4 T. mobilis samples at C4 and C9, and F4 and
+F9. These assignments are in the google doc.
+```{r}
+# Read in DNA sample metadata with columns for the four sequencing centers
+# indicating whether the sample should be included on its plate.
+sam <- read_sheet(
+    "https://docs.google.com/spreadsheets/d/1tFDuM8W4nhA4cDbjyvRjfhQLdUH-1FI2De5eSeHGOTQ",
+    sheet = 2
+    ) %>%
+    select(-week, -day, -number_of_pellets)
+sam %>%
+    write_csv(here("plate-layout", "sample-data-starting.csv"))
+# Filter out samples that aren't getting used
+sam <- sam %>%
+    filter(A2)
+# Check preassigned wells
+sam %>%
+    filter(!is.na(well)) %>%
+    select(sample_id, specimen_type, well)
+preassigned_wells <- sam %>%
+    filter(!is.na(well)) %>%
+    pull(well)
+```
+
+Randomly assign wells to the other samples:
+```{r}
+set.seed(4)
+wells <- crossing(row = LETTERS[1:8], column = 1:12) %>%
+    mutate(well = paste0(row, column)) %>%
+    filter(!(well %in% preassigned_wells)) %>%
+    sample_frac %>%
+    add_column(sample_id = sam %>% filter(is.na(well)) %>% pull(sample_id), 
+        .before = 1)
+
+sam0 <- sam %>%
+    left_join(wells %>% select(sample_id, well), by = "sample_id") %>%
+    mutate(well = ifelse(is.na(well.x), well.y, well.x)) %>%
+    select(-well.x, -well.y)
+
+plate_layout <- sam0 %>%
+    rename(Well = well) %>%
+    mutate(
+        Row = str_sub(Well, 1, 1), 
+        Column = str_sub(Well, 2) %>% as.integer,
+        RowID = match(Row, LETTERS)
+    )
+plot_grid(
+    plate_layout %>% plotPlate(plotCol = "batch"),
+    plate_layout %>% plotPlate(plotCol = "specimen_type"),
+    plate_layout %>% plotPlate(plotCol = "aliquot_number"),
+    ncol = 1
+    )
+```
+
+```{r}
+plate_layout %>%
+    mutate(number_of_plates = A2 + A1 + S2 + S1) %>%
+    plotPlate(plotCol = "number_of_plates") +
+    geom_text(aes(y = RowID, x = Column, label = sample_id), size = 3) +
+    theme_minimal(10) +
+    labs(title = "Plate layout for 2019-12-20", fill = "number\nof plates") +
+    theme(panel.grid = element_blank())
+
+ggsave(here("plate-layout", "plate-layout.pdf"),
+        width = 8, height = 5, units = "in", )
+sam0 %>%
+    write_csv(here("plate-layout", "sample-data-with-plate-layout.csv"))
+sam0 %>%
+    select(sample_id, well) %>%
+    write_csv(here("plate-layout", "plate-layout.csv"))
+```
+
+
+# 2019-12-20
+
+During plating, samples `18_4` and `4_4` were mistakenly swapped.
+The original assignment was ` (18_4: B11, 4_4: B12)`.
+The final (actual) assignment is ` (18_4: B12; 4_4: B11)`.
+
+I put the correct final assignments in the sample metadata spreadsheet. Let's
+check them against those that were created and saved above.
+
+```{r}
+library(tidyverse)
+library(googlesheets4)
+library(here)
+```
+
+The original planned layout:
+```{r}
+org_layout1 <- here("plate-layout", "plate-layout.csv") %>%
+    read_csv
+org_layout2 <- here("plate-layout", "sample-data-with-plate-layout.csv") %>%
+    read_csv
+```
+
+The final (actual) layout
+```{r}
+sheet_url <- "https://docs.google.com/spreadsheets/d/1VYC4m4yk5K3AkXl2QOInaOuSla85ZkLHRDjAqFgabyA/"
+plate_layout <- read_sheet(sheet_url, sheet = 6)
+```
+
+```{r}
+anti_join(plate_layout, org_layout2)
+#> Joining, by = c("sample_id", "well", "A2", "A1", "S2", "S1")
+#> # A tibble: 2 x 6
+#>   sample_id well  A2    A1    S2    S1   
+#>   <chr>     <chr> <lgl> <lgl> <lgl> <lgl>
+#> 1 4_4       B11   TRUE  TRUE  TRUE  TRUE 
+#> 2 18_4      B12   TRUE  TRUE  TRUE  TRUE 
+anti_join(plate_layout, org_layout1)
+#> Joining, by = c("sample_id", "well")
+#> # A tibble: 2 x 6
+#>   sample_id well  A2    A1    S2    S1   
+#>   <chr>     <chr> <lgl> <lgl> <lgl> <lgl>
+#> 1 4_4       B11   TRUE  TRUE  TRUE  TRUE 
+#> 2 18_4      B12   TRUE  TRUE  TRUE  TRUE 
+anti_join(org_layout2, plate_layout) %>% select(sample_id, well)
+#> Joining, by = c("sample_id", "A2", "A1", "S2", "S1", "well")
+#> # A tibble: 2 x 2
+#>   sample_id well 
+#>   <chr>     <chr>
+#> 1 4_4       B12  
+#> 2 18_4      B11  
+```
+All looks as expected.
+
+Let's save a version of the layout with the sample ids in a rectangle that
+matches the plate layout, to import into the spreadsheet of the plate layout
+that we need to send to A1.
+```{r}
+tb <- plate_layout %>%
+    transmute(
+        sample_id,
+        row = str_sub(well, 1, 1), 
+        column = paste0("c", str_sub(well, 2))
+        # row_id = match(row, LETTERS)
+    ) %>%
+    pivot_wider(names_from = column, values_from = sample_id) %>%
+    arrange(row) %>%
+    select(row, paste0("c", 1:12))
+tb
+
+write_csv(tb, here("plate-layout", "plate-layout-for-a1.csv"))
+```
+
+Note, need to manually delete the two empty wells H11 and H12.
+
+# 2020-01-11
+
+```{r}
+metadata_url <- "https://docs.google.com/spreadsheets/d/1VYC4m4yk5K3AkXl2QOInaOuSla85ZkLHRDjAqFgabyA"
+conc <- read_sheet(metadata_url, sheet = 4) %>%
+    mutate(dna_conc = dna_yield / 100)
+```
+
+We also need the DNA concentrations in the same layout.
+```{r}
+conc_layout <- plate_layout %>%
+    filter(A1) %>%
+    left_join(conc, by = "sample_id") %>%
+    transmute(
+        # sample_id,
+        dna_conc,
+        row = str_sub(well, 1, 1), 
+        column = paste0("c", str_sub(well, 2))
+    ) %>%
+    pivot_wider(names_from = column, values_from = dna_conc, 
+        values_fill = list(dna_conc = NA)) %>%
+    arrange(row) %>%
+    select(row, paste0("c", 1:12))
+conc_layout
+
+# Write for importing to Excel/Google Sheets
+write_csv(conc_layout, here("plate-layout", "dna-concentrations-for-a1.csv"))
+```
+
