@@ -1,0 +1,239 @@
+---
+title: "DADA2 pipeline on pilot data"
+author: "Michael McLaren"
+date: "2020-02-05"
+output: html_document
+---
+
+Follows the DADA2 Pipeline Tutorial version 1.12, with the pseudo-pooling
+option.
+
+## Setup
+
+Load the libraries
+```{r}
+library(tidyverse)
+# library(here)
+library(dada2); packageVersion("dada2")
+#> [1] ‘1.14.0’
+```
+Path for saving dada2 results:
+```{r}
+results_path <- here::here("results", "dada2", "a1")
+dir.create(results_path, recursive = TRUE)
+```
+Path to the fastq files:
+```{r path}
+path <- file.path("~", "data", "mc-datasets", "vivo-vitro", "reads")
+list.files(path) %>% head
+#> [1] "1-1_S28_L001_R1_001.fastq.gz"  "1-1_S28_L001_R2_001.fastq.gz" 
+#> [3] "1-2_S69_L001_R1_001.fastq.gz"  "1-2_S69_L001_R2_001.fastq.gz" 
+#> [5] "10-1_S16_L001_R1_001.fastq.gz" "10-1_S16_L001_R2_001.fastq.gz"
+```
+Get the filenames for the forward and reverse reads, and a list of the sample
+names.
+```{r}
+# Forward and reverse fastq filenames have format: *_R1_001.fastq and
+# *_R2_001.fastq
+fnFs <- sort(list.files(path, pattern="_R1_001.fastq", full.names = TRUE))
+fnRs <- sort(list.files(path, pattern="_R2_001.fastq", full.names = TRUE))
+# Sample names are up to the first underscore,
+sample.names <- basename(fnFs) %>%
+    str_extract("[^_]+")
+sample.names
+```
+
+## Inspect read quality profiles
+
+```{r}
+set.seed(42)
+(idx <- sample(length(sample.names), 9))
+idx
+#> [1] 49 65 25 74 18 96 47 24 71
+sample.names[idx]
+#> [1] "21-3"      "26-3"      "16-3"      "4-4"       "14-4"     
+#> [6] "Zymo-POSC" "21-1"      "16-2"      "4-1"      
+qp.F <- plotQualityProfile(fnFs[idx])
+qp.R <- plotQualityProfile(fnRs[idx])
+```
+
+Choose trunctation lengths
+```{r}
+trunc_len <- c(230, 215)
+qp.F +
+    geom_hline(yintercept = 30, color = "grey") +
+    geom_vline(xintercept = trunc_len[1], color = "darkred")
+ggsave(file.path(results_path, "quality-profiles-F.pdf"),
+    width = 10, height = 10, units = "in")
+qp.R +
+    geom_hline(yintercept = 30, color = "grey") +
+    geom_vline(xintercept = trunc_len[2], color = "darkred")
+ggsave(file.path(results_path, "quality-profiles-R.pdf"),
+    width = 10, height = 10, units = "in")
+```
+
+## Filter and trim
+
+```{r}
+# Place filtered files in filtered/ subdirectory
+filtFs <- file.path(path, "filtered", paste0(sample.names, "_F_filt.fastq.gz"))
+filtRs <- file.path(path, "filtered", paste0(sample.names, "_R_filt.fastq.gz"))
+names(filtFs) <- sample.names
+names(filtRs) <- sample.names
+out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen = trunc_len, 
+  maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE, 
+  compress=TRUE, multithread=TRUE)
+head(out)
+# Save in case of crash downstream
+saveRDS(out, file.path(results_path, "filt-out.Rds"))
+```
+
+## Learn the error rates
+
+```{r}
+errF <- learnErrors(filtFs, multithread=TRUE)
+saveRDS(errF, file.path(results_path, "errF.Rds"))
+errR <- learnErrors(filtRs, multithread=TRUE)
+saveRDS(errR, file.path(results_path, "errR.Rds"))
+
+plotErrors(errF, nominalQ=TRUE)
+ggsave(file.path(results_path, "error-profiles-F.pdf"),
+    width = 9, height = 9, units = "in")
+
+plotErrors(errR, nominalQ=TRUE)
+ggsave(file.path(results_path, "error-profiles-R.pdf"),
+    width = 9, height = 9, units = "in")
+```
+
+## Sample Inference (with pool = "pseudo")
+
+Note the use of pseudo-pooling.
+
+```{r dada}
+dadaFs <- dada(filtFs, err=errF, multithread=TRUE, pool = "pseudo")
+dadaRs <- dada(filtRs, err=errF, multithread=TRUE, pool = "pseudo")
+saveRDS(dadaFs, file.path(results_path, "dadaFs.Rds"))
+saveRDS(dadaRs, file.path(results_path, "dadaRs.Rds"))
+```
+Check the results:
+```{r see-dada}
+dadaFs[[1]]
+#> dada-class: object describing DADA2 denoising results
+#> 29 sequence variants were inferred from 5735 input unique sequences.
+#> Key parameters: OMEGA_A = 1e-40, OMEGA_C = 1e-40, BAND_SIZE = 16
+head(getSequences(dadaFs[[1]]))
+#> [1] "TACGGAGGGTGCAAGCGTTAATCGGAATCACTGGGCGTAAAGGGCGCGTAGGCGGCGAGGTAAGTCAGATGTGAAATCCCCGGGCTCAACCTGGGAATGGCATTTGATACTGCTTTGCTAGAGTCTGGTAGAGGGGGGTGGAATTCCAGGTGTAGCGGTGAAATGCGTAGAGATCTGGAGGAACACCAGTGGCGAAGGCGACCCCCTGGGCCAAGACTGACGCTGAGGTG"
+#> [2] "TACGGAGGATCCGAGCGTTATCCGGATTTATTGGGTTTAAAGGGAGCGTAGGTGGATTGTTAAGTCAGTTGTGAAAGTTTGCGGCTCAACCGTAAAATTGCAGTTGAAACTGGCAGTCTTGAGTACAGTAGAGGTGGGCGGAATTCGTGGTGTAGCGGTGAAATGCTTAGATATCACGAAGAACTCCGATTGCGAAGGCAGCTCACTAGACTGTTACTGACACTGATGCT"
+#> [3] "TACGGAGGGTGCAAGCGTTAATCGGAATTACTGGGCGTAAAGCGCACGCAGGCGGTTTGTTAAGTCAGATGTGAAATCCCCGGGCTCAACCTGGGAACTGCATCTGATACTGGCAAGCTTGAGTCTCGTAGAGGGGGGTAGAATTCCAGGTGTAGCGGTGAAATGCGTAGAGATCTGGAGGAATACCGGTGGCGAAGGCGGCCCCCTGGACGAAGACTGACGCTCAGGTG"
+#> [4] "TACGGAGGATCCGAGCGTTATCCGGATTTATTGGGTTTAAAGGGAGCGTAGGTGGACAGTTAAGTCAGTTGTGAAAGTTTGCGGCTCAACCGTAAAATTGCAGTTGATACTGGCTGTCTTGAGTACAGTAGAGGTGGGCGGAATTCGTGGTGTAGCGGTGAAATGCTTAGATATCACGAAGAACTCCGATTGCGAAGGCAGCTCACTGGACTGCAACTGACACTGATGCT"
+#> [5] "TACGGAGGATCCGAGCGTTATCCGGATTTATTGGGTTTAAAGGGAGCGTAGGCGGACGCTTAAGTCAGTTGTGAAAGTTTGCGGCTCAACCGTAAAATTGCAGTTGATACTGGGTGTCTTGAGTACAGTAGAGGCAGGCGGAATTCGTGGTGTAGCGGTGAAATGCTTAGATATCACGAAGAACTCCGATTGCGAAGGCAGCTTGCTGGACTGTAACTGACGCTGATGCT"
+#> [6] "TACGTAGGGGGCAAGCGTTATCCGGATTTACTGGGTGTAAAGGGAGCGTAGACGGTAAAGCAAGTCTGAAGTGAAAGCCCGCGGCTCAACTGCGGGACTGCTTTGGAAACTGTTTAACTGGAGTGTCGGAGAGGTAAGTGGAATTCCTAGTGTAGCGGTGAAATGCGTAGATATTAGGAGGAACACCAGTGGCGAAGGCGACTTACTGGACGATAACTGACGTTGAGGCT"
+```
+
+## Merge paired reads
+
+```{r merge, message=FALSE}
+mergers <- mergePairs(dadaFs, filtFs, dadaRs, filtRs, verbose=TRUE)
+saveRDS(mergers, file.path(results_path, "mergers.Rds"))
+```
+
+## Construct sequence table
+
+```{r seqtab}
+seqtab <- makeSequenceTable(mergers)
+saveRDS(seqtab, file.path(results_path, "seqtab.Rds"))
+dim(seqtab)
+#> [1]   96 1432
+```
+
+Inspect distribution of sequence lengths
+```{r seqlens}
+table(nchar(getSequences(seqtab)))
+#> 
+#>  245  251  252  253  254  255  257  273  276  293  362  418 
+#>    1    1   15 1392   14    3    1    1    1    1    1    1 
+```
+
+## Remove chimeras
+
+```{r}
+seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus",
+    multithread=TRUE, verbose=TRUE)
+saveRDS(seqtab.nochim, file.path(results_path, "seqtab-nochim.Rds"))
+seqtab.nochim %>%
+  as_tibble(rownames = "sample_id") %>%
+  write_csv(file.path(results_path, "seqtab-nochim.csv"))
+dim(seqtab.nochim)
+#> [1]  96 367
+sum(seqtab.nochim)/sum(seqtab)
+#> [1] 0.9398952
+```
+
+## Track reads through the pipeline
+
+```{r track}
+getN <- function(x) sum(getUniques(x))
+track <- cbind(out, sapply(dadaFs, getN), sapply(dadaRs, getN), 
+    sapply(mergers, getN), rowSums(seqtab.nochim))
+colnames(track) <- c("input", "filtered", "denoisedF", "denoisedR", "merged",
+    "nochim")
+rownames(track) <- sample.names
+track <- as_tibble(track, rownames = "sample")
+write_csv(track, file.path(results_path, "track.csv"))
+head(track)
+#> # A tibble: 6 x 7
+#>   sample  input filtered denoisedF denoisedR merged nochim
+#>   <chr>   <dbl>    <dbl>     <dbl>     <dbl>  <dbl>  <dbl>
+#> 1 1-1     71156    67986     67950     67955  67622  67617
+#> 2 1-2    106556    99443     99346     99340  98285  97448
+#> 3 10-1    72544    69623     69577     69573  67757  60898
+#> 4 10-2   111752   106944    106885    106908 104891 100039
+#> 5 10-3   109313   104476    104414    104387 101380  90893
+#> 6 10-4    88758    84922     84872     84875  83316  79686
+```
+
+## Assign Taxonomy
+
+```{r taxify}
+db_path <- file.path("~/data", "silva", "dada2_format")
+taxa <- assignTaxonomy(seqtab.nochim,
+    file.path(db_path, "silva_nr_v132_train_set.fa.gz"),
+    multithread=TRUE)
+taxa <- addSpecies(taxa, 
+    file.path(db_path, "silva_species_assignment_v132.fa.gz"),
+    allowMultiple = TRUE)
+saveRDS(taxa, file.path(results_path, "taxa.Rds"))
+taxa %>%
+  as_tibble(rownames = "ASV") %>%
+  write_csv(file.path(results_path, "taxa.csv"))
+```
+
+## Clean up names
+
+(Run afterwards in a new R session)
+
+```{r}
+library(tidyverse)
+results_path <- here::here("results", "dada2", "a1")
+
+st <- readRDS(file.path(results_path, "seqtab-nochim.Rds"))
+tt <- readRDS(file.path(results_path, "taxa.Rds"))
+```
+Adjust the sample names in the final sequence table to use underscores instead
+of hyphens, convert the sequencing center's control samples to lower case, and
+add the center identifier "A1" to the beginning.
+```{r}
+rownames(st) <- rownames(st) %>%
+  str_replace("-", "_") %>%
+  str_to_lower %>%
+  str_c("A1_", .) %>%
+  print
+saveRDS(st, file.path(results_path, "seqtab-nochim-clean.Rds"))
+```
+Adjust the rank names in the final taxonomy table to lowercase,
+```{r}
+colnames(tt) <- colnames(tt) %>%
+  str_to_lower %>%
+  print
+saveRDS(tt, file.path(results_path, "taxa-clean.Rds"))
+```
