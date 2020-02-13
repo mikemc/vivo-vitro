@@ -1,0 +1,21 @@
+variable_name,description,units,coding,notes
+dna_sample_id,"DNA extraction ID",{specimen_id}_{aliquot_number},character,"Corresponds to the individual DNA extractions performed by Angie"
+sample_id,"Sequencing library ID",{center_id}_{dna_sample_id},character,"Corresponds to individual rows in the abundance table"
+center_id,"Sequencing center ID","""A1"", ""A2"", ""S1"", ""S2""",character,"Since each center was sent exactly one plate, this id also identifies the plate"
+specimen_id,"Specimen ID","1 - 26",integer,
+aliquot_number,"Aliquot number","1 - 4",integer,"Each specimen was split into 4 or 2 aliquots"
+specimen_type,"Specimen type","""fecal"", ""inoculum"", ""T. Mobilis"", ""water"", ""dna mock""",character,
+collection_week,"Collection week","week of the experiment, starting at 1",integer,"Week of the experiment where 1 = week of 2019-9-9, 2 = the following week, etc"
+collection_day,"Collection day","day of the week (1 - 7)",integer,"1 = Monday, 2 = Tuesday, etc"
+collection_date,"Collection date",date,YYYY-MM-DD,"Date the specimen was collected"
+host_species,"Host species","""mouse""",character,
+host_sex,"Host sex","""female"", ""male""",character,
+extraction_batch,"Extraction batch","1, 2",integer,
+extraction_date,"Extraction date",date,YYYY-MM-DD,
+number_of_pellets,"Number of pellets in specimen",pellets,integer,"Number of pellets pooled to create the specimen"
+number_of_aliquots,"Number of aliquots split from specimen",aliquots,integer,"Generally each specimen was split into 4 aliquots, but a couple were only split in 2"
+protocol,"Extraction protocol","""P1"", ""P2""",character,"P1 = FastDNA; P2 = DNeasy"
+dna_conc,"DNA concentration",ng/uL,numeric,"As measured by Qubit assay"
+well,"Plate well of DNA sample","""A1"" - ""H12""",character,"Which well in the 96-well plate the sample was plated into"
+row,"Plate row of DNA sample","""A"" - ""H""",ordered,
+column,"Plate column of DNA sample","1 - 12",ordered,
