@@ -1,0 +1,266 @@
+---
+title: "Inspect cross contamination in A1 data"
+author: Michael McLaren
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(progress = TRUE, verbose = TRUE)
+# Global chunk options
+knitr::opts_chunk$set(
+  cache = TRUE, autodep = TRUE,
+  include = TRUE, echo = TRUE,
+  warning = TRUE, message = FALSE, 
+  fig.width = 7, fig.height = 7
+)
+```
+
+Goal: Use the positive controls to inspect the extent of cross contamination.
+This analyses was conducted in 2020-02, and was updated on 2020-08-01 to use
+the new results files and create an html report.
+
+## Setup
+
+```{r}
+library(speedyseq)
+library(tidyverse)
+library(here)
+library(cowplot)
+library(ggridges)
+theme_set(theme_minimal_grid(12))
+```
+
+```{r}
+my_psmelt <- function(physeq) {
+  speedyseq::psmelt(physeq) %>%
+    as_tibble %>%
+    rename(taxon = OTU, sample = Sample, abundance = Abundance)
+}
+as_tibble.phyloseq <- function(x) {
+  x %>% my_psmelt
+}
+as_tibble.sample_data <- function(x) {
+  x %>% as("data.frame") %>% as_tibble(rownames = "sample")
+}
+as_tibble.taxonomyTable <- function(x) {
+  x %>% as("matrix") %>% as_tibble(rownames = "taxon")
+}
+as_tibble.XStringSet <- function(x) {
+  x %>% as.character %>% enframe("taxon", "sequence")
+}
+```
+
+Import into phyloseq.
+```{r}
+ps <- readRDS(here("results/a1/a1-phyloseq-silva-v138.Rds")) %>%
+  print
+sample_data(ps) <- sample_data(ps) %>%
+  transform(extraction_batch = as.factor(extraction_batch))
+```
+
+```{r}
+pstb <- ps %>% as_tibble
+tax <- tax_table(ps) %>% as_tibble
+ref <- refseq(ps) %>% as_tibble
+sam <- sample_data(ps) %>% as_tibble
+```
+
+## T. mobilis spatial pattern
+
+```{r}
+tmob <- pstb %>%
+  mutate_by(sample, proportion = close_elts(abundance)) %>%
+  filter(genus == "Thioflavicoccus")
+
+a <- tax %>%
+  filter(genus == "Thioflavicoccus") %>%
+  left_join(ref, by = "taxon")
+a %>% pull(sequence)
+```
+
+ASV301 has a single mismatch from ASV11. It appears in only two reads, and so
+is most likely sequence error.
+```{r}
+tmob %>%
+  group_by(taxon) %>%
+  summarize_at("abundance", sum)
+```
+
+Future: can just filter out ASV301.
+
+```{r, fig.dim = c(8, 6)}
+tmob %>%
+  filter(species == "mobilis") %>%
+  mutate(
+    row = fct_rev(row),
+    label =  paste(str_replace(sample, "A1_", ""), 
+      round(log10(proportion), 2), sep = "\n")
+    ) %>%
+  ggplot(aes(y = row, x = column, color = specimen_type)) +
+  geom_text(aes(label = label), size = 4) +
+  theme(legend.position = "bottom")
+```
+
+
+Create heatmap 
+```{r, fig.dim = c(8, 6)}
+tmob %>%
+  filter(species == "mobilis") %>%
+  mutate(
+    row = fct_rev(row),
+    ) %>%
+  ggplot(aes(y = row, x = column, fill = log10(proportion + 1e-5))) +
+  geom_raster() +
+  geom_text(aes(label = abundance, color = extraction_batch), size = 5) +
+  scale_color_brewer(type = "qual", palette = 2) + 
+  theme(legend.position = "bottom")
+```
+
+Seems to be fairly strong evidence that cross-sample contamination occurred in
+the lengthwise direction of the plate. Should ask Angie how she does her
+plating. But I don't see how there's a way she might have done it during
+pipetting that would create this pattern. Inst
+
+```{r}
+tmob %>%
+  filter(proportion > 0) %>%
+  pull(proportion) %>%
+  summary
+```
+
+
+### Figures to discuss
+
+First, wanted to check the cross-sample contamination levels
+```{r t-mobilis-contam-histogram, fig.dim = c(8, 4)}
+p1 <- tmob %>%
+  filter(species == "mobilis") %>%
+  ggplot(aes(log10(proportion + 1e-4), fill = specimen_type)) + 
+  scale_fill_brewer(type = "qual", palette = 2) + 
+  labs(title = "Proportion T. mobilis") +
+  geom_histogram()
+p2 <- tmob %>%
+  filter(species == "mobilis") %>%
+  ggplot(aes(log10(proportion + 1e-4), fill = extraction_batch)) + 
+  scale_fill_brewer(type = "qual", palette = 1) + 
+  geom_histogram()
+plot_grid(p1, p2)
+ggsave(
+  here("results/figures", "2020-02-10-t-mobilis-contam-histogram.pdf"),
+  width = 8,
+  height = 4
+)
+```
+
+Then wanted to see if there was a spatial pattern. Plate design:
+```{r plate layout, fig.dim = c(8,6)}
+sam %>%
+  filter(!is.na(specimen_type)) %>%
+  mutate(
+    row = fct_rev(row),
+    ) %>%
+  ggplot(aes(y = row, x = column, fill = specimen_type)) +
+  geom_raster() +
+  # geom_text(aes(label = extraction_batch), size = 5) +
+  geom_text(aes(label = sample), size = 3) +
+  scale_fill_brewer(type = "qual", palette = 2) + 
+  labs(title = "Plate layout") +
+  theme(
+    legend.position = "bottom"
+    )
+ggsave(
+  here("results/figures", "2020-02-10-plate-layout.pdf"),
+  width = 8,
+  height = 6
+)
+```
+
+And heatmap of T. mobilis proportion,
+```{r t-mobilis-contam-across-plate, fig.dim = c(8,6)}
+tmob %>%
+  filter(species == "mobilis") %>%
+  mutate(
+    row = fct_rev(row),
+    ) %>%
+  ggplot(aes(y = row, x = column, fill = log10(proportion + 3e-5))) +
+  geom_raster() +
+  labs(title = "Proportion T. mobilis across plate") +
+  theme(
+    legend.position = "bottom"
+    )
+ggsave(
+  here("results/figures", "2020-02-10-t-mobilis-contam-across-plate.pdf"),
+  width = 8,
+  height = 6
+)
+```
+
+So not the pattern I might have expected, of a spatial proximity; instead, the
+pattern seems to mainly  be of contamination across the row. Not sure what
+would cause this and whether it is more likely to be on their end or our end.
+It does tell us that we do have to be cautious in interpretting proportions
+<1e-2.
+
+
+## Contamimation from zymo
+
+find the zymo-only asvs
+```{r}
+ps.zymo <- prune_samples("A1_zymo_posc", ps) %>% 
+  filter_taxa2(~sum(.)>500)
+tax_table(ps.zymo)[,1:6]
+taxa_sums(ps.zymo)
+zymo_taxa <- taxa_names(ps.zymo)
+ps.inoc <- ps %>%
+  subset_samples(specimen_type == "inoculum") %>% 
+  filter_taxa2(~sum(.)>1000)
+tax_table(ps.inoc)[,4:6]
+taxa_sums(ps.inoc)
+taxa_sums(ps.zymo)
+```
+
+
+```{r}
+zymo_only_taxa <- setdiff(taxa_names(ps.zymo), taxa_names(ps.inoc))
+overlap_taxa <- intersect(taxa_names(ps.zymo), taxa_names(ps.inoc))
+tax %>% filter(taxon %in% overlap_taxa)
+```
+
+Note, Staph shouldn't be there - may be a lab contamination of the
+inoculum.
+
+Get the proportion of the zymo only taxa for each sample
+```{r}
+zymo <- ps %>%
+  transform_sample_counts(close_elts) %>%
+  prune_taxa(zymo_only_taxa, .) %>%
+  merge_taxa(zymo_only_taxa) %>%
+  as_tibble %>%
+  rename(proportion = abundance)
+```
+make a heatmap
+```{r zymo-contam-across-plate, fig.dim = c(8,6)}
+zymo %>%
+  mutate(
+    row = fct_rev(row),
+    ) %>%
+  ggplot(aes(y = row, x = column, fill = log10(proportion + 3e-5))) +
+  geom_raster() +
+  labs(title = "Proportion Zymo-only taxa across plate") +
+  theme(
+    legend.position = "bottom"
+    )
+```
+
+```{r}
+ggsave(
+  here("results/figures", "2020-02-10-zymo-contam-across-plate.pdf"),
+  width = 8,
+  height = 6
+)
+```
+
