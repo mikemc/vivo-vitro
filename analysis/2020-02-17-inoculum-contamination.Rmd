@@ -1,0 +1,267 @@
+---
+title: "Inspect external contamination of the inoculum"
+author: Michael McLaren
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(progress = TRUE, verbose = TRUE)
+# Global chunk options
+knitr::opts_chunk$set(
+  cache = TRUE, autodep = TRUE,
+  include = TRUE, echo = TRUE,
+  warning = TRUE, message = FALSE, 
+  fig.width = 7, fig.height = 7
+)
+```
+
+Goal: Examine the presence of strains that should not, by design, be in the
+inoculum samples.  This analyses was conducted in 2020-02, and was updated on
+2020-08-01 to use the new results files and create an html report.
+
+## Setup
+
+```{r}
+library(speedyseq)
+library(tidyverse)
+library(here)
+library(cowplot)
+library(ggridges)
+library(ggbeeswarm)
+library(ggforce)
+theme_set(theme_minimal_grid(12))
+```
+
+```{r}
+my_psmelt <- function(physeq) {
+  speedyseq::psmelt(physeq) %>%
+    as_tibble %>%
+    rename(taxon = OTU, sample = Sample, abundance = Abundance)
+}
+as_tibble.phyloseq <- function(x) {
+  x %>% my_psmelt
+}
+as_tibble.sample_data <- function(x) {
+  x %>% as("data.frame") %>% as_tibble(rownames = "sample")
+}
+as_tibble.taxonomyTable <- function(x) {
+  x %>% as("matrix") %>% as_tibble(rownames = "taxon")
+}
+as_tibble.XStringSet <- function(x) {
+  x %>% as.character %>% enframe("taxon", "sequence")
+}
+```
+
+Import into phyloseq.
+```{r}
+ps <- readRDS(here("results/a1/a1-phyloseq-silva-v138.Rds")) %>%
+  print
+sample_data(ps) <- sample_data(ps) %>%
+  transform(extraction_batch = as.factor(extraction_batch))
+```
+
+```{r}
+pstb <- ps %>% as_tibble
+tax <- tax_table(ps) %>% as_tibble
+ref <- refseq(ps) %>% as_tibble
+sam <- sample_data(ps) %>% as_tibble
+```
+
+
+```{r}
+custom_species <- dada2::assignSpecies(
+  ref$sequence, 
+  here("strain-info", "inoculum-tmob-zymo-16s.fasta"),
+  verbose = TRUE
+  ) %>%
+  as_tibble(rownames = "sequence") %>%
+  rename_all(str_to_lower) %>%
+  left_join(ref, by = "sequence")
+custom_species %>% filter(!is.na(genus)) %>% print(n=Inf)
+```
+
+Filter super low abundance ASVs,
+```{r}
+ps0 <- ps %>%
+  filter_taxa2(~sum(.) > 100)
+```
+
+## Abundance-based identification of ASVs from taxa in the inocula
+
+```{r}
+top_taxa_sums <- ps0 %>%
+  subset_samples(specimen_type == "inoculum") %>% 
+  taxa_sums %>%
+  sort(decreasing = TRUE) %>%
+  head(25)
+top_taxa_sums
+tax_table(ps0) %>%
+  as_tibble %>%
+  filter(taxon %in% names(top_taxa_sums)) %>%
+  print(n=Inf)
+```
+```{r}
+inoc_taxa <- names(top_taxa_sums)[top_taxa_sums > 1000]
+ps1 <- ps0 %>%
+  subset_samples(specimen_type %in% c("inoculum", "fecal")) %>%
+  prune_taxa(inoc_taxa, .)
+```
+
+Idea is that everything more abundant than T. mobilis is likely to actually be
+in the inoculum samples and not due to cross contamination. This method might
+leave out ASVs that are very low abundance in the inoculum or poorly measured.
+
+```{r}
+tax_table(ps1) %>%
+  as_tibble %>%
+  select(taxon, phylum, genus, species) %>%
+  add_column(sum = taxa_sums(ps1)) %>%
+  arrange(phylum, genus)
+```
+
+Note
+- Agathobacter rectalis is another name for Eubacterium rectale
+- ASV7 is identified with Clostridium symbiosum in `custom_species`
+- All 4 Bacteroides species are identified; ASV1 and ASV8 are likely from the same
+  genome
+- hence all taxa are in this table except Barnesiella intestinihominis, which
+  was filtered out due to low abundance
+- Staphylococcus (ASV6) and Bacillus (ASV13, ASV24, ASV26) should not be
+  present
+
+
+## Inspect Staph contamination
+
+```{r, fig.dim = c(6,3)}
+ps0 %>%
+  transform_sample_counts(close_elts) %>%
+  # prune_taxa("ASV6", .) %>%
+  subset_taxa(genus == "Staphylococcus") %>%
+  as_tibble %>%
+  mutate_at("specimen_type", as.character) %>%
+  mutate(specimen_type = case_when(
+      str_detect(sample, "zymo") ~ "zymo mock",
+      str_detect(sample, "water") ~ "water",
+      TRUE ~ specimen_type
+    )
+  ) %>%
+  rename(proportion = abundance) %>%
+  ggplot(aes(proportion, fill = specimen_type)) +
+  geom_histogram() +
+  scale_fill_brewer(type = "qual", palette = 2) +
+  scale_x_log10() +
+  labs(title = "Histogram of the proportion Staphylococcus in each sample") +
+  theme(title = element_text(size = 10))
+ggsave(
+  here("results/figures", "2020-02-17-staph-contam.pdf"),
+  width = 6,
+  height = 3
+)
+```
+
+```{r}
+ps %>% subset_taxa(genus == "Staphylococcus") %>% refseq %>% as.character
+ps %>% subset_taxa(genus == "Staphylococcus") %>% tax_table
+```
+
+## Inspect Bacillus contamination
+
+```{r, fig.dim = c(6,3)}
+ps0 %>%
+  transform_sample_counts(close_elts) %>%
+  subset_taxa(genus == "Bacillus") %>%
+  as_tibble %>%
+  mutate_at("specimen_type", as.character) %>%
+  mutate(specimen_type = case_when(
+      str_detect(sample, "zymo") ~ "zymo mock",
+      str_detect(sample, "water") ~ "water",
+      TRUE ~ specimen_type
+    )
+  ) %>%
+  rename(proportion = abundance) %>%
+  ggplot(aes(proportion, fill = specimen_type)) +
+  geom_histogram() +
+  scale_fill_brewer(type = "qual", palette = 2) +
+  scale_x_log10() +
+  labs(title = "Proportion Bacillus in each sample") +
+  theme(title = element_text(size = 10))
+```
+
+```{r, fig.dim = c(6,6)}
+ps0 %>%
+  transform_sample_counts(close_elts) %>%
+  # prune_taxa(c("ASV13", "ASV24", "ASV26"), .) %>%
+  subset_taxa(genus == "Bacillus") %>%
+  as_tibble %>%
+  mutate_at("specimen_type", as.character) %>%
+  mutate(specimen_type = case_when(
+      str_detect(sample, "zymo") ~ "zymo mock",
+      str_detect(sample, "water") ~ "water",
+      TRUE ~ specimen_type
+    )
+  ) %>%
+  rename(proportion = abundance) %>%
+  ggplot(aes(proportion + 1e-4, fill = specimen_type)) +
+  geom_histogram() +
+  scale_fill_brewer(type = "qual", palette = 2) +
+  scale_x_log10() +
+  facet_wrap(~taxon, ncol = 1) +
+  labs(title = "Proportion Bacillus ASVs in each sample") +
+  theme(title = element_text(size = 10))
+ggsave(
+  here("results/figures", "2020-02-25-bacillus-contam.pdf"),
+  width = 6,
+  height = 8
+)
+```
+
+Note, ASV22 is only in the Zymo mock (where it is expected) and in the water
+sample. The other three ASVs are only in the inoculum. Note, ASV24 blasts to
+strains of B. subtilis but is a different ASV from the one in the zymo mock.
+
+Sequences of the contams:
+```{r}
+ps0 %>%
+  subset_taxa(genus == "Staphylococcus") %>%
+  refseq %>%
+  as.character
+ps0 %>%
+  subset_taxa(genus == "Bacillus") %>%
+  refseq %>%
+  as.character
+```
+
+### Check DNA concentration patterns
+
+```{r}
+tb <- ps1 %>%
+  subset_samples(specimen_type == "inoculum") %>%
+  transform_sample_counts(close_elts) %>%
+  prune_taxa(c("A1_ASV6", "A1_ASV13", "A1_ASV24"), .) %>%
+  as_tibble
+```
+
+```{r, fig.dim = c(5, 6)}
+tb %>%
+  ggplot(aes(dna_conc, abundance, color = taxon)) +
+  geom_point() +
+  scale_x_log10() +
+  scale_y_log10() +
+  geom_smooth(method = "lm") +
+  coord_fixed()
+```
+
+```{r, fig.dim = c(4, 6)}
+tb %>%
+  ggplot(aes(reads_final, abundance, color = taxon)) +
+  geom_point() +
+  scale_x_log10() +
+  scale_y_log10() +
+  geom_smooth(method = "lm") +
+  coord_fixed(ratio = 0.2)
+```
+
