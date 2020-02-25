@@ -1,0 +1,399 @@
+---
+title: First look at bias in the pilot data
+author: Michael McLaren
+date: "`r Sys.Date()`"
+slug: vv-bias-pilot-data
+categories: []
+tags: [vivo-vitro]
+description:
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    dev: "svg"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(progress = TRUE, verbose = TRUE)
+# Global chunk options
+knitr::opts_chunk$set(
+  cache = TRUE, autodep = TRUE,
+  include = TRUE, echo = TRUE,
+  warning = TRUE, message = FALSE, 
+  fig.width = 7, fig.height = 7,
+  collapse = TRUE,
+  comment = "#>",
+  cache.comments = FALSE
+)
+```
+
+This analyses was conducted in 2020-02, and was updated on 2020-08-01 to use
+the new results files as input and to create an html report.
+
+## Setup
+
+```{r}
+library(speedyseq)
+library(tidyverse)
+library(here)
+library(cowplot)
+library(ggridges)
+library(ggbeeswarm)
+library(ggforce)
+theme_set(theme_minimal_grid(12))
+# import::from(metacal, mutate_by, close_elts)
+# Dev version of metacal for pairwise_ratios function
+devtools::load_all("~/research/r-packages/metacal", helpers = FALSE)
+```
+
+```{r}
+my_psmelt <- function(physeq) {
+  speedyseq::psmelt(physeq) %>%
+    as_tibble %>%
+    rename(taxon = OTU, sample = Sample, abundance = Abundance)
+}
+as_tibble.phyloseq <- function(x) {
+  x %>% my_psmelt
+}
+as_tibble.sample_data <- function(x) {
+  x %>% as("data.frame") %>% as_tibble(rownames = "sample")
+}
+as_tibble.taxonomyTable <- function(x) {
+  x %>% as("matrix") %>% as_tibble(rownames = "taxon")
+}
+as_tibble.XStringSet <- function(x) {
+  x %>% as.character %>% enframe("taxon", "sequence")
+}
+```
+
+Load phyloseq object,
+```{r}
+ps <- readRDS(here("results/a1/a1-phyloseq-silva-v138.Rds")) %>%
+  print
+sample_data(ps) <- sample_data(ps) %>%
+  transform(extraction_batch = as.factor(extraction_batch))
+```
+
+```{r}
+pstb <- ps %>% as_tibble
+tax <- tax_table(ps) %>% as_tibble
+ref <- refseq(ps) %>% as_tibble
+sam <- sample_data(ps) %>% as_tibble
+```
+
+Get custom taxonomic assignments based on exact matching to 16S references,
+```{r}
+custom_species <- dada2::assignSpecies(
+  ref$sequence, 
+  here("strain-info", "inoculum-tmob-zymo-16s.fasta"),
+  verbose = TRUE
+  ) %>%
+  as_tibble(rownames = "sequence") %>%
+  rename_all(str_to_lower) %>%
+  left_join(ref, by = "sequence")
+custom_species %>% filter(!is.na(genus)) %>% print(n=Inf)
+```
+
+## Filtering and merging
+
+```{r, fig.dim = c(5,4)}
+qplot(taxa_sums(ps)) +
+  scale_x_log10()
+```
+
+```{r}
+ps0 <- ps %>%
+  filter_taxa2(~sum(.) > 1000)
+```
+
+Find ASVs that seem to come from the same genome,
+```{r}
+# correlations
+asv_cor <- ps0 %>%
+  transform_sample_counts(~ . / sum(.)) %>%
+  otu_table %>%
+  cor
+# genetic distances
+dna <- refseq(ps0)
+nproc <- 4
+aln <- DECIPHER::AlignSeqs(dna, processors = nproc, verbose = FALSE)
+d <- DECIPHER::DistanceMatrix(aln, processors = nproc, verbose = FALSE)
+# tbl to view distances and correlations
+dist_tb <- list(cor = asv_cor, dist = d) %>%
+  map(as_tibble, rownames = "taxon1") %>%
+  map_dfr(pivot_longer, -taxon1, names_to = "taxon2", .id = "type") %>%
+  pivot_wider(names_from = type, values_from = value) %>%
+  mutate_at(paste0("taxon", 1:2), factor, ordered = TRUE, 
+    levels = paste0("A1_ASV", seq(ntaxa(ps0)))) %>%
+  filter(taxon1 < taxon2)
+```
+```{r, fig.dim = c(5,5)}
+ggplot(dist_tb, aes(dist, cor)) +
+  geom_point() +
+  scale_x_log10()
+dist_tb %>%
+  filter(dist < 0.01, cor > 0.95)
+```
+
+Merge these pairs by repeated calls to `merge_taxa()`.
+```{r}
+to_merge <- dist_tb %>%
+  filter(dist < 0.01, cor > 0.95) %>%
+  # select(taxon1, taxon2) %>%
+  mutate_at(paste0("taxon", 1:2), as.character) %>%
+  mutate(pair = map2(taxon1, taxon2, c)) %>%
+  pull(pair)
+ps1 <- purrr::reduce(
+  to_merge, 
+  .init = ps0,
+  .f = merge_taxa
+  )
+```
+
+TODO: Look into the two pairs with small distances but low (negative)
+correlations.
+
+## Abundance-based identification of inoculum taxa
+
+Check identification
+```{r}
+tax_table(ps0) %>% as_tibble %>%
+  filter(genus == "Bacteroides") %>%
+  select(taxon, genus, species)
+```
+So we can distinguish all the Bacteroides.
+
+```{r}
+top_taxa_sums <- ps1 %>%
+  subset_samples(specimen_type == "inoculum") %>% 
+  taxa_sums %>%
+  sort(decreasing = TRUE) %>%
+  head(25)
+top_taxa_sums
+tax_table(ps1) %>%
+  as_tibble %>%
+  filter(taxon %in% names(top_taxa_sums)) %>%
+  print(n=Inf)
+```
+
+```{r}
+inoc_taxa <- names(top_taxa_sums)[top_taxa_sums > 1000]
+ps2 <- ps1 %>%
+  subset_samples(specimen_type %in% c("inoculum", "fecal")) %>%
+  prune_taxa(inoc_taxa, .)
+```
+
+This method might leave out ASVs that are very low abundance in the inoculum or
+poorly measured, but is ok for now. Note, I left in the Staph contaminant ASV6.
+
+
+## Picking ASVs to look at
+
+```{r}
+ps2 %>%
+  as_tibble %>%
+  group_by(specimen_id, specimen_type, taxon) %>%
+  summarize(across(abundance, sum), .groups = "drop") %>%
+  mutate_by(specimen_id, proportion = abundance %>% close_elts) %>%
+  mutate(taxon = factor(taxon, inoc_taxa)) %>%
+  ggplot(aes(taxon, proportion + 1e-5, color = specimen_type)) +
+  geom_quasirandom() +
+  scale_y_log10() +
+  coord_flip()
+```
+
+Roughly consistent with cross-sample contamination contributing roughly 1% of
+total reads.
+
+
+From this figure, the following ASVs look like they are completely absent from
+the fecal specimens: 6, 12, 13, 24. (ASV6 is Staph).
+
+```{r}
+taxa <- paste0("A1_ASV", c(6, 12, 13, 24))
+tax_table(ps1)[taxa, 1:6]
+dist_tb %>%
+  filter(taxon1 %in% taxa, taxon2 %in% taxa)
+custom_species %>%
+  filter(taxon %in% taxa) %>%
+  select(-sequence)
+```
+
+I don't think a Bacillus should be in the inoculum. But it is in the Zymo mock.
+
+Hypothesis: The zymo mock taxa are being read into the inoculum samples.
+
+```{r}
+tb <- ps1 %>%
+  prune_samples("A1_zymo_posc", .) %>%
+  as_tibble %>%
+  arrange(-abundance) %>%
+  select(taxon:abundance, rank_names(ps1)) %>%
+  print(n=Inf)
+tb %>%
+  filter(genus == "Bacillus") %>%
+  select(taxon, abundance, genus)
+```
+Nope, since ASV13 and ASV24 are not found in the Zymo sample at all. Could have
+also guess this as they weren't identified by the custom species assignment,
+
+## Pick focal taxa
+
+These are the taxa that seem like they should actually be in the inoculum by
+design, and that are found in the fecal samples as well, minus ASV18 since it
+is generally quite rare
+```{r}
+# focal_taxa <- paste0("ASV", c(1, 2, 3, 4, 5, 7, 9, 10, 15, 16, 18))
+focal_taxa <- paste0("A1_ASV", c(1, 2, 3, 4, 5, 7, 9, 10, 15, 16))
+ps3 <- prune_taxa(focal_taxa, ps2)
+```
+
+## Visualize ratios of ratios
+
+```{r}
+ps3.pw <- ps3 %>%
+  transform_sample_counts(~ . + 1) %>%
+  pairwise_ratios(margin = "taxa", filter = TRUE) %>%
+  pairwise_ratios(margin = "samples", filter = FALSE) %>%
+  subset_samples(specimen_id.1 == specimen_id.2) %>%
+  subset_samples(extraction_protocol.1 == "1") %>%
+  subset_samples(extraction_protocol.2 == "2")
+pwtb <- ps3.pw %>%
+  as_tibble %>%
+  rename(pair = taxon, bias = abundance) %>%
+  separate(pair, c("taxon.1", "taxon.2"), sep = ":", remove = FALSE)
+```
+
+```{r, eval = FALSE}
+pwtb %>%
+  ggplot(aes(pair, log(bias), color = specimen_type.1)) +
+  geom_quasirandom() +
+  coord_flip() + 
+  facet_grid(. ~ extraction_batch.1)
+```
+
+
+Look at just the Bacteroides,
+```{r}
+bacteroides <- tax_table(ps3) %>% as_tibble %>%
+  filter(genus == "Bacteroides") %>%
+  pull(taxon)
+bacteroides_pairs <- crossing(
+  taxon1 = bacteroides, 
+  taxon2 = bacteroides
+  ) %>%
+  unite("pair", taxon1, taxon2, sep = ":") %>%
+  pull(pair)
+pwtb %>%
+  filter(pair %in% bacteroides_pairs) %>%
+  ggplot(aes(pair, log(bias), 
+      label = specimen_id.1, color = specimen_type.1)) +
+  geom_quasirandom() +
+  # geom_text(position = position_jitter(height = 0, width = 0.2)) +
+  coord_flip() + 
+  facet_wrap(~paste("batch", extraction_batch.1), nrow = 1)
+```
+
+Note, there is clustering by `specimen_id`.
+
+Summary:
+- Bias between the four Bacteroides taxa is small
+- ASV1 appears to have a lower differential bias in the inoculum than in the
+  fecal samples except in specimens 4 and 25. Notably, it is much rarer in the
+  inoculum samples.
+
+Look at the remaining pairs,
+```{r, fig.dim = c(8, 12)}
+pwtb %>%
+  filter(!(pair %in% bacteroides_pairs)) %>%
+  ggplot(aes(pair, log(bias), 
+      label = specimen_id.1, color = specimen_type.1)) +
+  geom_quasirandom() +
+  # geom_text(position = position_jitter(height = 0, width = 0.2)) +
+  coord_flip() + 
+  facet_wrap(~paste("batch", extraction_batch.1), nrow = 1)
+```
+
+Looks like ASV2 has a different bias in the inoc and fecal samples.
+
+Look at just the E. coli pairs,
+```{r}
+pwtb %>%
+  # filter(!(pair %in% bacteroides_pairs)) %>%
+  filter(str_detect(pair, "ASV2")) %>%
+  ggplot(aes(pair, log(bias), 
+      label = specimen_id.1, color = specimen_type.1)) +
+  geom_quasirandom() +
+  # geom_text(position = position_jitter(height = 0, width = 0.2)) +
+  coord_flip() + 
+  facet_wrap(~paste("batch", extraction_batch.1), nrow = 1) +
+  theme(
+    panel.spacing = unit(1, "cm")
+  )
+```
+
+Look at E. coli versus bacteroides
+```{r}
+pwtb %>%
+  # filter(!(pair %in% bacteroides_pairs)) %>%
+  filter(
+    str_detect(pair, "ASV2"), 
+    taxon.1 %in% bacteroides | taxon.2 %in% bacteroides
+    ) %>%
+  ggplot(aes(pair, log(bias), 
+      label = specimen_id.1, color = specimen_type.1)) +
+  geom_quasirandom(width = 0.2) +
+  # geom_text(position = position_jitter(height = 0, width = 0.2)) +
+  stat_summary(
+    fun.data = mean_se, 
+    position = position_nudge(x = 0.3),
+    # shape = 124, 
+    # fatten = 20
+    ) +
+  coord_flip() + 
+  facet_wrap(~paste("batch", extraction_batch.1), nrow = 1) +
+  theme(
+    panel.spacing = unit(1, "cm")
+  )
+```
+
+Clear pattern where E. coli has the same efficiency as Bacteroides in vivo but
+not in vitro.
+
+To try to understand the outliers, it might be easier to look at samples rather
+than pairs of samples. Might be worth looking into whether the outliers could
+be due to cross-sample contamination.
+
+## Compositional PCA
+
+```{r}
+pca <- ps3 %>%
+  transform_sample_counts(~clr(. + 1)) %>%
+  otu_table %>%
+  prcomp
+x <- pca$x %>% 
+  as_tibble(rownames = "sample") %>%
+  left_join(sample_data(ps3) %>% as_tibble, by = "sample")
+# percent variance explained by each pc
+pca_perc <- (pca$sdev^2) %>% close_elts %>% {round(. * 100, 1)} %>% print
+```
+
+```{r, fig.dim = c(7, 5)}
+ggplot(x, aes(PC1, PC2, 
+    shape = extraction_batch, 
+    # color = specimen_type)) +
+    color = extraction_protocol)) +
+  geom_point(size = 3) +
+  scale_color_brewer(type = "qual", palette = 2) +
+  scale_shape_manual(values = c(3, 6)) +
+  geom_mark_ellipse(aes(group = specimen_type, label = specimen_type),
+    color = "grey") +
+  coord_fixed(ratio = pca_perc[2] / pca_perc[1])
+```
+
+PC1 - specimen type, lesser extent: protocol
+PC2 - batch + type interaction
+
+
+Next, try centering each specimen, weighting the two protocols equally, and
+redoing the PCA, so as to focus in on bias.
