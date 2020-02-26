@@ -1,0 +1,343 @@
+---
+title: Inspect E. coli ASVs
+author: Michael McLaren
+date: "`r Sys.Date()`"
+description:
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    fig_width: 6
+    dev: "svg"
+---
+
+Summary: There is a second E. coli ASV found only in the fecal samples, ASV14.
+In fact, it looks like the E. coli in the fecal samples contains ASV2 and ASV14
+and is therefore in fact different from the E. coli in the inoculum samples and
+the H2 strain that the mice were supposed to be inoculated with. These two ASVs
+differ by 1 bp and are highly correlated in the fecal samples (see attached
+figures).
+
+This analyses was conducted in 2020-02, and was updated on 2020-08-01 to use
+the new results files and create an html report.
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(progress = TRUE, verbose = TRUE)
+# Global chunk options
+knitr::opts_chunk$set(
+  cache = TRUE, autodep = TRUE,
+  include = TRUE, echo = TRUE,
+  warning = TRUE, message = FALSE, 
+  fig.width = 7, fig.height = 7
+)
+```
+
+## Setup
+
+```{r}
+library(speedyseq)
+library(tidyverse)
+library(here)
+library(cowplot)
+library(ggridges)
+library(ggbeeswarm)
+theme_set(theme_minimal_grid(12))
+```
+
+```{r}
+my_psmelt <- function(physeq) {
+  speedyseq::psmelt(physeq) %>%
+    as_tibble %>%
+    rename(taxon = OTU, sample = Sample, abundance = Abundance)
+}
+as_tibble.phyloseq <- function(x) {
+  x %>% my_psmelt
+}
+as_tibble.sample_data <- function(x) {
+  x %>% as("data.frame") %>% as_tibble(rownames = "sample")
+}
+as_tibble.taxonomyTable <- function(x) {
+  x %>% as("matrix") %>% as_tibble(rownames = "taxon")
+}
+as_tibble.XStringSet <- function(x) {
+  x %>% as.character %>% enframe("taxon", "sequence")
+}
+```
+
+Import into phyloseq.
+```{r}
+ps <- readRDS(here("results/a1/a1-phyloseq-silva-v138.Rds")) %>%
+  print
+lvls <- c("inoculum", "fecal", "T. mobilis", "Zymo DNA", "water")
+sample_data(ps) <- sample_data(ps) %>%
+  transform(
+    extraction_batch = as.factor(extraction_batch),
+    specimen_type = factor(specimen_type, lvls)
+  )
+```
+
+```{r}
+pstb <- ps %>% as_tibble
+tax <- tax_table(ps) %>% as_tibble
+ref <- refseq(ps) %>% as_tibble
+sam <- sample_data(ps) %>% as_tibble
+```
+
+Filter super low abundance ASVs,
+```{r}
+ps0 <- ps %>%
+  filter_taxa2(~sum(.) > 100)
+```
+
+```{r}
+tax_table(ps0) %>%
+  as_tibble %>%
+  transmute(taxon, phylum, genus, species = str_sub(species, 1, 15)) %>%
+  arrange(phylum) %>%
+  print(n=Inf)
+```
+
+
+distance between asvs and ref seqs
+
+```{r}
+ref_dna <- here("strain-info", "inoculum-tmob-zymo-16s.fasta") %>%
+  Biostrings::readDNAStringSet()
+# genetic distances
+dna <- c(refseq(ps0), ref_dna)
+nproc <- 4
+aln <- DECIPHER::AlignSeqs(dna, processors = nproc, verbose = FALSE)
+d <- DECIPHER::DistanceMatrix(aln, processors = nproc, verbose = FALSE)
+dtb <- d %>%
+  as_tibble(rownames = "taxon1") %>%
+  pivot_longer(-taxon1, names_to = "taxon2", values_to = "distance") %>%
+  filter(taxon1 != taxon2)
+dtb0 <- dtb %>%
+  filter(str_detect(taxon1, "ASV"), !str_detect(taxon2, "ASV")) %>%
+  separate(
+    taxon2, 
+    c("ref_name", "ref_genus", "ref_species", "ref_strain"),
+    sep = " ", extra = "merge",
+    remove = TRUE) %>%
+  rename(feature_id = taxon1)
+```
+
+
+## Inspect E. coli ASVs
+
+```{r}
+tax %>%
+  filter(genus == "Escherichia/Shigella") %>%
+  select(taxon, genus, species)
+dtb0 %>%
+  filter(ref_genus == "Escherichia", distance < 0.01)
+dtb %>%
+  filter(taxon1 == "A1_ASV2", taxon2 == "A1_ASV14")
+```
+
+Two ASVs, 1 bp apart (1/253 = 0.00395). The first one (ASV2) matches the
+reference sequences; the second doesn't, but matched E. coli and E. fergusonii
+sequences in the Silva species db.
+
+```{r}
+s <- ps0 %>%
+  subset_taxa(genus == "Escherichia/Shigella") %>%
+  refseq %>%
+  as.character
+s
+```
+
+```{r}
+p1 <- ps0 %>%
+  prune_taxa(c("A1_ASV14", "A1_ASV2"), .) %>%
+  as_tibble %>%
+  mutate(proportion = abundance / reads_final) %>%
+  # ggplot(aes(specimen_type, abundance / reads_final, color = taxon)) +
+  ggplot(aes(specimen_type, proportion, color = taxon)) +
+  geom_quasirandom() +
+  # scale_y_continuous(
+  #   trans = scales::pseudo_log_trans(sigma = 0.05, base = 10)
+  # )
+  # scale_y_sqrt(expand = c(0, 0))
+  # scale_y_continuous(trans = mysqrt_trans)
+  scale_y_continuous(
+    trans = scales::trans_new("mysqrt", 
+      transform = base::sqrt,
+      inverse = function(x) ifelse(x<0, 0, x^2),
+      # inverse = function(x) ifelse(x<0, -x^2, x^2),
+      domain = c(0, Inf)
+    )
+  ) +
+  scale_color_brewer(type = "qual", palette = 6) +
+  labs(
+    color = "ASV",
+    title = "E. coli ASV proportions across specimen types"
+  )
+p2 <- ps0 %>%
+  subset_taxa(genus == "Escherichia/Shigella") %>%
+  as_tibble %>%
+  select(-rank_names(ps)) %>%
+  mutate(abundance = abundance / reads_final) %>%
+  pivot_wider(names_from = taxon, values_from = abundance) %>%
+  ggplot(aes(A1_ASV2, A1_ASV14, color = specimen_type)) +
+  geom_point() +
+  scale_color_brewer(type = "qual", palette = 2) +
+  # stat_smooth(method = "lm") +
+  labs(
+    title = "Proportion ASV14 vs. ASV2"
+    )
+```
+
+```{r, fig.asp = 1.5}
+plot_grid(p1, NULL, p2,
+  ncol = 1,
+  rel_heights = c(1, 0.1, 0.8)
+)
+```
+
+```{r, include = FALSE, eval = FALSE}
+ggsave(here("results/figures", "2020-02-26-e-coli-asvs.pdf"), units = "in", 
+  width = 4, height = 6, scale = 1.5)
+```
+
+## Followup questions
+
+```{r}
+ps %>%
+  prune_taxa(c("A1_ASV14", "A1_ASV2"), .) %>%
+  as_tibble %>%
+  group_by(specimen_type, taxon) %>%
+  summarize(prevalence = mean(abundance > 0))
+```
+So there are literally 0 reads of ASV14 in the inoculum samples, yet it is
+found in every fecal sample.
+
+
+Are there other surprising strains in the fecal samples?
+```{r}
+ps0 %>%
+  subset_samples(specimen_type == "fecal") %>%
+  merge_samples("specimen_id") %>%
+  transform_sample_counts(~./sum(.)) %>%
+  filter_taxa2(~max(.) > 1e-3) %>%
+  tax_table %>%
+  as_tibble %>%
+  select(taxon, phylum, genus, species)
+  # left_join(assignments, by = c("taxon" = "feature_id"))
+```
+
+```{r}
+dtb %>%
+  filter(taxon1 == "A1_ASV9", taxon2 == "A1_ASV17")
+```
+The two Roseburia ASVs are 1 bp apart and so may be in the same genome
+
+```{r}
+p1 <- ps0 %>%
+  subset_taxa(genus == "Roseburia") %>%
+  as_tibble %>%
+  mutate(proportion = abundance / reads_final) %>%
+  ggplot(aes(specimen_type, proportion, color = taxon)) +
+  geom_quasirandom() +
+  scale_y_sqrt() +
+  scale_color_brewer(type = "qual", palette = 6)
+```
+
+
+```{r, fig.asp = 1.5}
+p1 <- ps0 %>%
+  prune_taxa(c("A1_ASV9", "A1_ASV17"), .) %>%
+  as_tibble %>%
+  mutate(proportion = abundance / reads_final) %>%
+  ggplot(aes(specimen_type, proportion, color = taxon)) +
+  geom_quasirandom() +
+  scale_y_continuous(
+    trans = scales::trans_new("mysqrt", 
+      transform = base::sqrt,
+      inverse = function(x) ifelse(x<0, 0, x^2),
+      domain = c(0, Inf)
+    )
+  ) +
+  scale_color_brewer(type = "qual", palette = 6) +
+  labs(
+    color = "ASV",
+    title = "Roseburia ASV proportions across specimen types"
+  )
+p2 <- ps0 %>%
+  prune_taxa(c("A1_ASV9", "A1_ASV17"), .) %>%
+  as_tibble %>%
+  select(-rank_names(ps)) %>%
+  mutate(abundance = abundance / reads_final) %>%
+  pivot_wider(names_from = taxon, values_from = abundance) %>%
+  ggplot(aes(A1_ASV9, A1_ASV17, color = specimen_type)) +
+  geom_point() +
+  scale_color_brewer(type = "qual", palette = 2) +
+  # stat_smooth(method = "lm") +
+  labs(
+    title = "Proportion ASV9 vs. ASV17"
+    )
+plot_grid(p1, NULL, p2,
+  ncol = 1,
+  rel_heights = c(1, 0.1, 0.8)
+)
+```
+
+In contrast to the E. coli ASVs, here we see a pattern indicating that the ASVs
+are from the same organisms, as with ASV1 and ASV8.
+
+## Sanger sequences
+
+Goal - see if the SNV distinguishing ASV14 from ASV2 can be detected in the
+Sanger sequencing of the E. coli culture.
+
+First, figure out which sequence file corresponds to the E. coli culture.
+```{r}
+path <- here("data/sanger/ORIGINAL_SEQS_AM016")
+seq_fns <- list.files(path, pattern = "\\.seq", full.names = TRUE)
+seqs <- seq_fns %>%
+  set_names(nm = basename) %>%
+  map(read_lines) %>%
+  map_chr(str_c, collapse = "") %>%
+  Biostrings::DNAStringSet()
+dna1 <- c(refseq(ps0)[c("A1_ASV2", "A1_ASV14")], seqs)
+nproc <- 4
+aln1 <- DECIPHER::AlignSeqs(dna1, processors = nproc, verbose = FALSE)
+d1 <- DECIPHER::DistanceMatrix(aln1, processors = nproc, verbose = FALSE)
+dtb1 <- d1 %>%
+  as_tibble(rownames = "taxon1") %>%
+  pivot_longer(-taxon1, names_to = "taxon2", values_to = "distance") %>%
+  filter(taxon1 != taxon2)
+dtb1 %>%
+  filter(taxon1 %in% c("A1_ASV2", "A1_ASV14")) %>%
+  filter(distance < 0.1) %>%
+  arrange(distance)
+```
+Visualize the alignment of just the two E. coli ASVs with the E. coli sanger
+sequence,
+```{r, eval = FALSE}
+nms <- c("15B_013_ECL-F_GM3F_E07.seq", "A1_ASV2", "A1_ASV14")
+aln2 <- DECIPHER::AlignSeqs(
+  dna1[nms], 
+  processors = nproc, verbose = FALSE)
+Biostrings::subseq(aln2, start = 498, width = 253) %>%
+  DECIPHER::BrowseSeqs()
+```
+
+Use the sangerseqR package to read in the ab1 file and create a chromatogram
+for the amplicon region,
+```{r, fig.dim = c(10, 8)}
+# library(sangerseqR)
+ab1 <- file.path(path, "15B_013_ECL-F_GM3F_E07.ab1") %>%
+  sangerseqR::read.abif()
+ss <- sangerseqR::sangerseq(ab1)
+sangerseqR::chromatogram(ss, trim5 = 496, trim3 = 462)
+```
+
+From this chromatogram it looks like the shared mismatch near the end of the
+amplicon region is a miscall from the sanger data; also, there does not look to
+be any heterogeneity at the SNP site (location 97) - there seems to be only
+signal of A, with the G signal at the background level.
+
+TODO: see if can use the alignment `aln2` to view just this region
+
+
