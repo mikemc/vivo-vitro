@@ -1,0 +1,223 @@
+---
+author: Michael McLaren
+---
+
+```{r}
+library(tidyverse)
+library(here)
+library(glue)
+library(here)
+# also used: dotenv, rentrez, Biostrings
+```
+
+```{r}
+dotenv::load_dot_env(here(".env"))
+data_path <- file.path(Sys.getenv("DATA_PATH"), "reference-sequences")
+dir.create(file.path(data_path, "genomes"), recursive = TRUE)
+```
+
+Load spreadsheet linking inoculum strains (plus T. mobilis) to their 16s and
+genome accessions,
+```{r}
+inoculum_strains <- googlesheets4::read_sheet(
+  "https://docs.google.com/spreadsheets/d/1MnsrcvsqA1vpq5mJevchRIfGADeTsXx-eFTQpWvDViI",
+  sheet = 2)
+inoculum_strains <- inoculum_strains %>%
+  separate(organism, into = c("species", "strain"), sep = ": ", 
+    remove = FALSE) %>%
+  separate(species, into = c("genus", "species"), sep = " ") %>%
+  # select(phylum, genus, species, strain) %>%
+  arrange(phylum, genus, species) %>%
+  glimpse
+write_csv(inoculum_strains, here("strain-info", "strains.csv"))
+```
+
+### Fetch available 16S sequences
+
+```{r}
+accs <- inoculum_strains %>%
+  filter(!is.na(accession_16s)) %>%
+  pull(accession_16s)
+fasta <- rentrez::entrez_fetch(db="nuccore", accs, rettype = "fasta")
+write_lines(fasta, file.path(data_path, "16s-sequences.fasta"))
+```
+
+### Fetch available genomes
+
+```{r}
+inoculum_strains %>%
+  pull(accession_genome)
+```
+Accessions that denote genome projects have a 4-letter project identifier,
+```{r}
+inoculum_strains %>%
+  pull(accession_genome) %>%
+  str_extract("[A-Z]{4}")
+```
+The others are finished genomes.
+
+For finished genomes, download Fasta and GFF3 files with the method described
+at https://www.biostars.org/p/296825/.
+```{r}
+tb <- inoculum_strains %>%
+  mutate(finished_genome = !str_detect(accession_genome, "[A-Z]{4}")) %>%
+  filter(finished_genome) %>%
+  expand(nesting(organism, accession = accession_genome), 
+    ftype = c("fasta", "gff3")) %>%
+  mutate(
+    # Paths to save the fasta and gff3 files of the whole genomes
+    fn = file.path(data_path, "genomes-finished", glue("{accession}.{ftype}")),
+    # urls to fetch said files
+    url = glue('"https://www.ncbi.nlm.nih.gov/sviewer/viewer.cgi?db=nuccore&report={ftype}&id={accession}"'),
+    # wget command to dl file
+    command = glue("wget -O {fn} {url}")
+    )
+tb$command[[1]]
+walk(tb$command, system)
+```
+
+I downloaded the draft genomes manually through the NCBI website into the
+genomes-draft/ folder. The file names have the form `AAVN02.1.fsa_nt.gz` and
+`AAVN02.1.gbff.gz`, where the first four letters denote the "project".
+
+### Extract 16S sequences from genomes
+
+Overview: Combine all finished and draft contigs into one file and run
+`barrnap` to extract the 16s sequences. 
+
+Gunzip the draft genomes (finished genomes already plain text)
+```{r}
+fns <- list.files(file.path(data_path, "genomes-draft"), pattern = "fsa_nt.gz",
+    full.names = TRUE)
+ftb <- tibble(fn = fns) %>%
+  mutate(
+    project = str_extract(basename(fn), "[^\\.]+"),
+    new_fn = file.path(dirname(fn), glue("{project}.fasta")),
+    # gunzip -c archive.tar.gz > archive.tar
+    command = glue("gunzip -c {fn} > {new_fn}")
+  )
+ftb %>% pull(command)
+walk(ftb$command, system)
+```
+Cat them into one file with the finished genomes
+```{r}
+fns <- list.files(file.path(data_path, "genomes-finished"), pattern = "fasta",
+    full.names = TRUE) %>%
+  c(ftb$new_fn)
+all_fn <- file.path(data_path, "all-genomes.fasta")
+fns_string <- glue_collapse(fns, sep = " ")
+command <- glue("cat {fns_string} > {all_fn}")
+system(command)
+```
+Extract rRNA gene sequences with barrnap,
+```{r}
+# Call syntax: barrnap -o rrna.fa < contigs.fa > rrna.gff
+fasta_out <- file.path(data_path, "all-genomes-barrnap.fasta")
+gff_out <- file.path(data_path, "all-genomes-barrnap.gff3")
+command <- glue("barrnap --threads 4 -o {fasta_out} < {all_fn} > {gff_out}")
+system(command)
+```
+
+### Combine all 16S sequences
+
+Goal is to get a Fasta file of 16S sequences that we will use to assign ASVs to
+species and/or strains. This will include the inoculum strains, the T. mobilis
+strain, and the Zymo strains. Each sequence will have a name of the form
+"{seqid} {genus} {species} {strain}". The seqid and strain will contain "Zymo"
+for the sequences provided by Zymo.
+
+Read in both sets (downloaded or extracted) of 16S sequences.
+```{r}
+dna <- file.path(data_path, 
+  c("16s-sequences.fasta", "all-genomes-barrnap.fasta")
+) %>%
+  Biostrings::readDNAStringSet() %>%
+  # Filter to just 16S rRNA genes
+  {.[str_detect(names(.), "16[sS]")]}
+```
+
+The sequence names don't always have the strain name. Instead, we'll match
+sequence to strain using the accession (16S reference sequences and finished
+genomes) or project id (draft genomes).
+```{r}
+# Table matching names in `dna` to the accession or project identifier ("key")
+dna_tb <- tibble(name = names(dna)) %>%
+  mutate(
+    accession.version = str_extract(name, "([A-Z]{2}_)?([A-Z]+)?[0-9]+\\.[0-9]+")
+) %>%
+  separate(accession.version, c("accession", "version"), sep = "\\.") %>%
+  mutate(
+    project = str_extract(name, "[A-Z]{4}"),
+    key = case_when(
+      is.na(project) ~ accession,
+      !is.na(project) ~ project
+    ),
+    # sequence = dna[name] %>% as.character
+  )
+# Table matching the key to the original accession and strain information
+acc_tb <- inoculum_strains %>%
+  pivot_longer(
+    starts_with("accession"),
+    names_to = "accession_type",
+    values_to = "accession"
+  ) %>%
+  filter(!is.na(accession)) %>%
+  mutate(
+    # project_version = str_extract(accession, "[A-Z]{4}[0-9]{2}"),
+    project = str_extract(accession, "[A-Z]{4}"),
+    key = case_when(
+      is.na(project) ~ accession,
+      !is.na(project) ~ project
+    )
+  ) %>%
+  mutate_at("accession_type", str_extract, "(?<=accession_).+") %>%
+  select(-project)
+dna_tb0 <- dna_tb %>% 
+  select(name, key) %>%
+  left_join(acc_tb, by = "key")
+```
+
+Make new names in format "{seqid} {genus} {species} {strain}".
+```{r}
+dna_tb1 <- dna_tb0 %>%
+  mutate(
+    seqid = str_extract(name, "[^\\s]+"),
+    new_name = glue("{seqid} {genus} {species} {strain}")
+  )
+stopifnot(all.equal(dna_tb1$name, names(dna)))
+names(dna) <- dna_tb1$new_name
+```
+
+#### Zymo strains
+
+Add the Zymo mock reference sequences. These have non-descript names such as
+"Escherichia_coli_16S_1". To distinguish them downstream, change the names to
+the form "Zymo::Escherichia_coli_16S_1 Escherichia coli Zymo"; the prefix
+"Zymo::" gives the sequence a distinct name, and the "Zymo" at the end marks
+the strain.
+```{r}
+zymo <- file.path(data_path, "zymo-mock-16s.fasta") %>%
+  Biostrings::readDNAStringSet()
+names(zymo)
+names(zymo) <- names(zymo) %>%
+  str_match("([:alpha:]+)_([:alpha:]+)_.+") %>%
+  as_tibble(.name_repair = "universal") %>%
+  rename(id = 1, genus = 2, species = 3) %>%
+  mutate(
+    id = glue("Zymo::{id}"), 
+    strain = "Zymo",
+    new_name = glue("{id} {genus} {species} {strain}")
+    ) %>%
+  pull(new_name) %>%
+  print
+```
+
+#### Save all together
+
+```{r}
+all_dna <- c(dna, zymo)
+Biostrings::writeXStringSet(
+  all_dna,
+  here("strain-info", "inoculum-tmob-zymo-16s.fasta")
+)
+```
