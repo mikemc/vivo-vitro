@@ -10,11 +10,11 @@ collection_day,"Collection day","day of the week (1 - 7)",integer,"1 = Monday, 2
 collection_date,"Collection date",date,YYYY-MM-DD,"Date the specimen was collected"
 host_species,"Host species","""mouse""",character,
 host_sex,"Host sex","""female"", ""male""",character,
-extraction_batch,"Extraction batch","1, 2",integer,
+extraction_batch,"Extraction batch","""1"", ""2""",character,
 extraction_date,"Extraction date",date,YYYY-MM-DD,
 number_of_pellets,"Number of pellets in specimen",pellets,integer,"Number of pellets pooled to create the specimen"
 number_of_aliquots,"Number of aliquots split from specimen",aliquots,integer,"Generally each specimen was split into 4 aliquots, but a couple were only split in 2"
-protocol,"Extraction protocol","""P1"", ""P2""",character,"P1 = FastDNA; P2 = DNeasy"
+extraction_protocol,"Extraction protocol","""1"", ""2""",character,"P1 = FastDNA; P2 = DNeasy"
 dna_conc,"DNA concentration",ng/uL,numeric,"As measured by Qubit assay"
 well,"Plate well of DNA sample","""A1"" - ""H12""",character,"Which well in the 96-well plate the sample was plated into"
 row,"Plate row of DNA sample","""A"" - ""H""",ordered,
