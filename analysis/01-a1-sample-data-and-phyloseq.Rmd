@@ -1,0 +1,159 @@
+
+```{r}
+library(tidyverse)
+library(here)
+```
+
+## Sample data
+
+### Prepare the primary sample data
+
+```{r}
+dna_sam <- readRDS(here("sample-data", "dna-sample-data.Rds"))
+centers <- c("A1", "A2", "S1", "S2")
+```
+
+Sample data for center A1's controls,
+```{r}
+sam.controls <- tibble(
+  center_id = "A1",
+  sample_id = c("A1_water_negc", "A1_zymo_posc"),
+  specimen_type = c("water", "DNA mock"),
+  # well info from "Final Plate Map" in spreadsheet from Center A1
+  well = c("H12", "H11"),
+)
+```
+
+Format the data for our samples, combine with the control samples, and add
+row + column info,
+```{r}
+sam <- dna_sam %>%
+  # Restrict to just the samples that were on the A1 plate; 
+  filter(A1) %>%
+  select(-all_of(centers)) %>% 
+  # Sample names should take the form {`center_id}_{dna_sample_id}`
+  mutate(
+    center_id = "A1",
+    sample_id = str_c(center_id, dna_sample_id, sep = "_")
+  ) %>%
+  select(-dna_sample_id) %>%
+  select(sample_id, center_id, everything()) %>%
+  bind_rows(sam.controls) %>%
+  # Add plate column and row
+  mutate(
+    row = str_sub(well, 1, 1) %>% as.ordered,
+    column = str_sub(well, 2) %>% as.integer %>% as.ordered,
+  )
+```
+
+### Sequencing information
+
+Function for renaming samples from the sample names submitted and used by A1 to
+their sample names we'll use in our analysis,
+```{r}
+# Current format in the seqtab.nochim and track objects from the DADA2 workflow
+# is {specimen_id}-{aliquot_number} for submitted samples, and Water-NEGC and
+# Zymo-POSC for A1's control samples. Sample names used in the A1 sequencing
+# report are same except _'s instead of -'s Desired format is
+# {center_id}_{specimen_id}_{aliquot_number} for submitted samples and
+# A1_water_negc and A1_zymo_posc for A1 control samples.
+rename_samples <- function(x) {
+  x %>% 
+    str_to_lower %>%
+    str_replace("-", "_") %>%
+    str_c("A1_", .)
+}
+```
+
+Index sequences from A1 sequencing report,
+```{r}
+indexqc <- read_csv(
+  here::here("sample-data", "a1-index-qc.csv"),
+  col_types = "iccccddd"
+  ) %>%
+  janitor::clean_names() %>%
+  glimpse
+indexqc0 <- indexqc %>%
+  mutate_at("sample_id", rename_samples) %>%
+  select(
+    sample_id,
+    index1_sequence = index_1_i7,
+    index2_sequence = index_2_i5
+  )
+```
+
+Read counts from DADA2 tracking table,
+```{r}
+track <- read_csv(
+  here("results", "dada2", "a1", "track.csv"),
+  col_types = "ciiiiii"
+  ) %>%
+  glimpse
+track %>% pull(sample)
+track0 <- track %>%
+  # Get sample names in correct format
+  mutate_at("sample", rename_samples) %>%
+  # keep just the input and output reads
+  select(
+    sample_id = sample,
+    reads_fastq = input, 
+    reads_final = nochim
+  ) %>%
+  glimpse
+# check names
+track0 %>% pull(sample_id)
+```
+
+### Merge and save
+
+```{r}
+sam0 <- sam %>%
+  left_join(indexqc0, by = "sample_id") %>%
+  left_join(track0, by = "sample_id")
+```
+
+```{r}
+saveRDS(sam0, here("results", "a1-sample-data.Rds"))
+```
+
+## Phyloseq
+
+Create a phyloseq object with the sequence abundance table, silva v138
+taxonomy, and sample data.
+```{r}
+library(phyloseq)
+
+seqtab <- here("results", "dada2", "a1", "seqtab-nochim.Rds") %>%
+  readRDS %>%
+  otu_table(taxa_are_rows = FALSE)
+sample_names(seqtab) <- sample_names(seqtab) %>%
+  rename_samples
+tax <- here("results", "dada2", "a1", "taxonomy-silva-v138.Rds") %>%
+  readRDS %>%
+  tax_table
+sam <- readRDS(here("results", "a1-sample-data.Rds")) %>%
+  column_to_rownames("sample_id") %>%
+  sample_data
+ps <- phyloseq(seqtab, sam, tax)
+```
+
+Save ASV sequences and use short names of the form `A1_ASV{#}`
+```{r}
+dna <- Biostrings::DNAStringSet(taxa_names(ps))
+names(dna) <- taxa_names(ps)
+ps <- merge_phyloseq(ps, dna)
+taxa_names(ps) <- str_c("A1_ASV", seq(ntaxa(ps)))
+# Check that all samples and taxa were imported
+stopifnot(nsamples(ps) == nrow(seqtab))
+stopifnot(ntaxa(ps) == nrow(tax))
+ps
+#> phyloseq-class experiment-level object
+#> otu_table()   OTU Table:         [ 367 taxa and 96 samples ]
+#> sample_data() Sample Data:       [ 96 samples by 22 sample variables ]
+#> tax_table()   Taxonomy Table:    [ 367 taxa by 7 taxonomic ranks ]
+#> refseq()      DNAStringSet:      [ 367 reference sequences ]
+```
+
+```{r}
+saveRDS(ps, here("results", "a1-phyloseq-silva-v138.Rds"))
+```
