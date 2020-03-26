@@ -192,48 +192,60 @@ head(track)
 #> 6 10-4    88758    84922     84872     84875  83316  79686
 ```
 
-## Assign Taxonomy
-
-```{r taxify}
-db_path <- file.path("~/data", "silva", "dada2_format")
-taxa <- assignTaxonomy(seqtab.nochim,
-    file.path(db_path, "silva_nr_v132_train_set.fa.gz"),
-    multithread=TRUE)
-taxa <- addSpecies(taxa, 
-    file.path(db_path, "silva_species_assignment_v132.fa.gz"),
-    allowMultiple = TRUE)
-saveRDS(taxa, file.path(results_path, "taxa.Rds"))
-taxa %>%
-  as_tibble(rownames = "ASV") %>%
-  write_csv(file.path(results_path, "taxa.csv"))
-```
-
-## Clean up names
-
-(Run afterwards in a new R session)
+## Assign taxonomy (run afterwards in clean session)
 
 ```{r}
 library(tidyverse)
-results_path <- here::here("results", "dada2", "a1")
+# library(here)
+packageVersion("dada2")
+#> [1] ‘1.14.1’
+```
+Note the patch version increment from above.
 
-st <- readRDS(file.path(results_path, "seqtab-nochim.Rds"))
-tt <- readRDS(file.path(results_path, "taxa.Rds"))
-```
-Adjust the sample names in the final sequence table to use underscores instead
-of hyphens, convert the sequencing center's control samples to lower case, and
-add the center identifier "A1" to the beginning.
 ```{r}
-rownames(st) <- rownames(st) %>%
-  str_replace("-", "_") %>%
-  str_to_lower %>%
-  str_c("A1_", .) %>%
-  print
-saveRDS(st, file.path(results_path, "seqtab-nochim-clean.Rds"))
+db_path <- file.path("~/data", "silva", "dada2_format")
+results_path <- here::here("results", "dada2", "a1")
+seqtab.nochim <- readRDS(file.path(results_path, "seqtab-nochim.Rds"))
 ```
-Adjust the rank names in the final taxonomy table to lowercase,
-```{r}
-colnames(tt) <- colnames(tt) %>%
+
+Assign against Silva v132 and v138.
+
+```{r silva132}
+tax_v132 <- dada2::assignTaxonomy(seqtab.nochim,
+  file.path(db_path, "silva_nr_v132_train_set.fa.gz"),
+  multithread=TRUE
+)
+tax_v132 <- dada2::addSpecies(tax_v132, 
+  file.path(db_path, "silva_species_assignment_v132.fa.gz"),
+  allowMultiple = TRUE
+)
+# make column (rank) names lower case
+colnames(tax_v132) <- colnames(tax_v132) %>%
   str_to_lower %>%
   print
-saveRDS(tt, file.path(results_path, "taxa-clean.Rds"))
+saveRDS(tax_v132, file.path(results_path, "taxonomy-silva-v132.Rds"))
+# Save a text version for manual inspection
+tax_v132 %>%
+  as_tibble(rownames = "sequence") %>%
+  write_csv(file.path(results_path, "taxonomy-silva-v132.csv"))
+```
+
+```{r silva138}
+tax_v138 <- dada2::assignTaxonomy(seqtab.nochim,
+  file.path(db_path, "silva_nr_v138_train_set.fa.gz"),
+  multithread=TRUE
+)
+tax_v138 <- dada2::addSpecies(tax_v138, 
+  file.path(db_path, "silva_species_assignment_v138.fa.gz"),
+  allowMultiple = TRUE
+)
+# make column (rank) names lower case
+colnames(tax_v138) <- colnames(tax_v138) %>%
+  str_to_lower %>%
+  print
+saveRDS(tax_v138, file.path(results_path, "taxonomy-silva-v138.Rds"))
+# Save a text version for manual inspection
+tax_v138 %>%
+  as_tibble(rownames = "sequence") %>%
+  write_csv(file.path(results_path, "taxonomy-silva-v138.csv"))
 ```
