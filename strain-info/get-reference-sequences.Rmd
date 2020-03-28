@@ -32,6 +32,9 @@ inoculum_strains <- inoculum_strains %>%
 write_csv(inoculum_strains, here("strain-info", "strains.csv"))
 ```
 
+NOTE: The 16S copy numbers in `strains.csv` are not necessarily accurate and
+should not be used.
+
 ### Fetch available 16S sequences
 
 ```{r}

@@ -1,0 +1,25 @@
+type,phylum,genus,species,strain,copy_number,source,url,notes
+inoculum,Actinobacteria,Collinsella,aerofaciens,"DSM 3979, type strain",5,rrnDB,https://rrndb.umms.med.umich.edu/genomes/annotation?query=Collinsella+aerofaciens&button=Search&select=keyword,
+inoculum,Bacteroidetes,Bacteroides,caccae,"DSM 19024, type strain",5,rrnDB,https://rrndb.umms.med.umich.edu/genomes/annotation?query=Bacteroides+caccae&button=Search&select=keyword,
+inoculum,Bacteroidetes,Bacteroides,ovatus,"DSM 1896, type strain",5,rrnDB,https://rrndb.umms.med.umich.edu/genomes/annotation?query=Bacteroides+ovatus&button=Search&select=keyword,
+inoculum,Bacteroidetes,Bacteroides,thetaiotaomicron,"DSM 2079, type strain",5,rrnDB,https://rrndb.umms.med.umich.edu/genomes/annotation?query=Bacteroides+thetaiotaomicron&button=Search&select=keyword,
+inoculum,Bacteroidetes,Bacteroides,uniformis,"ATCC 8492, type strain",4,rrnDB,https://rrndb.umms.med.umich.edu/genomes/annotation?query=Bacteroides+uniformis&button=Search&select=keyword,"only 1 genome"
+inoculum,Bacteroidetes,Barnesiella,intestinihominis,YIT11860,4,"Draft genome",https://www.ncbi.nlm.nih.gov/nuccore/NZ_ADLE00000000,"draft genome"
+inoculum,Firmicutes,Clostridium,symbiosum,"DSM 934, type strain, 2",,,,
+inoculum,Firmicutes,Eubacterium,rectale,"DSM 17629, A1-86",,,,
+inoculum,Firmicutes,Faecalibacterium,prausnitzii,"DSM 17677, A2-165",6,rrnDB,https://rrndb.umms.med.umich.edu/genomes/annotation?query=Faecalibacterium+prausnitzii&button=Search&select=keyword,
+inoculum,Firmicutes,Marvinbryantia,formatexigens,"DSM 14469, type strain, I-52",,,,
+inoculum,Firmicutes,Roseburia,intestinalis,"DSM 14610 type strain, L1-82",6,rrnDB,https://rrndb.umms.med.umich.edu/genomes/annotation?query=Roseburia+intestinalis&button=Search&select=keyword,
+inoculum,Proteobacteria,Escherichia,coli,HS,7,rrnDB,https://rrndb.umms.med.umich.edu/genomes/annotation?query=Escherichia+coli&button=Search&select=keyword,
+inoculum,Verrucomicrobia,Akkermansia,muciniphila,"DSM 22959, type strain",3,rrnDB,https://rrndb.umms.med.umich.edu/genomes/annotation?query=Akkermansia+muciniphila&button=Search&select=keyword,
+"T. mobilis",Proteobacteria,Thioflavicoccus,mobilis,8321,2,rrnDB,https://rrndb.umms.med.umich.edu/genomes/annotation?query=Thioflavicoccus+mobilis&button=Search&select=keyword,"only 1 genome"
+Zymo,Proteobacteria,Pseudomonas,aeruginosa,Zymo,4,Zymo,https://files.zymoresearch.com/protocols/_d6305_d6306_zymobiomics_microbial_community_dna_standard.pdf,
+Zymo,Proteobacteria,Escherichia,coli,Zymo,7,Zymo,https://files.zymoresearch.com/protocols/_d6305_d6306_zymobiomics_microbial_community_dna_standard.pdf,
+Zymo,Proteobacteria,Salmonella,enterica,Zymo,7,Zymo,https://files.zymoresearch.com/protocols/_d6305_d6306_zymobiomics_microbial_community_dna_standard.pdf,
+Zymo,Firmicutes,Lactobacillus,fermentum,Zymo,5,Zymo,https://files.zymoresearch.com/protocols/_d6305_d6306_zymobiomics_microbial_community_dna_standard.pdf,
+Zymo,Firmicutes,Enterococcus,faecalis,Zymo,4,Zymo,https://files.zymoresearch.com/protocols/_d6305_d6306_zymobiomics_microbial_community_dna_standard.pdf,
+Zymo,Firmicutes,Staphylococcus,aureus,Zymo,6,Zymo,https://files.zymoresearch.com/protocols/_d6305_d6306_zymobiomics_microbial_community_dna_standard.pdf,
+Zymo,Firmicutes,Listeria,monocytogenes,Zymo,6,Zymo,https://files.zymoresearch.com/protocols/_d6305_d6306_zymobiomics_microbial_community_dna_standard.pdf,
+Zymo,Firmicutes,Bacillus,subtilis,Zymo,10,Zymo,https://files.zymoresearch.com/protocols/_d6305_d6306_zymobiomics_microbial_community_dna_standard.pdf,
+Zymo,Opisthokonta,Saccharomyces,cerevisiae,Zymo,NA,Zymo,https://files.zymoresearch.com/protocols/_d6305_d6306_zymobiomics_microbial_community_dna_standard.pdf,
+Zymo,Opisthokonta,Cryptococcus,neoformans,Zymo,NA,Zymo,https://files.zymoresearch.com/protocols/_d6305_d6306_zymobiomics_microbial_community_dna_standard.pdf,
