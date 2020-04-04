@@ -1,0 +1,235 @@
+This R-markdown document was used to generate tables with sample information
+that were needed for filling out the forms required by the sequencing centers
+A2, S1, and S2. The code to generate the necessary info for center A1 is
+instead in `plate-layouts-Rmd`.
+
+```{r}
+library(tidyverse)
+library(here)
+```
+
+```{r}
+sam <- here("sample-data", "dna-sample-data.Rds") %>%
+  readRDS %>%
+  mutate(
+    row = str_sub(well, 1, 1) %>% as.ordered,
+    column = str_sub(well, 2) %>% as.integer %>% as.ordered,
+    )
+```
+
+Check layout
+```{r}
+tb <- sam %>%
+  filter(A1) %>%
+  select(dna_sample_id, row, column) %>%
+  pivot_wider(names_from = column, values_from = dna_sample_id) %>%
+  arrange(row) %>%
+  select(row, as.character(1:12)) %>%
+  print
+```
+looks good.
+
+
+## A1
+
+Done in plate-layout.Rmd
+
+## A2
+
+```{r}
+sam.a2 <- sam %>%
+  filter(A2) %>%
+  arrange(column, row) %>%
+  transmute(
+    `Well` = well,
+    `Row` = row,
+    `Column` = column,
+    `Sample Name` = dna_sample_id,
+    `ng/uL` = dna_conc
+  ) %>%
+  glimpse
+write_csv(sam.a2, here("plating-and-sequencing", "a2-sample-data.csv"))
+```
+
+Or instead do it with 0s padding the first numbers (Not used).
+```{r, eval = FALSE}
+sam.a2 <- sam %>%
+  filter(A2) %>%
+  mutate(
+    column = sprintf("%02d", column),
+    well = paste0(row, column)
+    ) %>%
+  arrange(column, row) %>%
+  transmute(
+    `Well` = well,
+    `Sample Name` = dna_sample_id,
+    `ng/uL` = dna_conc
+  ) %>%
+  glimpse
+write_csv(sam.a2, here("plating-and-sequencing", "a2-sample-data-reformat.csv"))
+```
+
+Sample names and concentrations in the shape of the plate (not needed):
+```{r}
+plate_layout <- sam %>%
+  filter(A2) %>%
+  select(dna_sample_id, row, column) %>%
+  pivot_wider(names_from = column, values_from = dna_sample_id) %>%
+  arrange(row) %>%
+  select(row, as.character(1:12)) %>%
+  print
+write_csv(plate_layout, here("plating-and-sequencing", "a2-plate-layout.csv"))
+conc_layout <- sam %>%
+  filter(A2) %>%
+  select(dna_conc, row, column) %>%
+  pivot_wider(names_from = column, values_from = dna_conc) %>%
+  arrange(row) %>%
+  select(row, as.character(1:12)) %>%
+  print
+write_csv(conc_layout, here("plating-and-sequencing", "a2-dna-conc-layout.csv"))
+```
+
+## S1
+
+<!-- Submission Type	Plate ID	Plate ID Validation	Sample #	Sample ID	Sample ID Validation	Well	Sample Type	Sample Source -->
+
+```{r}
+sam.s1 <- sam %>%
+  filter(S1) %>%
+  arrange(column, row) %>%
+  transmute(
+    # `Submission Type` = "DNA in Plate",
+    sample_id = dna_sample_id,
+    sample_type = "DNA",
+    # sample_type = case_when(
+    #   specimen_type == "T. mobilis" ~ "positive control",
+    #   TRUE ~ specimen_type
+    #   ),
+    sample_source = case_when(
+      specimen_type == "fecal" ~ host_species,
+      specimen_type == "inoculum" ~ "mixed bacterial cultures",
+      specimen_type == "T. mobilis" ~ "bacterial culture",
+      ),
+    well = str_c(row, str_pad(column, 2, "left", 0))
+    # Add any metadata that we want to provide to them.
+  ) %>%
+  glimpse
+```
+
+Make sure I match the row order exactly
+```{r}
+ss <- here("plating-and-sequencing", "Plate_Sample_Submission_Sheet_V7.xlsx") %>%
+  readxl::read_excel(sheet = 1, range = "B13:J109")
+```
+
+```{r}
+tb <- ss %>%
+  select(well = Well) %>%
+  left_join(sam.s1, by = "well")
+write_csv(tb, here("plating-and-sequencing", "s1-sample-data.csv"))
+```
+
+### Update to add metadata
+
+```{r}
+ss <- here("plating-and-sequencing", "Plate_Sample_Submission_Sheet_V7_MRM_CB.xlsx") %>%
+  readxl::read_excel(sheet = 1, range = "B13:J109")
+```
+
+```{r}
+md <- sam %>%
+  filter(S1) %>%
+  transmute(
+    well = str_c(row, str_pad(column, 2, "left", 0)),
+    specimen_type,
+    extraction_protocol,
+    extraction_batch,
+    host_sex
+  )
+```
+
+```{r}
+tb <- left_join(ss, md, by = c("Well" = "well"))
+write_csv(tb, here("plating-and-sequencing", "s1-sample-data-update.csv"))
+```
+
+### Checking their concentration estimates
+
+```{r}
+concs <- sam %>%
+  filter(S1) %>%
+  arrange(row, column) %>%
+  mutate(well = str_c(row, str_pad(column, 2, "left", 0))) %>%
+  select(sample_id = dna_sample_id, well, qubit_conc = dna_conc)
+write_csv(concs, here("plating-and-sequencing", "concs-for-s1.csv"))
+print(concs, n = 50)
+```
+
+## S2
+
+First prepare the sample data
+```{r}
+sam.s2 <- sam %>%
+  filter(S2) %>%
+  transmute(
+    # `Sl#` = row_number(),
+    row,
+    column,
+    sample_name = dna_sample_id,
+    sample_type = "DNA",
+    concentration_ng_per_ul = dna_conc,
+    volume_ul = 20,
+    amount_ng = dna_conc * volume_ul,
+    extraction_method = case_when(
+      extraction_protocol == "1" ~ "Qiagen QIAamp Fast DNA",
+      extraction_protocol == "2" ~ "Qiagen DNeasy"
+    ),
+    sample_source = case_when(
+      specimen_type == "fecal" ~ "mouse fecal pellet",
+      specimen_type == "inoculum" ~ "mixed bacterial cultures",
+      specimen_type == "T. mobilis" ~ "bacterial culture",
+      ),
+    biome_type = str_c(host_species, "gut", sep = " "),
+    host = host_species,
+    sample_description = case_when(
+      specimen_type == "fecal" ~ "mouse fecal pellet",
+      specimen_type == "inoculum" ~ "mixed bacterial cultures",
+      specimen_type == "T. mobilis" ~ "bacterial culture (positive control)",
+      ),
+    origin_of_sample_collection = "NCSU",
+    sample_mo_yr = collection_date, # TODO: Change format? nah
+    sequencing_type_requested = "WGS",
+    study_objectives = "characterize microbiome measurement bias"
+  )
+```
+
+Add row numders as the sample #'s after filling in the missing rows and
+columns.
+
+```{r}
+wells <- expand(sam, column, row) %>%
+  arrange(column, row) %>% # (or perhaps arrange by row to emphasize blanks)
+  mutate(
+    `Sl#` = row_number(),
+    well = str_c(row, str_pad(column, 2, "left", 0)),
+  )
+  # Mark the NAs?
+tb.s2 <- left_join(wells, sam.s2, by = c("column", "row"))
+```
+
+Change approach: I actually don't want to include these empty wells. I also
+want to use the well as the sample name equivalent.
+```{r}
+tb.s2 <- sam.s2 %>%
+  arrange(column, row) %>% # (or perhaps arrange by row to emphasize blanks)
+  mutate(
+    `Sl#` = row_number(),
+    well = str_c(row, str_pad(column, 2, "left", 0)),
+  ) %>%
+  select(-row, -column) %>%
+  select(`Sl#`, well, everything(), -sample_name, sample_name) %>%
+  glimpse
+write_csv(tb.s2, here::here("plating-and-sequencing", "s2-sample-data.csv"))
+```
+
+

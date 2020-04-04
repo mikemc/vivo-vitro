@@ -1,0 +1,97 @@
+Submission Type,Plate ID,Plate ID Validation,Sample #,Sample ID,Sample ID Validation,Well,Sample Type,Sample Source,specimen_type,extraction_protocol,extraction_batch,host_sex
+DNA in Plate,1,Valid,1,5_1,Valid,A01,DNA,mouse,fecal,1,1,female
+DNA in Plate,1,Valid,2,11_4,Valid,B01,DNA,mouse,fecal,2,1,male
+DNA in Plate,1,Valid,3,19_1,Valid,C01,DNA,mouse,fecal,1,2,female
+DNA in Plate,1,Valid,4,5_2,Valid,D01,DNA,mouse,fecal,2,1,female
+DNA in Plate,1,Valid,5,6_4,Valid,E01,DNA,mouse,fecal,2,1,female
+DNA in Plate,1,Valid,6,14_2,Valid,F01,DNA,mixed bacterial cultures,inoculum,2,2,NA
+DNA in Plate,1,Valid,7,6_1,Valid,G01,DNA,mouse,fecal,1,1,female
+DNA in Plate,1,Valid,8,26_1,Valid,H01,DNA,mixed bacterial cultures,inoculum,1,2,NA
+DNA in Plate,1,Valid,9,4_3,Valid,A02,DNA,mixed bacterial cultures,inoculum,1,1,NA
+DNA in Plate,1,Valid,10,10_2,Valid,B02,DNA,mouse,fecal,2,1,male
+DNA in Plate,1,Valid,11,16_3,Valid,C02,DNA,mixed bacterial cultures,inoculum,1,2,NA
+DNA in Plate,1,Valid,12,16_4,Valid,D02,DNA,mixed bacterial cultures,inoculum,2,2,NA
+DNA in Plate,1,Valid,13,5_4,Valid,E02,DNA,mouse,fecal,2,1,female
+DNA in Plate,1,Valid,14,16_1,Valid,F02,DNA,mixed bacterial cultures,inoculum,1,2,NA
+DNA in Plate,1,Valid,15,25_1,Valid,G02,DNA,mixed bacterial cultures,inoculum,1,2,NA
+DNA in Plate,1,Valid,16,18_2,Valid,H02,DNA,mouse,fecal,2,2,female
+DNA in Plate,1,Valid,17,2_3,Valid,A03,DNA,mixed bacterial cultures,inoculum,1,1,NA
+DNA in Plate,1,Valid,18,7_3,Valid,B03,DNA,mouse,fecal,1,1,female
+DNA in Plate,1,Valid,19,5_3,Valid,C03,DNA,mouse,fecal,1,1,female
+DNA in Plate,1,Valid,20,21_4,Valid,D03,DNA,mouse,fecal,2,2,male
+DNA in Plate,1,Valid,21,9_2,Valid,E03,DNA,mouse,fecal,2,1,male
+DNA in Plate,1,Valid,22,7_4,Valid,F03,DNA,mouse,fecal,2,1,female
+DNA in Plate,1,Valid,23,2_4,Valid,G03,DNA,mixed bacterial cultures,inoculum,2,1,NA
+DNA in Plate,1,Valid,24,3_3,Valid,H03,DNA,mixed bacterial cultures,inoculum,1,1,NA
+DNA in Plate,1,Valid,25,17_3,Valid,A04,DNA,mouse,fecal,1,2,female
+DNA in Plate,1,Valid,26,10_1,Valid,B04,DNA,mouse,fecal,1,1,male
+DNA in Plate,1,Valid,27,1_1,Valid,C04,DNA,bacterial culture,T. mobilis,1,1,NA
+DNA in Plate,1,Valid,28,26_2,Valid,D04,DNA,mixed bacterial cultures,inoculum,2,2,NA
+DNA in Plate,1,Valid,29,22_4,Valid,E04,DNA,mouse,fecal,2,2,male
+DNA in Plate,1,Valid,30,13_2,Valid,F04,DNA,bacterial culture,T. mobilis,2,2,NA
+DNA in Plate,1,Valid,31,10_4,Valid,G04,DNA,mouse,fecal,2,1,male
+DNA in Plate,1,Valid,32,22_3,Valid,H04,DNA,mouse,fecal,1,2,male
+DNA in Plate,1,Valid,33,7_2,Valid,A05,DNA,mouse,fecal,2,1,female
+DNA in Plate,1,Valid,34,17_2,Valid,B05,DNA,mouse,fecal,2,2,female
+DNA in Plate,1,Valid,35,20_1,Valid,C05,DNA,mouse,fecal,1,2,female
+DNA in Plate,1,Valid,36,20_2,Valid,D05,DNA,mouse,fecal,2,2,female
+DNA in Plate,1,Valid,37,2_2,Valid,E05,DNA,mixed bacterial cultures,inoculum,2,1,NA
+DNA in Plate,1,Valid,38,4_2,Valid,F05,DNA,mixed bacterial cultures,inoculum,2,1,NA
+DNA in Plate,1,Valid,39,11_2,Valid,G05,DNA,mouse,fecal,2,1,male
+DNA in Plate,1,Valid,40,Blank,Valid,H05,NA,NA,NA,NA,NA,NA
+DNA in Plate,1,Valid,41,24_2,Valid,A06,DNA,mouse,fecal,2,2,male
+DNA in Plate,1,Valid,42,21_3,Valid,B06,DNA,mouse,fecal,1,2,male
+DNA in Plate,1,Valid,43,14_1,Valid,C06,DNA,mixed bacterial cultures,inoculum,1,2,NA
+DNA in Plate,1,Valid,44,19_4,Valid,D06,DNA,mouse,fecal,2,2,female
+DNA in Plate,1,Valid,45,19_2,Valid,E06,DNA,mouse,fecal,2,2,female
+DNA in Plate,1,Valid,46,8_2,Valid,F06,DNA,mouse,fecal,2,1,female
+DNA in Plate,1,Valid,47,6_2,Valid,G06,DNA,mouse,fecal,2,1,female
+DNA in Plate,1,Valid,48,Blank,Valid,H06,NA,NA,NA,NA,NA,NA
+DNA in Plate,1,Valid,49,26_4,Valid,A07,DNA,mixed bacterial cultures,inoculum,2,2,NA
+DNA in Plate,1,Valid,50,25_2,Valid,B07,DNA,mixed bacterial cultures,inoculum,2,2,NA
+DNA in Plate,1,Valid,51,4_1,Valid,C07,DNA,mixed bacterial cultures,inoculum,1,1,NA
+DNA in Plate,1,Valid,52,14_3,Valid,D07,DNA,mixed bacterial cultures,inoculum,1,2,NA
+DNA in Plate,1,Valid,53,14_4,Valid,E07,DNA,mixed bacterial cultures,inoculum,2,2,NA
+DNA in Plate,1,Valid,54,23_1,Valid,F07,DNA,mouse,fecal,1,2,male
+DNA in Plate,1,Valid,55,2_1,Valid,G07,DNA,mixed bacterial cultures,inoculum,1,1,NA
+DNA in Plate,1,Valid,56,Blank,Valid,H07,NA,NA,NA,NA,NA,NA
+DNA in Plate,1,Valid,57,15_1,Valid,A08,DNA,mixed bacterial cultures,inoculum,1,2,NA
+DNA in Plate,1,Valid,58,12_1,Valid,B08,DNA,mouse,fecal,1,1,male
+DNA in Plate,1,Valid,59,18_3,Valid,C08,DNA,mouse,fecal,1,2,female
+DNA in Plate,1,Valid,60,26_3,Valid,D08,DNA,mixed bacterial cultures,inoculum,1,2,NA
+DNA in Plate,1,Valid,61,9_3,Valid,E08,DNA,mouse,fecal,1,1,male
+DNA in Plate,1,Valid,62,17_1,Valid,F08,DNA,mouse,fecal,1,2,female
+DNA in Plate,1,Valid,63,15_4,Valid,G08,DNA,mixed bacterial cultures,inoculum,2,2,NA
+DNA in Plate,1,Valid,64,Blank,Valid,H08,NA,NA,NA,NA,NA,NA
+DNA in Plate,1,Valid,65,24_1,Valid,A09,DNA,mouse,fecal,1,2,male
+DNA in Plate,1,Valid,66,10_3,Valid,B09,DNA,mouse,fecal,1,1,male
+DNA in Plate,1,Valid,67,13_1,Valid,C09,DNA,bacterial culture,T. mobilis,1,2,NA
+DNA in Plate,1,Valid,68,19_3,Valid,D09,DNA,mouse,fecal,1,2,female
+DNA in Plate,1,Valid,69,16_2,Valid,E09,DNA,mixed bacterial cultures,inoculum,2,2,NA
+DNA in Plate,1,Valid,70,1_2,Valid,F09,DNA,bacterial culture,T. mobilis,2,1,NA
+DNA in Plate,1,Valid,71,22_1,Valid,G09,DNA,mouse,fecal,1,2,male
+DNA in Plate,1,Valid,72,Blank,Valid,H09,NA,NA,NA,NA,NA,NA
+DNA in Plate,1,Valid,73,15_2,Valid,A10,DNA,mixed bacterial cultures,inoculum,2,2,NA
+DNA in Plate,1,Valid,74,8_1,Valid,B10,DNA,mouse,fecal,1,1,female
+DNA in Plate,1,Valid,75,6_3,Valid,C10,DNA,mouse,fecal,1,1,female
+DNA in Plate,1,Valid,76,3_1,Valid,D10,DNA,mixed bacterial cultures,inoculum,1,1,NA
+DNA in Plate,1,Valid,77,3_4,Valid,E10,DNA,mixed bacterial cultures,inoculum,2,1,NA
+DNA in Plate,1,Valid,78,11_3,Valid,F10,DNA,mouse,fecal,1,1,male
+DNA in Plate,1,Valid,79,21_1,Valid,G10,DNA,mouse,fecal,1,2,male
+DNA in Plate,1,Valid,80,Blank,Valid,H10,NA,NA,NA,NA,NA,NA
+DNA in Plate,1,Valid,81,9_4,Valid,A11,DNA,mouse,fecal,2,1,male
+DNA in Plate,1,Valid,82,4_4,Valid,B11,DNA,mixed bacterial cultures,inoculum,2,1,NA
+DNA in Plate,1,Valid,83,23_2,Valid,C11,DNA,mouse,fecal,2,2,male
+DNA in Plate,1,Valid,84,22_2,Valid,D11,DNA,mouse,fecal,2,2,male
+DNA in Plate,1,Valid,85,21_2,Valid,E11,DNA,mouse,fecal,2,2,male
+DNA in Plate,1,Valid,86,17_4,Valid,F11,DNA,mouse,fecal,2,2,female
+DNA in Plate,1,Valid,87,11_1,Valid,G11,DNA,mouse,fecal,1,1,male
+DNA in Plate,1,Valid,88,Blank,Valid,H11,NA,NA,NA,NA,NA,NA
+DNA in Plate,1,Valid,89,12_2,Valid,A12,DNA,mouse,fecal,2,1,male
+DNA in Plate,1,Valid,90,18_4,Valid,B12,DNA,mouse,fecal,2,2,female
+DNA in Plate,1,Valid,91,15_3,Valid,C12,DNA,mixed bacterial cultures,inoculum,1,2,NA
+DNA in Plate,1,Valid,92,18_1,Valid,D12,DNA,mouse,fecal,1,2,female
+DNA in Plate,1,Valid,93,3_2,Valid,E12,DNA,mixed bacterial cultures,inoculum,2,1,NA
+DNA in Plate,1,Valid,94,9_1,Valid,F12,DNA,mouse,fecal,1,1,male
+DNA in Plate,1,Valid,95,7_1,Valid,G12,DNA,mouse,fecal,1,1,female
+DNA in Plate,1,Valid,96,Blank,Valid,H12,NA,NA,NA,NA,NA,NA

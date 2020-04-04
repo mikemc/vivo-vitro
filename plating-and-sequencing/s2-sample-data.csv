@@ -1,0 +1,95 @@
+Sl#,well,sample_type,concentration_ng_per_ul,volume_ul,amount_ng,extraction_method,sample_source,biome_type,host,sample_description,origin_of_sample_collection,sample_mo_yr,sequencing_type_requested,study_objectives,sample_name
+1,A01,DNA,21.9,20,438,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,5_1
+2,B01,DNA,6.3506,20,127.012,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,11_4
+3,C01,DNA,7.406,20,148.12,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,19_1
+4,D01,DNA,7.7403,20,154.806,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,5_2
+5,E01,DNA,6.204,20,124.08,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,6_4
+6,F01,DNA,8.401,20,168.01999999999998,Qiagen DNeasy,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-10-07,WGS,characterize microbiome measurement bias,14_2
+7,G01,DNA,32.3,20,646,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,6_1
+8,H01,DNA,0.6854,20,13.708,Qiagen QIAamp Fast DNA,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-09-10,WGS,characterize microbiome measurement bias,26_1
+9,A02,DNA,0.1962,20,3.9240000000000004,Qiagen QIAamp Fast DNA,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-09-11,WGS,characterize microbiome measurement bias,4_3
+10,B02,DNA,7.3401,20,146.802,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,10_2
+11,C02,DNA,1.141,20,22.82,Qiagen QIAamp Fast DNA,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-10-09,WGS,characterize microbiome measurement bias,16_3
+12,D02,DNA,9.611,20,192.22000000000003,Qiagen DNeasy,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-10-09,WGS,characterize microbiome measurement bias,16_4
+13,E02,DNA,8.074,20,161.48,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,5_4
+14,F02,DNA,1.103,20,22.06,Qiagen QIAamp Fast DNA,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-10-09,WGS,characterize microbiome measurement bias,16_1
+15,G02,DNA,0.2868,20,5.736,Qiagen QIAamp Fast DNA,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-09-09,WGS,characterize microbiome measurement bias,25_1
+16,H02,DNA,8.129,20,162.57999999999998,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,18_2
+17,A03,DNA,0.2609,20,5.218,Qiagen QIAamp Fast DNA,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-09-09,WGS,characterize microbiome measurement bias,2_3
+18,B03,DNA,24.3,20,486,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,7_3
+19,C03,DNA,26.1,20,522,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,5_3
+20,D03,DNA,17.1,20,342,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,21_4
+21,E03,DNA,6.8906,20,137.812,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,9_2
+22,F03,DNA,6.7461,20,134.922,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,7_4
+23,G03,DNA,0.9978,20,19.956,Qiagen DNeasy,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-09-09,WGS,characterize microbiome measurement bias,2_4
+24,H03,DNA,0.2944,20,5.888,Qiagen QIAamp Fast DNA,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-09-10,WGS,characterize microbiome measurement bias,3_3
+25,A04,DNA,10.3,20,206,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,17_3
+26,B04,DNA,21.3,20,426,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,10_1
+27,C04,DNA,0.2785,20,5.57,Qiagen QIAamp Fast DNA,bacterial culture,NA,NA,bacterial culture (positive control),NCSU,NA,WGS,characterize microbiome measurement bias,1_1
+28,D04,DNA,6.896,20,137.92,Qiagen DNeasy,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-09-10,WGS,characterize microbiome measurement bias,26_2
+29,E04,DNA,9.863,20,197.26,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,22_4
+30,F04,DNA,13.6,20,272,Qiagen DNeasy,bacterial culture,NA,NA,bacterial culture (positive control),NCSU,NA,WGS,characterize microbiome measurement bias,13_2
+31,G04,DNA,7.3251,20,146.502,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,10_4
+32,H04,DNA,19.9,20,398,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,22_3
+33,A05,DNA,5.7073,20,114.146,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,7_2
+34,B05,DNA,5.839,20,116.78,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,17_2
+35,C05,DNA,17.1,20,342,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,20_1
+36,D05,DNA,9.269,20,185.38,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,20_2
+37,E05,DNA,1.1587,20,23.174,Qiagen DNeasy,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-09-09,WGS,characterize microbiome measurement bias,2_2
+38,F05,DNA,0.6554,20,13.108,Qiagen DNeasy,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-09-11,WGS,characterize microbiome measurement bias,4_2
+39,G05,DNA,6.8657,20,137.31400000000002,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,11_2
+40,H05,DNA,19.9,20,398,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,8_3
+41,A06,DNA,8.645,20,172.89999999999998,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,24_2
+42,B06,DNA,19.9,20,398,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,21_3
+43,C06,DNA,0.9255,20,18.509999999999998,Qiagen QIAamp Fast DNA,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-10-07,WGS,characterize microbiome measurement bias,14_1
+44,D06,DNA,7.96,20,159.2,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,19_4
+45,E06,DNA,8.373,20,167.45999999999998,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,19_2
+46,F06,DNA,4.0927,20,81.854,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,8_2
+47,G06,DNA,8.4233,20,168.46599999999998,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,6_2
+48,H06,DNA,5.753,20,115.06,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,20_4
+49,A07,DNA,5.954,20,119.08,Qiagen DNeasy,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-09-10,WGS,characterize microbiome measurement bias,26_4
+50,B07,DNA,7.261,20,145.22,Qiagen DNeasy,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-09-09,WGS,characterize microbiome measurement bias,25_2
+51,C07,DNA,0.1558,20,3.1159999999999997,Qiagen QIAamp Fast DNA,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-09-11,WGS,characterize microbiome measurement bias,4_1
+52,D07,DNA,0.7367,20,14.734,Qiagen QIAamp Fast DNA,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-10-07,WGS,characterize microbiome measurement bias,14_3
+53,E07,DNA,7.575,20,151.5,Qiagen DNeasy,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-10-07,WGS,characterize microbiome measurement bias,14_4
+54,F07,DNA,8.999,20,179.98000000000002,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,23_1
+55,G07,DNA,0.283,20,5.659999999999999,Qiagen QIAamp Fast DNA,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-09-09,WGS,characterize microbiome measurement bias,2_1
+56,H07,DNA,7.671,20,153.42000000000002,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,23_4
+57,A08,DNA,0.4654,20,9.308,Qiagen QIAamp Fast DNA,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-10-08,WGS,characterize microbiome measurement bias,15_1
+58,B08,DNA,17.6,20,352,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,12_1
+59,C08,DNA,11.19,20,223.79999999999998,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,18_3
+60,D08,DNA,0.1722,20,3.444,Qiagen QIAamp Fast DNA,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-09-10,WGS,characterize microbiome measurement bias,26_3
+61,E08,DNA,22.6,20,452,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,9_3
+62,F08,DNA,9.917,20,198.34,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,17_1
+63,G08,DNA,4.139,20,82.78,Qiagen DNeasy,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-10-08,WGS,characterize microbiome measurement bias,15_4
+64,H08,DNA,4.6797,20,93.59400000000001,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,8_4
+65,A09,DNA,10.4,20,208,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,24_1
+66,B09,DNA,21.9,20,438,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,10_3
+67,C09,DNA,17.7,20,354,Qiagen QIAamp Fast DNA,bacterial culture,NA,NA,bacterial culture (positive control),NCSU,NA,WGS,characterize microbiome measurement bias,13_1
+68,D09,DNA,7.682,20,153.64000000000001,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,19_3
+69,E09,DNA,8.372,20,167.44,Qiagen DNeasy,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-10-09,WGS,characterize microbiome measurement bias,16_2
+70,F09,DNA,0.9576,20,19.152,Qiagen DNeasy,bacterial culture,NA,NA,bacterial culture (positive control),NCSU,NA,WGS,characterize microbiome measurement bias,1_2
+71,G09,DNA,17.2,20,344,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,22_1
+72,H09,DNA,8.227,20,164.54000000000002,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,23_3
+73,A10,DNA,6.489,20,129.78,Qiagen DNeasy,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-10-08,WGS,characterize microbiome measurement bias,15_2
+74,B10,DNA,21.8,20,436,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,8_1
+75,C10,DNA,22.1,20,442,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,6_3
+76,D10,DNA,0.238,20,4.76,Qiagen QIAamp Fast DNA,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-09-10,WGS,characterize microbiome measurement bias,3_1
+77,E10,DNA,0.917,20,18.34,Qiagen DNeasy,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-09-10,WGS,characterize microbiome measurement bias,3_4
+78,F10,DNA,16.4,20,328,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,11_3
+79,G10,DNA,19.3,20,386,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,21_1
+80,H10,DNA,16.7,20,334,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,20_3
+81,A11,DNA,5.949,20,118.97999999999999,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,9_4
+82,B11,DNA,0.797,20,15.940000000000001,Qiagen DNeasy,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-09-11,WGS,characterize microbiome measurement bias,4_4
+83,C11,DNA,6.286,20,125.72,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,23_2
+84,D11,DNA,10.3,20,206,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,22_2
+85,E11,DNA,11.3,20,226,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,21_2
+86,F11,DNA,7.148,20,142.95999999999998,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,17_4
+87,G11,DNA,22.4,20,448,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,11_1
+88,A12,DNA,4.3571,20,87.142,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,12_2
+89,B12,DNA,7.092,20,141.84,Qiagen DNeasy,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,18_4
+90,C12,DNA,0.5021,20,10.042,Qiagen QIAamp Fast DNA,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-10-08,WGS,characterize microbiome measurement bias,15_3
+91,D12,DNA,11.18,20,223.6,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-10-17,WGS,characterize microbiome measurement bias,18_1
+92,E12,DNA,0.8068,20,16.136,Qiagen DNeasy,mixed bacterial cultures,NA,NA,mixed bacterial cultures,NCSU,2019-09-10,WGS,characterize microbiome measurement bias,3_2
+93,F12,DNA,21.5,20,430,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,9_1
+94,G12,DNA,23.3,20,466,Qiagen QIAamp Fast DNA,mouse fecal pellet,mouse gut,mouse,mouse fecal pellet,NCSU,2019-09-19,WGS,characterize microbiome measurement bias,7_1

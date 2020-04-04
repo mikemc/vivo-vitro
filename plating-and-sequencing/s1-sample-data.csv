@@ -1,0 +1,97 @@
+well,sample_id,sample_type,sample_source
+A01,5_1,DNA,mouse
+B01,11_4,DNA,mouse
+C01,19_1,DNA,mouse
+D01,5_2,DNA,mouse
+E01,6_4,DNA,mouse
+F01,14_2,DNA,mixed bacterial cultures
+G01,6_1,DNA,mouse
+H01,26_1,DNA,mixed bacterial cultures
+A02,4_3,DNA,mixed bacterial cultures
+B02,10_2,DNA,mouse
+C02,16_3,DNA,mixed bacterial cultures
+D02,16_4,DNA,mixed bacterial cultures
+E02,5_4,DNA,mouse
+F02,16_1,DNA,mixed bacterial cultures
+G02,25_1,DNA,mixed bacterial cultures
+H02,18_2,DNA,mouse
+A03,2_3,DNA,mixed bacterial cultures
+B03,7_3,DNA,mouse
+C03,5_3,DNA,mouse
+D03,21_4,DNA,mouse
+E03,9_2,DNA,mouse
+F03,7_4,DNA,mouse
+G03,2_4,DNA,mixed bacterial cultures
+H03,3_3,DNA,mixed bacterial cultures
+A04,17_3,DNA,mouse
+B04,10_1,DNA,mouse
+C04,1_1,DNA,bacterial culture
+D04,26_2,DNA,mixed bacterial cultures
+E04,22_4,DNA,mouse
+F04,13_2,DNA,bacterial culture
+G04,10_4,DNA,mouse
+H04,22_3,DNA,mouse
+A05,7_2,DNA,mouse
+B05,17_2,DNA,mouse
+C05,20_1,DNA,mouse
+D05,20_2,DNA,mouse
+E05,2_2,DNA,mixed bacterial cultures
+F05,4_2,DNA,mixed bacterial cultures
+G05,11_2,DNA,mouse
+H05,NA,NA,NA
+A06,24_2,DNA,mouse
+B06,21_3,DNA,mouse
+C06,14_1,DNA,mixed bacterial cultures
+D06,19_4,DNA,mouse
+E06,19_2,DNA,mouse
+F06,8_2,DNA,mouse
+G06,6_2,DNA,mouse
+H06,NA,NA,NA
+A07,26_4,DNA,mixed bacterial cultures
+B07,25_2,DNA,mixed bacterial cultures
+C07,4_1,DNA,mixed bacterial cultures
+D07,14_3,DNA,mixed bacterial cultures
+E07,14_4,DNA,mixed bacterial cultures
+F07,23_1,DNA,mouse
+G07,2_1,DNA,mixed bacterial cultures
+H07,NA,NA,NA
+A08,15_1,DNA,mixed bacterial cultures
+B08,12_1,DNA,mouse
+C08,18_3,DNA,mouse
+D08,26_3,DNA,mixed bacterial cultures
+E08,9_3,DNA,mouse
+F08,17_1,DNA,mouse
+G08,15_4,DNA,mixed bacterial cultures
+H08,NA,NA,NA
+A09,24_1,DNA,mouse
+B09,10_3,DNA,mouse
+C09,13_1,DNA,bacterial culture
+D09,19_3,DNA,mouse
+E09,16_2,DNA,mixed bacterial cultures
+F09,1_2,DNA,bacterial culture
+G09,22_1,DNA,mouse
+H09,NA,NA,NA
+A10,15_2,DNA,mixed bacterial cultures
+B10,8_1,DNA,mouse
+C10,6_3,DNA,mouse
+D10,3_1,DNA,mixed bacterial cultures
+E10,3_4,DNA,mixed bacterial cultures
+F10,11_3,DNA,mouse
+G10,21_1,DNA,mouse
+H10,NA,NA,NA
+A11,9_4,DNA,mouse
+B11,4_4,DNA,mixed bacterial cultures
+C11,23_2,DNA,mouse
+D11,22_2,DNA,mouse
+E11,21_2,DNA,mouse
+F11,17_4,DNA,mouse
+G11,11_1,DNA,mouse
+H11,NA,NA,NA
+A12,12_2,DNA,mouse
+B12,18_4,DNA,mouse
+C12,15_3,DNA,mixed bacterial cultures
+D12,18_1,DNA,mouse
+E12,3_2,DNA,mixed bacterial cultures
+F12,9_1,DNA,mouse
+G12,7_1,DNA,mouse
+H12,NA,NA,NA
