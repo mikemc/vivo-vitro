@@ -34,6 +34,35 @@ The extraction sample data is derived from the following component tables.
   the plate, plus columns for each sequencing center indicating whether the
   well was filled on that plate.
 
+## QC data from sequencing centers
+
+### a1-index-qc.csv
+
+TODO
+
+### s1-picogreen-results.csv: DNA concentrations measured by Center S1
+
+S1 DNA concentrations were measured via PicoGreen assay.
+
+Columns:
+
+1. sample_id: The sample id's that we submitted to S1; these are actually the
+   specimen ids.
+1. well: Plate well in the format `A01`
+1. dna_conc_s1: DNA concentrations measured by S1, in ng/uL
+
+### s2-qubit-results.csv: DNA concentrations measured from Center S2
+
+S2 DNA concentrations were measured via Qubit assay. 
+
+Columns:
+
+1. index: Index from 1:`n_samples`
+1. well: Plate well in the format `A01`; also the sample names we submitted and
+   that were used by S2
+1. dna_conc_s2: DNA concentrations measured by S2, in ng/uL
+1. dna_conc_submitted: DNA concentrations that we reported to S2, in ng/uL
+
 ## Sample data for sequencing results
 
 * See the results/ folder for sample data to link with sequencing results.
