@@ -85,7 +85,7 @@ indexqc0 <- indexqc %>%
 Read counts from DADA2 tracking table,
 ```{r}
 track <- read_csv(
-  here("results", "dada2", "a1", "track.csv"),
+  here("results", "a1", "dada2", "track.csv"),
   col_types = "ciiiiii"
   ) %>%
   glimpse
@@ -113,7 +113,7 @@ sam0 <- sam %>%
 ```
 
 ```{r}
-saveRDS(sam0, here("results", "a1-sample-data.Rds"))
+saveRDS(sam0, here("results", "a1", "a1-sample-data.Rds"))
 ```
 
 ## Phyloseq
@@ -123,15 +123,15 @@ taxonomy, and sample data.
 ```{r}
 library(phyloseq)
 
-seqtab <- here("results", "dada2", "a1", "seqtab-nochim.Rds") %>%
+seqtab <- here("results", "a1", "dada2", "seqtab-nochim.Rds") %>%
   readRDS %>%
   otu_table(taxa_are_rows = FALSE)
 sample_names(seqtab) <- sample_names(seqtab) %>%
   rename_samples
-tax <- here("results", "dada2", "a1", "taxonomy-silva-v138.Rds") %>%
+tax <- here("results", "a1", "dada2", "taxonomy-silva-v138.Rds") %>%
   readRDS %>%
   tax_table
-sam <- readRDS(here("results", "a1-sample-data.Rds")) %>%
+sam <- readRDS(here("results", "a1", "a1-sample-data.Rds")) %>%
   column_to_rownames("sample_id") %>%
   sample_data
 ps <- phyloseq(seqtab, sam, tax)
@@ -155,5 +155,5 @@ ps
 ```
 
 ```{r}
-saveRDS(ps, here("results", "a1-phyloseq-silva-v138.Rds"))
+saveRDS(ps, here("results", "a1", "a1-phyloseq-silva-v138.Rds"))
 ```

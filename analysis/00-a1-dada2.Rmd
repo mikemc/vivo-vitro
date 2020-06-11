@@ -16,15 +16,17 @@ library(tidyverse)
 # library(here)
 library(dada2); packageVersion("dada2")
 #> [1] ‘1.14.0’
+# Other packages used: here, dotenv
 ```
 Path for saving dada2 results:
 ```{r}
-results_path <- here::here("results", "dada2", "a1")
+results_path <- here::here("results", "a1", "dada2")
 dir.create(results_path, recursive = TRUE)
 ```
 Path to the fastq files:
 ```{r path}
-path <- file.path("~", "data", "mc-datasets", "vivo-vitro", "reads")
+dotenv::load_dot_env(here::here(".env"))
+path <- file.path(Sys.getenv("DATA_PATH"), "a1", "reads")
 list.files(path) %>% head
 #> [1] "1-1_S28_L001_R1_001.fastq.gz"  "1-1_S28_L001_R2_001.fastq.gz" 
 #> [3] "1-2_S69_L001_R1_001.fastq.gz"  "1-2_S69_L001_R2_001.fastq.gz" 
@@ -204,7 +206,7 @@ Note the patch version increment from above.
 
 ```{r}
 db_path <- file.path("~/data", "silva", "dada2_format")
-results_path <- here::here("results", "dada2", "a1")
+results_path <- here::here("results", "a1", "dada2")
 seqtab.nochim <- readRDS(file.path(results_path, "seqtab-nochim.Rds"))
 ```
 
