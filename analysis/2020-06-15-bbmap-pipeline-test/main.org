@@ -1,0 +1,668 @@
+#+TITLE:Test BBMap-based shotgun analysis pipeline
+* emacs setup
+** Interative display
+Get text and images to display nicely in emacs,
+#+BEGIN_SRC elisp :results silent
+;; Increase text width
+(setq visual-fill-column-width 100)
+;; Default inline image width
+(setq org-image-actual-width (list 800))
+#+END_SRC
+** Org-babel and remote shell setup
+#+PROPERTY: header-args:shell :eval never-export
+
+#+PROPERTY: header-args:R :results value :colnames yes :exports both :eval never-export
+
+The `brc` shell session will be logged into computer cluster.
+#+BEGIN_SRC shell :session brc :results silent
+ssh brc
+#+END_SRC
+
+** notes
+- See https://github.com/emacs-ess/ESS/issues/980 for getting R plots to work
+- On local machine, in this folder, `output` is a symlink to the folder holding the results of this pipeline
+* Introduction
+** Experimental goal: Compare differential bias in control and natural communities
+
+[[file:figures/experiment-logic.svg]]
+
+- 13 strains (from 13 different species) in both inoculum and mouse fecal samples
+- DNA extracted by two protocols
+- Measured by two amplicon and two shotgun sequencing methods
+** Current analysis goal: Develop pipeline to analyze the shotgun data
+*** [[https://media.springernature.com/full/springer-static/image/art%3A10.1038%2Fnbt.3935/MediaObjects/41587_2017_Article_BFnbt3935_Fig1_HTML.jpg?as=webp][Overview of metagenomics analysis (Quince et al 2017)]]
+*** Pipeline goals
+1. *Estimate the relative abundances of each strain (or species)*
+   - Estimates should be unbiased or at least /consistently biased/
+   - Ideally, in the form of read counts to help model variance
+2. Determine identity of E. coli strain(s) in the mice
+   - (Eventually) assemble its genome from unmapped and/or E. coli reads
+3. Look for and identify contaminants
+4. (future) Call variants between inoculum and mouse strains
+*** The data
+- S1: CoreBiome
+  - 1x100bp "shallow shotgun" sequencing on an Illumina NovaSeq, Nextera library prep
+- S2: CosmosID
+  - 2x150bp shotgun sequencing with greater read depth per sample than S1
+    -> better for items 2 - 4.
+
+Start with the shorter single-end data from S1 because
+- Simpler to analyze in some respects
+- Worst case for ambiguous mappings between strains
+* Pipeline
+
+BBMap version 38.86 used on the NCSU BRC cluster.
+
+** Download and index reference genomes
+Download and index the reference genomes in the main VV data directory on the BRC cluster. References are downloaded from the NCBI FTP site.
+*** Bacterial reference genomes
+Download the bacterial reference genomes from [[file:~/ncsu-drive/research/vivo-vitro/strain-info/strains-uniprot.csv][strains-uniprot.csv]]
+#+BEGIN_SRC shell :session brc
+mkdir -p ~/data/vivo-vitro/references/bacteria
+cd ~/data/vivo-vitro/references/bacteria
+wget ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/011/065/GCA_000011065.1_ASM1106v1/GCA_000011065.1_ASM1106v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/017/765/GCA_000017765.1_ASM1776v1/GCA_000017765.1_ASM1776v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/020/225/GCA_000020225.1_ASM2022v1/GCA_000020225.1_ASM2022v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/154/125/GCA_000154125.1_ASM15412v1/GCA_000154125.1_ASM15412v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/154/205/GCA_000154205.1_ASM15420v1/GCA_000154205.1_ASM15420v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/156/535/GCA_000156535.1_ASM15653v1/GCA_000156535.1_ASM15653v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/162/015/GCA_000162015.1_ASM16201v1/GCA_000162015.1_ASM16201v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/169/015/GCA_000169015.1_ASM16901v1/GCA_000169015.1_ASM16901v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/169/035/GCA_000169035.1_ASM16903v1/GCA_000169035.1_ASM16903v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/173/815/GCA_000173815.1_ASM17381v1/GCA_000173815.1_ASM17381v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/189/595/GCA_000189595.1_Clos_symb_WAL_14163_V1/GCA_000189595.1_Clos_symb_WAL_14163_V1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/209/935/GCA_000209935.1_ASM20993v1/GCA_000209935.1_ASM20993v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/296/465/GCA_000296465.1_Barn_inte_YIT_11860_V1/GCA_000296465.1_Barn_inte_YIT_11860_V1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/327/045/GCA_000327045.1_ASM32704v1/GCA_000327045.1_ASM32704v1_genomic.fna.gz
+#+END_SRC
+
+Index bacterial genomes for use with BBSplit
+#+BEGIN_SRC shell :session brc
+cd ~/data/vivo-vitro/references/bacteria
+sbatch --exclusive --wrap="bbsplit.sh ref=."
+#+END_SRC
+
+#+RESULTS:
+: cd ~/data/vivo-vitro/references/bacteria
+
+*** Host (mouse) reference genome
+Download the mouse reference genome,
+#+BEGIN_SRC shell :session brc
+mkdir -p ~/data/vivo-vitro/references/mouse
+cd ~/data/vivo-vitro/references/mouse
+wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/635/GCF_000001635.26_GRCm38.p6/GCF_000001635.26_GRCm38.p6_genomic.fna.gz
+#+END_SRC
+
+Index mouse genome for use with BBSplit,
+#+BEGIN_SRC shell :session brc
+cd ~/data/vivo-vitro/references/mouse
+sbatch --exclusive --wrap="bbsplit.sh ref=GCF_000001635.26_GRCm38.p6_genomic.fna.gz"
+#+END_SRC
+
+In future, should consider using the ~-eoom~ option. Here, I checked the slurm output to make sure there was no "insufficient memory" exceptions, but I'm not sure if the case where there is an exeption but no error would show up.
+** Get the test sample files
+Will use the first T. mobilis, inoculum, and fecal specimens of Batch 2: samples 13_1, 14_1, and 17_1.
+#+BEGIN_SRC shell :session brc :results silent
+DATA_PATH=~/data/vivo-vitro
+OUT_PATH=~/brc-analysis/2020-06-15-bbmap-pipeline-test
+mkdir -p $OUT_PATH
+cd $OUT_PATH
+SAMPLES=(13_1 14_1 17_1)
+#+END_SRC
+
+Add symlinks to the raw reads in the raw/ folder of the output directory,
+#+BEGIN_SRC shell :session brc :results silent
+mkdir raw
+for s in ${SAMPLES[*]}
+do
+    ln -s $DATA_PATH/s1/reads/raw/$s.fastq.gz $OUT_PATH/raw/$s.fastq.gz
+done
+ls raw
+#+END_SRC
+
+** Assess sequence data quality with FastQC
+
+- One thread will be used per file.
+- FastQC fails when using the version of Java installed on the cluster, so I installed OpenJDK 14.0.1.
+- The cluster has FastQC version 0.11.8
+
+#+BEGIN_SRC shell :session brc :results silent
+cd $OUT_PATH/raw
+mkdir fastqc
+fastqc -o fastqc -t 3 *fastq.gz
+ls fastqc
+cd $OUT_PATH
+#+END_SRC
+
+Copy the results to local machine. Note, the out path has already been setup as a symlink to another folder. Then unzip the archives so that we can access the figures.
+#+BEGIN_SRC shell :session local :results silent
+DATA_PATH=~/data/vivo-vitro
+BRC_OUT_PATH=/home/mrmclare/brc-analysis/2020-06-15-bbmap-pipeline-test
+LOCAL_OUT_PATH=~/research/vivo-vitro/analysis/2020-06-15-bbmap-pipeline-test/output
+SAMPLES=(13_1 14_1 17_1)
+cd $LOCAL_OUT_PATH
+mkdir raw
+scp -r brc:$BRC_OUT_PATH/raw/fastqc raw
+cd raw/fastqc
+unzip "*.zip"
+cd $LOCAL_OUT_PATH
+#+END_SRC
+
+- [[file:output/raw/fastqc/13_1_fastqc.html][FastQC results for 13_1]]
+- [[file:output/raw/fastqc/14_1_fastqc.html][FastQC results for 14_1]]
+- [[file:output/raw/fastqc/17_1_fastqc.html][FastQC results for 17_1]]
+- [[http://www.bioinformatics.babraham.ac.uk/projects/fastqc/Help/3%20Analysis%20Modules/][Docs for FastQC analysis modules]]
+
+The results are similar for the three test files, except that there is a flagged GC content analysis on 14_1 only. Unless otherwise specified, results shown are for the fecal sample 17_1.
+
+The FastQC results indicate the presence of Nextera transposase sequences,
+#+ATTR_ORG: :width 700
+[[file:output/raw/fastqc/17_1_fastqc/Images/adapter_content.png]]
+
+which are likely also responsible for the increase in C% towards the end of reads,
+#+ATTR_ORG: :width 700
+[[file:output/raw/fastqc/17_1_fastqc/Images/per_base_sequence_content.png]]
+
+GC content for 14_1 flagged with a warning,
+#+ATTR_ORG: :width 700
+[[file:output/raw/fastqc/14_1_fastqc/Images/per_sequence_gc_content.png]]
+
+There does not seem to be other issues. The Per tile sequence quality raises a warning, but does not seem to be problematic enough to worry about.
+** Trim adapters + low quality read ends and filter PhiX reads with BBDuk
+*** sbatch command
+
+1. Remove adapter and transposase sequences, using BBMap's included adapter sequences
+2. Remove PhiX sequences, using BBMap's included PhiX genome
+3. Trim last bp and low quality read ends
+
+#+BEGIN_SRC shell :session brc
+cd $OUT_PATH
+mkdir out-1
+for SAMPLE in ${SAMPLES[*]}
+do
+sbatch --exclusive --wrap="
+    bbduk.sh in=raw/$SAMPLE.fastq.gz out=stdout.fq ref=adapters ktrim=r \
+        k=23 mink=11 hdist=1 stats=out-1/$SAMPLE-adapters-stats.txt |
+    bbduk.sh in=stdin.fq out=stdout.fq interleaved=f ref=phix k=31 hdist=1 \
+        stats=out-1/$SAMPLE-phix-stats.txt |
+    bbduk.sh in=stdin.fq out=out-1/$SAMPLE.fq.gz interleaved=f ftr=99 qtrim=r \
+        trimq=5 stats=out-1/$SAMPLE-trim-stats.txt
+    "
+done
+#+END_SRC
+
+Notes
+- Forgot to save trim-stats.txt in actual run; trimming results shown below are manually copied from the Slurm out files
+- Kmer options taken from online examples; I /think/ they are reasonable
+- Not 100% on how the qtrim step works
+- Raw Fastq files have extention .fastq.gz, while processed files will use .fq.gz
+
+When finished, run FastQC on the trimmed and filtered reads,
+#+BEGIN_SRC shell :session brc :results silent
+mkdir out-1/fastqc
+fastqc -o out-1/fastqc -t 3 out-1/*fq.gz
+#+END_SRC
+
+Then, download the stats and FastQC results to local machine, and extract the FastQC images,
+#+BEGIN_SRC shell :session local :results silent
+cd $LOCAL_OUT_PATH
+mkdir out-1
+scp -r "brc:$BRC_OUT_PATH/out-1/*.txt" out-1
+scp -r brc:$BRC_OUT_PATH/out-1/fastqc out-1
+cd out-1/fastqc
+unzip "*.zip"
+cd $LOCAL_OUT_PATH
+#+END_SRC
+
+#+BEGIN_SRC shell :session local :results silent
+cd out-1/fastqc
+unzip "*.zip"
+cd $LOCAL_OUT_PATH
+#+END_SRC
+*** BBDuk output statistics for test sample (17_1, fecal)
+
+These next two tables are read in from the local copies, as I'm having trouble getting the output of commands to the Org-babel `brc` session to get properly formatted.
+
+*Adapter (and transposase) sequences*
+
+#+BEGIN_SRC shell :no session
+cat out-1/17_1-adapters-stats.txt
+#+END_SRC
+
+#+RESULTS:
+| #File                                                  | raw/17_1.fastq.gz |           |
+| #Total                                                 |           2956328 |           |
+| #Matched                                               |            792943 | 26.82189% |
+| #Name                                                  |             Reads |  ReadsPct |
+| I7_Nextera_Transposase_1                               |            618446 | 20.91940% |
+| I5_Nextera_Transposase_1                               |            172170 |  5.82378% |
+| TruSeq_Adapter_Index_5                                 |               487 |  0.01647% |
+| I7_Primer_Nextera_XT_and_Nextera_Enrichment_N701       |               395 |  0.01336% |
+| Illumina Small RNA v1.5 3p Adapter                     |               297 |  0.01005% |
+| PhiX_read2_adapter                                     |               153 |  0.00518% |
+| I7_Primer_Nextera_XT_and_Nextera_Enrichment_N703       |               126 |  0.00426% |
+| I7_Primer_Nextera_XT_and_Nextera_Enrichment_N702       |               117 |  0.00396% |
+| Reverse_adapter                                        |               115 |  0.00389% |
+| PhiX_read1_adapter                                     |               111 |  0.00375% |
+| Nextera_LMP_Read2_External_Adapter                     |                81 |  0.00274% |
+| TruSeq_Universal_Adapter                               |                66 |  0.00223% |
+| RNA_Adapter_(RA5)_part_#_15013205                      |                55 |  0.00186% |
+| I7_Nextera_Transposase_2                               |                47 |  0.00159% |
+| TruSeq_Adapter_Index_1_6                               |                47 |  0.00159% |
+| I5_Primer_Nextera_XT_and_Nextera_Enrichment_[N/S/E]501 |                38 |  0.00129% |
+| Nextera_LMP_Read1_External_Adapter                     |                35 |  0.00118% |
+| RNA_PCR_Primer_Index_1_(RPI1)_2,9                      |                31 |  0.00105% |
+| RNA_PCR_Primer_(RP1)_part_#_15013198                   |                25 |  0.00085% |
+| Bisulfite_R1                                           |                23 |  0.00078% |
+| I5_Adapter_Nextera                                     |                23 |  0.00078% |
+| Bisulfite_R2                                           |                20 |  0.00068% |
+| I5_Nextera_Transposase_2                               |                16 |  0.00054% |
+| I7_Adapter_Nextera_No_Barcode                          |                16 |  0.00054% |
+| I7_Primer_Nextera_XT_Index_Kit_v2_N727                 |                 2 |  0.00007% |
+| I7_Primer_Nextera_XT_Index_Kit_v2_N715                 |                 1 |  0.00003% |
+
+*PhiX*
+#+BEGIN_SRC shell :no session
+cat out-1/17_1-phix-stats.txt
+#+END_SRC
+
+#+RESULTS:
+| #File    | stdin.fq |          |
+| #Total   |  2954419 |          |
+| #Matched |        0 | 0.00000% |
+| #Name    |    Reads | ReadsPct |
+
+1 read matched to PhiX out of all three samples.
+
+BJC notes that PhiX is often or usually not added to shotgun libraries, so this isn't surprising.
+
+*Trimming*
+
+Manually created from the file slurm-1497933.out.
+
+| Input:         | 2954419 reads           | 269436736 bases.         |
+| QTrimmed:      | 72 reads (0.00%)        | 495 bases (0.00%)        |
+| FTrimmed:      | 2163385 reads (73.23%)  | 2163385 bases (0.80%)    |
+| Total Removed: | 0 reads (0.00%)         | 2163880 bases (0.80%)    |
+| Result:        | 2954419 reads (100.00%) | 267272856 bases (99.20%) |
+
+*** Adapter content before and after
+#+ATTR_ORG: :width 700
+[[file:output/raw/fastqc/17_1_fastqc/Images/adapter_content.png]]
+#+ATTR_ORG: :width 700
+[[file:output/out-1/fastqc/17_1_fastqc/Images/adapter_content.png]]
+*** Sequence content before and after
+#+ATTR_ORG: :width 700
+[[file:output/raw/fastqc/17_1_fastqc/Images/per_base_sequence_content.png]]
+#+ATTR_ORG: :width 700
+[[file:output/out-1/fastqc/17_1_fastqc/Images/per_base_sequence_content.png]]
+
+*** Sequence length before and after
+#+ATTR_ORG: :width 700
+[[file:output/raw/fastqc/17_1_fastqc/Images/sequence_length_distribution.png]]
+#+ATTR_ORG: :width 700
+[[file:output/out-1/fastqc/17_1_fastqc/Images/sequence_length_distribution.png]]
+*** GC content of 14_1 before and after - unchanged
+#+ATTR_ORG: :width 700
+[[file:output/raw/fastqc/14_1_fastqc/Images/per_sequence_gc_content.png]]
+#+ATTR_ORG: :width 700
+[[file:output/out-1/fastqc/14_1_fastqc/Images/per_sequence_gc_content.png]]
+
+Don't know if this non-normality is anything to worry about.
+
+** Quantify and remove host reads with BBSplit (or BBDuk)
+*** sbatch commands
+BBsplit
+#+BEGIN_SRC shell :session brc
+cd $OUT_PATH
+mkdir out-2
+for SAMPLE in ${SAMPLES[*]}
+do
+sbatch --exclusive --wrap="
+    bbsplit.sh -Xmx100g -eoom path=$DATA_PATH/references/mouse qtrim=lr in=out-1/$SAMPLE.fq.gz outu=out-2/$SAMPLE.fq.gz refstats=out-2/$SAMPLE-refstats.tsv
+    "
+done
+#+END_SRC
+
+BBduk, sample 17_1 only, for comparison. Try with hdist = 0 and 1.
+#+BEGIN_SRC shell :session brc
+SAMPLE=17_1
+sbatch --exclusive --wrap="
+    bbduk.sh -Xmx100g -eoom ref=$DATA_PATH/references/mouse/GCF_000001635.26_GRCm38.p6_genomic.fna.gz \
+        in=out-1/$SAMPLE.fq.gz out=out-2/$SAMPLE-bbduk.fq.gz \
+        stats=out-2/$SAMPLE-mouse-stats-bbduk.txt statscolumns=5 \
+        k=31 hdist=0 minlength=31"
+#+END_SRC
+
+I also tried running BBDuk with hdist=1, but it gave an out-of-memory error.
+#+BEGIN_SRC shell :session brc :results silent
+SAMPLE=17_1
+sbatch --exclusive --wrap="
+    bbduk.sh -Xmx100g -eoom ref=$DATA_PATH/references/mouse/GCF_000001635.26_GRCm38.p6_genomic.fna.gz \
+        in=out-1/$SAMPLE.fq.gz out=out-2/$SAMPLE-bbduk-1.fq.gz \
+        stats=out-2/$SAMPLE-mouse-stats-bbduk-1.txt statscolumns=5 \
+        k=31 hdist=1 minlength=31"
+#+END_SRC
+
+Note, this last BBDuk command (with hdist=1) was run with the new java installed.
+
+*** Results
+**** BBSplit: Amount of host reads removed
+
+| Sample | Sample type | Percentage of reads | Number of reads |
+| 13_1   | T. mobilis  |             0.03657 |            1682 |
+| 14_1   | inoculum    |             0.05435 |            1872 |
+| 17_1   | fecal       |             0.73047 |           21581 |
+
+- This table manually constructed from the "refstats" tables.
+- <1% of host reads in fecal sample
+- Small % of host reads in non-host-derived samples
+  - Could be matches to conserved and low complexity regions
+    - To prevent, could use masked versions of the mouse genome; see [[https://jgi.doe.gov/data-and-tools/bbtools/bb-tools-user-guide/bbmask-guide/][JGI BBMask guide]]
+    - But a low % of reads overall, and unlikely to cause inconsistent bias
+  - Could be due to index hopping or other cross contamination, which might indicate a larger problem
+**** BBDuk vs. BBSplit on sample 17_1
+Reads removed as "host" by the two programs:
+- BBsplit: 21581 reads; 0.73047%
+- BBduk, hdist=0: 20406 reads; 0.69069%
+
+The fewer reads matched by BBduk might be expected because of setting hdist=0.
+** Align and bin reads against bacterial reference genomes with BBSplit
+*** sbatch command
+
+- BBSplit default mapping options (what are these?)
+- Reference and scaffold/contig mapping stats saved
+- Alignments to reference saved for inspection
+- Unmapped reads saved for later inspection and assembly
+
+#+BEGIN_SRC shell :session brc
+cd $OUT_PATH
+mkdir out-3
+for SAMPLE in ${SAMPLES[*]}
+do
+sbatch --exclusive --wrap="
+    bbsplit.sh -Xmx100g -eoom path=$DATA_PATH/references/bacteria \
+        ambiguous2=all \
+        in=out-2/$SAMPLE.fq.gz outm=out-3/$SAMPLE-mapped.bam \
+        outu=out-3/$SAMPLE-unmapped.fq.gz refstats=out-3/$SAMPLE-refstats.tsv\
+        scafstats=out-3/$SAMPLE-scafstats.tsv"
+done
+#+END_SRC
+
+*** BBSplit reference statistics
+**** R setup
+#+BEGIN_SRC R :session bbsplit :results output silent
+library(tidyverse)
+library(here)
+
+# Map from species to genome accession
+strains <- "~/research/vivo-vitro/strain-info/strains-uniprot.csv" %>%
+  read_csv(col_types = "cccccccicc") %>%
+  glimpse %>%
+  select(strain_type, species, strain, phylum,
+    accession = uniprot_assembly_accession)
+
+# Refstats results from bbsplit
+tb <- tibble(sample = str_c(c(13, 14, 17), "_1")) %>%
+  mutate(
+    fn = here("output", "out-3", str_c(sample, "-refstats.tsv")),
+    data = map(fn, read_tsv, col_types = "cddddiiii")
+  ) %>%
+  select(-fn) %>%
+  unnest(data) %>%
+  janitor::clean_names() %>%
+  rename(name = number_name)
+
+# Join and drop extra cols
+tb0 <- tb %>%
+  mutate(accession = str_extract(name, "GCA_[0-9]+\\.[0-9]")) %>%
+  left_join(strains, by = "accession") %>%
+  ## arrange(sample, strain_type, phylum, species) %>%
+  arrange(sample, strain_type, species) %>%
+  select(sample, species, ends_with("reads"))
+
+tb1 <- tb0 %>%
+  rename_with(str_replace, pattern = "_reads", replacement = "") %>%
+  rename_with(str_replace, pattern = "percent", replacement = "%") %>%
+  rename_with(str_replace, pattern = "uous", replacement = "") %>%
+  rename_with(str_replace, pattern = "_", replacement = " ")
+
+refstats <- tb1
+rm(tb, tb0, tb1)
+#+END_SRC
+**** Fraction of unmapped reads
+One way to compute is to compare the lines in the Fastq files of unmapped reads and the input file.
+#+BEGIN_SRC shell :no session :results verbatim
+SAMPLES=(13_1 14_1 17_1)
+for SAMPLE in ${SAMPLES[*]}
+do
+    l1=$(zcat output/out-3/$SAMPLE-unmapped.fq.gz | wc -l)
+    l2=$(zcat output/out-2/$SAMPLE.fq.gz | wc -l)
+    echo $SAMPLE
+    bc <<< "scale=3; $l1 / $l2"
+    echo
+done
+#+END_SRC
+
+#+RESULTS:
+: 13_1
+: .001
+:
+: 14_1
+: .078
+:
+: 17_1
+: .007
+
+Notes
+- Largest for the inoculum sample; expected due to Staph contamination
+- Low fraction for fecal sample suggests E. coli H2 receiving nearly all E. coli reads
+- Perhaps I can get the fraction of unmapped reads from the refstats file or std out
+
+**** Sample 13_1: T. mobilis positive control
+#+BEGIN_SRC R :session bbsplit
+refstats %>% filter(sample == "13_1") %>% select(-sample)
+#+END_SRC
+
+#+RESULTS:
+| species                      | % unambig | % ambig | unambig | ambig | assigned |
+|------------------------------+-----------+---------+---------+-------+----------|
+| Bacteroides ovatus           |   0.00013 |   2e-05 |       6 |     1 |        6 |
+| Bacteroides thetaiotaomicron |         0 |   2e-05 |       0 |     1 |        1 |
+| Bacteroides uniformis        |     2e-05 |       0 |       1 |     0 |        1 |
+| Collinsella aerofaciens      |         0 |   4e-05 |       0 |     2 |        2 |
+| Escherichia coli             |   0.00361 |   4e-05 |     166 |     2 |      166 |
+| Faecalibacterium prausnitzii |         0 | 0.00013 |       0 |     6 |        0 |
+| Marvinbryantia formatexigens |         0 | 0.00013 |       0 |     6 |        6 |
+| Roseburia intestinalis       |     2e-05 |       0 |       1 |     0 |        1 |
+| Thioflavicoccus mobilis      |  99.83172 | 0.00022 | 4590572 |    10 |  4590573 |
+
+0.1% reads unmapped
+
+Notes
+- E. coli is a common contaminant; could explain higher fraction
+- Remaining species low enough to suggest UDI working; will need to evaluate fully
+**** Sample 14_1: Inoculum sample
+#+BEGIN_SRC R :session bbsplit
+refstats %>% filter(sample == "14_1") %>% select(-sample)
+#+END_SRC
+
+#+RESULTS:
+| species                      | % unambig | % ambig | unambig | ambig | assigned |
+|------------------------------+-----------+---------+---------+-------+----------|
+| Akkermansia muciniphila      |    0.2521 | 0.00064 |    8678 |    22 |     8692 |
+| Bacteroides caccae           |    0.1492 | 0.00633 |    5136 |   218 |     5322 |
+| Bacteroides ovatus           |   0.37196 | 0.00883 |   12804 |   304 |    12804 |
+| Bacteroides thetaiotaomicron |   0.11585 |  0.0079 |    3988 |   272 |     4260 |
+| Bacteroides uniformis        |   0.37315 | 0.00851 |   12845 |   293 |    12851 |
+| Barnesiella intestinihominis |   0.00067 | 0.00052 |      23 |    18 |       41 |
+| Clostridium symbiosum        |  18.18653 | 0.02402 |  626033 |   827 |   626284 |
+| Collinsella aerofaciens      |   1.65736 | 0.00052 |   57051 |    18 |    57068 |
+| Escherichia coli             |  63.82434 | 0.00264 | 2197019 |    91 |  2197023 |
+| Eubacterium rectale          |   0.06159 | 0.02806 |    2120 |   966 |     2251 |
+| Faecalibacterium prausnitzii |   1.52413 | 0.01685 |   52465 |   580 |    52468 |
+| Marvinbryantia formatexigens |   4.06357 | 0.01389 |  139880 |   478 |   140067 |
+| Roseburia intestinalis       |   1.45182 | 0.03495 |   49976 |  1203 |    51170 |
+| Thioflavicoccus mobilis      |   0.01156 | 0.00244 |     398 |    84 |      461 |
+
+7.8% reads unmapped
+
+Notes
+- Barnesiella was undetected in a large fraction of protocol 1 inoculum samples in the A1 data, and had a frequency of ~10^-4 in the others.
+- Fraction 0.00014 of T. mobilis reads, vs 0.00045 in the A1 data
+- Unclear on def of ambiguous and assigned reads
+  - e.g., why Barnesiella gets all its ambig reads, while Eubacterium retale get's only a few
+- Typically, ambig reads << unambig; but not always, esp. for rare taxa
+**** Sample 17_1: Fecal sample
+#+BEGIN_SRC R :session bbsplit
+refstats %>% filter(sample == "17_1") %>% select(-sample)
+#+END_SRC
+
+#+RESULTS:
+| species                      | % unambig | % ambig | unambig | ambig | assigned |
+|------------------------------+-----------+---------+---------+-------+----------|
+| Akkermansia muciniphila      |   4.03196 |   3e-05 |  118251 |     1 |   118251 |
+| Bacteroides caccae           |    4.3222 | 0.45297 |  126763 | 13285 |   138115 |
+| Bacteroides ovatus           |  49.52295 | 0.67876 | 1452428 | 19907 |  1452428 |
+| Bacteroides thetaiotaomicron |  18.65118 | 0.55925 |  547009 | 16402 |   563408 |
+| Bacteroides uniformis        |  18.75214 | 0.54538 |  549970 | 15995 |   550497 |
+| Barnesiella intestinihominis |    0.5211 | 0.00061 |   15283 |    18 |    15299 |
+| Clostridium symbiosum        |    0.2263 | 0.00068 |    6637 |    20 |     6639 |
+| Collinsella aerofaciens      |   0.00897 |       0 |     263 |     0 |      263 |
+| Escherichia coli             |   1.55361 |  0.0001 |   45565 |     3 |    45565 |
+| Eubacterium rectale          |   0.00058 | 0.00324 |      17 |    95 |       19 |
+| Faecalibacterium prausnitzii |    0.0002 | 0.00058 |       6 |    17 |        6 |
+| Marvinbryantia formatexigens |   0.33582 | 0.00027 |    9849 |     8 |     9853 |
+| Roseburia intestinalis       |   0.31226 | 0.00399 |    9158 |   117 |     9275 |
+| Thioflavicoccus mobilis      |    0.0001 |  0.0001 |       3 |     3 |        6 |
+
+0.7% reads unmapped
+
+Notes
+- How to consider presence absence and compute abundances for F. prausnitzii, E. rectale?
+  - Plan is to drop F. prausnitzii (as not having colonized), but include E. rectale. How to get good estimates of E. rectale?
+- The %'s very roughly line up with expected from A1 data
+  - Differences of ~10x for some taxa indicate potential bias (not accounting for genome size)
+* Inspect coverage
+** R setup
+Compute coverages
+#+BEGIN_SRC R :session R-coverage :results silent
+library(tidyverse)
+library(here)
+library(cowplot)
+theme_set(theme_cowplot())
+## library(fs)
+library(GenomicAlignments)
+
+gal <- here("output/out-3/17_1-mapped.bam") %>%
+  readGAlignments(use.names = FALSE)
+cvrg <- coverage(gal)
+rm(gal)
+#+END_SRC
+
+** Bacteriodes thetaiotaomicron chromosomal and plasmid coverage
+
+Get window averages for plotting
+#+BEGIN_SRC R :session R-coverage :results silent
+window_means <- function(x, width = 500) {
+  ir <- IRanges(start = seq(1, length(x), by = width), width = width)
+  end(ir)[length(ir)] <- length(x)
+  y <- aggregate(x, by = ir, mean)
+  tibble(start = start(ir), end = end(ir), width = width(ir), coverage = y)
+}
+
+cvrg1 <- cvrg[[1]] %>% window_means(width = 1000)
+cvrg2 <- cvrg[[2]] %>% window_means(width = 200)
+#+END_SRC
+
+#+header: :width 7 :height 5 :units in :res 220
+#+BEGIN_SRC R :session R-coverage :results graphics file :file figures/btheta-chrom-coverage.png
+ggplot(cvrg1, aes(start, coverage)) +
+  geom_line() +
+  scale_y_log10(limits = c(1, 160)) +
+  labs(x = "position",
+       title = "coverage across B. thetaiotaomicron chromosome",
+       subtitle = "1000 bp windows")
+#+END_SRC
+
+#+ATTR_ORG: :width 600
+[[file:figures/btheta-chrom-coverage.png]]
+
+#+header: :width 7 :height 5
+#+BEGIN_SRC R :session R-coverage :results graphics file :file figures/btheta-plasmid-coverage.svg
+ggplot(cvrg2, aes(start, coverage)) +
+  geom_line() +
+  labs(x = "position",
+       title = "coverage across B. thetaiotaomicron plasmid",
+       subtitle = "200 bp windows")
+#+END_SRC
+
+#+ATTR_ORG: :width 600
+[[file:figures/btheta-plasmid-coverage.svg]]
+
+*Questions*
+- care about peaks in chromosomal coverage? how to investigate further?
+- what to do with plasmid(s)?
+** E. coli chromosomal coverage
+
+#+BEGIN_SRC R :session R-coverage :results silent
+idx <- cvrg %>% names %>% str_detect("Escherichia")
+cvrg.ecoli <- cvrg[idx][[1]] %>% window_means(width = 1000)
+#+END_SRC
+
+#+header: :width 7 :height 5 :units in :res 220
+#+BEGIN_SRC R :session R-coverage :results graphics file :file figures/ecoli-coverage.svg
+ggplot(cvrg.ecoli, aes(start, coverage)) +
+  geom_line() +
+  labs(x = "position",
+       title = "coverage across E. coli chromosome",
+       subtitle = "1000 bp windows")
+#+END_SRC
+
+#+ATTR_ORG: :width 600
+[[file:figures/ecoli-coverage.png]]
+
+* Where to go from here?
+** easy + carefree approach with BBSplit + refstats output
+Use unambiguous reads, or dig into how `assigned reads` are determined and use those
+** BBSplit/BBMap + custom postprocessing
+See if can get all alignments up to quality X in BAM out and do custom postprocessing
+** [[https://github.com/knights-lab/BURST][BURST]] + custom postprocessing
+Pros
+- Output alignment options are easier to understand
+- "Mathematically optimal" default operation, still fast
+Cons
+- BLAST TSV output only, which may require more coding than BAM
+- Ignores quality information
+- Only maps single-end reads -> requires custom postprocessing to get "proper pairs"
+** BWA-MEM or Bowtie2 + custom postprocessing
+Similar to BBMap, but I may have an easier time understanding the alignment outputs
+* Follow-up: Run BURST on test samples
+** remote shell setup
+#+BEGIN_SRC shell :session brc :results silent
+ssh brc
+DATA_PATH=~/data/vivo-vitro
+OUT_PATH=~/brc-analysis/2020-06-15-bbmap-pipeline-test
+cd $OUT_PATH
+SAMPLES=(13_1 14_1 17_1)
+#+END_SRC
+** BURST setup and run on test samples
+Create the BURST database. Note, BURST needs an uncompressed Fasta as input for reference and query. If a compressed file is given in the database building step, everything will seem to work fine but you'll end up with an empty output file when mapping later on.
+#+BEGIN_SRC shell :session brc :results silent
+cd $DATA_PATH/references/bacteria
+zcat *.fna.gz > all.fna
+sbatch --exclusive --wrap="
+    burst_linux_DB12 -r all.fna -d DNA 100 -i 0.97 -o all.edx -a all.acx -s
+"
+#+END_SRC
+
+Before running BURST on samples, we also need to convert the reads from Fastq to Fasta,
+#+BEGIN_SRC shell :session brc :results silent
+cd $OUT_PATH/out-2
+for SAMPLE in ${SAMPLES[*]}
+do
+    seqtk seq -a $SAMPLE.fq.gz > $SAMPLE.fa
+done
+#+END_SRC
+
+#+BEGIN_SRC shell :session brc :results silent
+cd $OUT_PATH
+mkdir burst
+for SAMPLE in ${SAMPLES[*]}
+do
+    sbatch --exclusive --wrap="
+        burst_linux_DB12 \
+            -r $DATA_PATH/references/bacteria/all.edx \
+            -a $DATA_PATH/references/bacteria/all.acx \
+            -q out-2/$SAMPLE.fa \
+            -o burst/$SAMPLE-burst.tsv \
+            --mode ALLPATHS --threads 16 --id 0.97 -fr"
+done
+#+END_SRC
