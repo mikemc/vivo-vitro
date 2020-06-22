@@ -1,0 +1,249 @@
+---
+author: Michael McLaren
+---
+
+# Download reference genomes
+
+```{r}
+library(tidyverse)
+library(rvest)
+# library(httr)
+# library(googlesheets4)
+library(fs)
+library(here)
+```
+
+## Get genome accessions from Uniprot IDs
+
+The strain information, including Uniprot proteome ID, is contained in the 
+[Google spreadsheet](https://docs.google.com/spreadsheets/d/1O2W9gpWCJpI0mjepx5iy-rEUZbQRQoQjnr1DQoEdxcU).
+However, I will simply load the TSV copy of it,
+```{r}
+s <- 
+"strain_type	species	strain	source	phylum	uniprot_proteome_id	notes
+inoculum	Bacteroides ovatus	DSM 1896, Type strain	DSMZ	Bacteroidetes	UP000005475	
+inoculum	Bacteroides uniformis	ATCC 8492, Type strain 	ATCC	Bacteroidetes	UP000004110	
+inoculum	Bacteroides thetaiotaomicron	DSM 2079, Type strain	DSMZ	Bacteroidetes	UP000001414	
+inoculum	Bacteroides caccae	DSM 19024, Type strain / ATCC 43185	DSMZ	Bacteroidetes	UP000003325	
+inoculum	Barnesiella intestinihominis	DSM 21032, Type strain / YIT 11860 / JCM 15079	DSMZ	Bacteroidetes	UP000006044	
+inoculum	Roseburia intestinalis	DSM 14610, Type strain L1-82	DSMZ	Firmicutes	UP000004828	
+inoculum	Eubacterium rectale	DSM 17629, A1-86	DSMZ	Firmicutes	UP000007057	Genus TBD; synonym Agathobacter rectalis
+inoculum	Faecalibacterium prausnitzii	DSM 17677, A2-165	DSMZ	Firmicutes	UP000004619	
+inoculum	Marvinbryantia formatexigens	DSM 14469, Type strain I-52	DSMZ	Firmicutes	UP000005561	
+inoculum	Clostridium symbiosum	DSM 934, Type strain, designation 2	DSMZ	Firmicutes	UP000002970	Genus TBD
+inoculum	Collinsella aerofaciens	DSM 3979, Type strain	DSMZ	Actinobacteria	UP000002979	
+inoculum	Escherichia coli 	HS	ATCC	Proteobacteria	UP000001123	
+inoculum	Akkermansia muciniphila	DSM 22959, Type strain, Muc	DSMZ	Verrucomicrobia	UP000001031	
+positive control	Thioflavicoccus mobilis	8321	Unknown	Proteobacteria	UP000010816	"
+strains <- read_tsv(s)
+```
+The Uniprot IDs were obtained from Angie Mordant, except for E. coli H2, which I added.
+
+**TODO: Verify that these Uniprot IDs really do correspond to the right strains.**
+
+For each strain, we can get additional info from Uniprot associated with the
+proteome ID - the strain, taxid, and genome assembly accession.
+
+```{r}
+get_info_from_uniprot<- function(proteome_id) {
+  # ENA/EMBL assembly accession for the Uniprot proteome
+  x <- str_glue("https://www.uniprot.org/proteomes/{proteome_id}.xml") %>%
+    read_xml %>%
+    xml_ns_strip
+  taxid <- x %>%
+    xml_find_first("./proteome/taxonomy") %>%
+    xml_text
+  strain <- x %>%
+    xml_find_first("./proteome/strain") %>%
+    xml_text
+  assembly_accession <- x %>%
+    xml_find_first("./proteome/genomeAssembly/genomeAssembly") %>%
+    xml_text
+  list(uniprot_taxid = taxid, uniprot_strain = strain,
+    uniprot_assembly_accession = assembly_accession)
+}
+
+res <- strains %>% pull(uniprot_proteome_id) %>%
+  map(get_info_from_uniprot)
+rtb <- res %>%
+  bind_rows
+strains0 <- bind_cols(strains, rtb)
+strains0 <- strains0 %>%
+  mutate_at("uniprot_taxid", as.integer)
+```
+
+Add this info to a new worksheet within the Google Spreadsheet, and 
+```{r}
+sheet_url <- "https://docs.google.com/spreadsheets/d/1O2W9gpWCJpI0mjepx5iy-rEUZbQRQoQjnr1DQoEdxcU"
+googlesheets4::write_sheet(strains0, ss = sheet_url)
+write_csv(strains0, here("strain-info", "strains-uniprot.csv"))
+```
+
+```{r}
+# For loading in a new session
+strains0 <- read_csv(here("strain-info", "strains-uniprot.csv"))
+```
+
+## Get genomes from Genbank
+
+Get the current Genbank summary table,
+```{r}
+dotenv::load_dot_env(here::here(".env"))
+data_path <- file.path(Sys.getenv("DATA_PATH"))
+dir_create(path(data_path, "genbank"))
+
+tb <- tibble(url = c(
+  "https://ftp.ncbi.nlm.nih.gov/genomes/genbank/assembly_summary_genbank.txt",
+  "ftp://ftp.ncbi.nlm.nih.gov/genomes/README.txt"
+  )
+) %>%
+  mutate(
+    file = path_file(url),
+    destfile = path(data_path, "genbank", file)
+  )
+Sys.time()
+#> [1] "2020-06-15 01:51:42 EDT"
+tb %>%
+  select(url, destfile) %>%
+  pmap(download.file)
+```
+
+```{r}
+genbank <- read_tsv(tb[[1,3]], skip = 1, quote = "",
+  col_types = "ccccciicccccccDccccccc") %>%
+  rename(assembly_accession = "# assembly_accession")
+```
+
+```{r}
+genbank0 <- genbank %>%
+  filter(assembly_accession %in% pull(strains0, uniprot_assembly_accession))
+# Example directory
+genbank0 %>% pull(ftp_path) %>% head(1)
+#> [1] "ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/011/065/GCA_000011065.1_ASM1106v1"
+```
+
+```{r}
+dotenv::load_dot_env(here::here(".env"))
+data_path <- file.path(Sys.getenv("DATA_PATH"))
+
+dl_path <- path(data_path, "references", "bacteria")
+dir_create(dl_path)
+
+ftb <- genbank0 %>%
+  mutate(
+    base = path_file(ftp_path),
+    fn = str_c(base, "_genomic.fna.gz"),
+  ) %>%
+  transmute(
+    # Note, using path() here strips one of the /'s
+    url = file.path(ftp_path, fn),
+    destfile = path(dl_path,  fn)
+  )
+
+ftb %>%
+  pmap(download.file)
+```
+
+For downloading with wget,
+```{r}
+ftb %>% pull(url) %>% str_c(collapse = " ")
+#> [1] "ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/011/065/GCA_000011065.1_ASM1106v1/GCA_000011065.1_ASM1106v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/017/765/GCA_000017765.1_ASM1776v1/GCA_000017765.1_ASM1776v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/020/225/GCA_000020225.1_ASM2022v1/GCA_000020225.1_ASM2022v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/154/125/GCA_000154125.1_ASM15412v1/GCA_000154125.1_ASM15412v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/154/205/GCA_000154205.1_ASM15420v1/GCA_000154205.1_ASM15420v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/156/535/GCA_000156535.1_ASM15653v1/GCA_000156535.1_ASM15653v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/162/015/GCA_000162015.1_ASM16201v1/GCA_000162015.1_ASM16201v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/169/015/GCA_000169015.1_ASM16901v1/GCA_000169015.1_ASM16901v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/169/035/GCA_000169035.1_ASM16903v1/GCA_000169035.1_ASM16903v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/173/815/GCA_000173815.1_ASM17381v1/GCA_000173815.1_ASM17381v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/189/595/GCA_000189595.1_Clos_symb_WAL_14163_V1/GCA_000189595.1_Clos_symb_WAL_14163_V1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/209/935/GCA_000209935.1_ASM20993v1/GCA_000209935.1_ASM20993v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/296/465/GCA_000296465.1_Barn_inte_YIT_11860_V1/GCA_000296465.1_Barn_inte_YIT_11860_V1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/327/045/GCA_000327045.1_ASM32704v1/GCA_000327045.1_ASM32704v1_genomic.fna.gz"
+```
+
+^^ This is what I used ultimately. Below not really needed
+
+Might want to also download and run the md5checksums 
+
+
+## Mouse genome
+
+Downloaded the assembly from
+[Genome Reference Consortium Mouse Build 38 patch release 6 (GRCm38.p6)](https://www.ncbi.nlm.nih.gov/assembly/GCF_000001635.26)
+on 2020-06-12 into `DATA_PATH/references/mouse`, and untarred the tar archive.
+
+To download from the FTP site:
+```
+wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/635/GCF_000001635.26_GRCm38.p6/GCF_000001635.26_GRCm38.p6_genomic.fna.gz
+wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/635/GCF_000001635.26_GRCm38.p6/md5checksums.txt
+```
+
+# Unused
+
+## RefSeq
+
+Get the current RefSeq summary table,
+```{r}
+dotenv::load_dot_env(here::here(".env"))
+data_path <- file.path(Sys.getenv("DATA_PATH"))
+dir_create(path(data_path, "refseq"))
+
+tb <- tibble(url = c(
+  "https://ftp.ncbi.nlm.nih.gov/genomes/refseq/assembly_summary_refseq.txt",
+  "ftp://ftp.ncbi.nlm.nih.gov/genomes/README_assembly_summary.txt"
+  )
+) %>%
+  mutate(
+    file = path_file(url),
+    destfile = path(data_path, "refseq", file)
+  )
+Sys.time()
+#> [1] "2020-06-12 09:28:39 EDT"
+tb %>%
+  select(url, destfile) %>%
+  pmap(download.file)
+```
+
+
+```{r}
+# NOTE: Default `quote` value leads to a few parsing failures b/c " chars are
+# sometimes used in the `submitter` field
+refseq <- read_tsv(tb[[1,3]], skip = 1, quote = "",
+  col_types = "ccccciicccccccDccccccc") %>%
+  rename(assembly_accession = "# assembly_accession")
+# problems(refseq)
+# refseq %>%
+#   slice(problems(refseq) %>% pull(row)) %>%
+#   glimpse
+```
+
+## Get assembly level and url from ENA
+
+```{r, eval = FALSE}
+get_ena_assembly <- function(accession) {
+  # xml for ENA accession
+  ena_xml <- "https://www.ebi.ac.uk/ena/data/view/{accession}%26display%3Dxml" %>%
+    str_glue %>%
+    read_xml %>%
+    xml_ns_strip
+  assembly_level <- ena_xml %>%
+    xml_find_all("./ASSEMBLY/ASSEMBLY_LEVEL") %>%
+    xml_text
+  if (assembly_level %in% c("chromosome", "complete genome")) {
+    # For complete genome, get the chromosome (should be just one of type
+    # 'Chromosome'
+    chromosome <- ena_xml %>%
+        xml_find_all(".//CHROMOSOME[TYPE='Chromosome']") %>%
+        xml_attr("accession")
+    stopifnot(identical(length(chromosome), 1L))
+    fasta_url <- str_glue(
+      # "https://www.ebi.ac.uk/ena/browser/api/fasta/{chromosome}?download=true"
+      "https://www.ebi.ac.uk/ena/browser/api/fasta/{chromosome}"
+    )
+  } else {
+    fasta_url <- ena_xml %>%
+      xml_find_first(".//URL_LINK[LABEL='WGS_SET_FASTA']/URL") %>%
+      xml_text
+  }
+  list(
+    uniprot_assembly_level = assembly_level, 
+    uniprot_assembly_url = fasta_url
+  )
+}
+res0 <- strains0 %>% pull(uniprot_assembly_accession) %>%
+  map(get_ena_assembly)
+
+strains1 <- bind_cols(strains0, bind_rows(res0))
+
+googlesheets4::write_sheet(strains1, ss = sheet_url)
+# write_csv(strains1, here("strain-info", "strains-uniprot.csv"))
+```
