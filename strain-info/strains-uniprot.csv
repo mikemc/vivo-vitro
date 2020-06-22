@@ -1,0 +1,15 @@
+strain_type,species,strain,source,phylum,uniprot_proteome_id,notes,uniprot_taxid,uniprot_strain,uniprot_assembly_accession
+inoculum,Bacteroides ovatus,"DSM 1896, Type strain",DSMZ,Bacteroidetes,UP000005475,NA,411476,ATCC 8483 / DSM 1896 / JCM 5824 / NCTC 11153,GCA_000154125.1
+inoculum,Bacteroides uniformis,"ATCC 8492, Type strain",ATCC,Bacteroidetes,UP000004110,NA,411479,ATCC 8492 / DSM 6597 / CIP 103695 / JCM 5828 / NCTC 13054 / VPI 0061,GCA_000154205.1
+inoculum,Bacteroides thetaiotaomicron,"DSM 2079, Type strain",DSMZ,Bacteroidetes,UP000001414,NA,226186,ATCC 29148 / DSM 2079 / NCTC 10582 / E50 / VPI-5482,GCA_000011065.1
+inoculum,Bacteroides caccae,"DSM 19024, Type strain / ATCC 43185",DSMZ,Bacteroidetes,UP000003325,NA,411901,ATCC 43185,GCA_000169015.1
+inoculum,Barnesiella intestinihominis,"DSM 21032, Type strain / YIT 11860 / JCM 15079",DSMZ,Bacteroidetes,UP000006044,NA,742726,YIT 11860,GCA_000296465.1
+inoculum,Roseburia intestinalis,"DSM 14610, Type strain L1-82",DSMZ,Firmicutes,UP000004828,NA,536231,L1-82,GCA_000156535.1
+inoculum,Eubacterium rectale,"DSM 17629, A1-86",DSMZ,Firmicutes,UP000007057,Genus TBD; synonym Agathobacter rectalis,657318,DSM 17629,GCA_000209935.1
+inoculum,Faecalibacterium prausnitzii,"DSM 17677, A2-165",DSMZ,Firmicutes,UP000004619,NA,411483,A2-165,GCA_000162015.1
+inoculum,Marvinbryantia formatexigens,"DSM 14469, Type strain I-52",DSMZ,Firmicutes,UP000005561,NA,478749,DSM 14469,GCA_000173815.1
+inoculum,Clostridium symbiosum,"DSM 934, Type strain, designation 2",DSMZ,Firmicutes,UP000002970,Genus TBD,742740,WAL-14163,GCA_000189595.1
+inoculum,Collinsella aerofaciens,"DSM 3979, Type strain",DSMZ,Actinobacteria,UP000002979,NA,411903,ATCC 25986,GCA_000169035.1
+inoculum,Escherichia coli,HS,ATCC,Proteobacteria,UP000001123,NA,331112,HS,GCA_000017765.1
+inoculum,Akkermansia muciniphila,"DSM 22959, Type strain, Muc",DSMZ,Verrucomicrobia,UP000001031,NA,349741,ATCC BAA-835 / Muc,GCA_000020225.1
+positive control,Thioflavicoccus mobilis,8321,Unknown,Proteobacteria,UP000010816,NA,765912,8321,GCA_000327045.1

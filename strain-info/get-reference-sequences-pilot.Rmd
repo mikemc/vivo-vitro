@@ -2,6 +2,8 @@
 author: Michael McLaren
 ---
 
+## Get reference 16S sequences
+
 ```{r}
 library(tidyverse)
 library(here)
@@ -12,8 +14,9 @@ library(here)
 
 ```{r}
 dotenv::load_dot_env(here(".env"))
-data_path <- file.path(Sys.getenv("DATA_PATH"), "reference-sequences")
-dir.create(file.path(data_path, "genomes"), recursive = TRUE)
+# Path to save the reference sequences
+ref_path <- file.path(Sys.getenv("DATA_PATH"), "references", "pilot")
+dir.create(file.path(ref_path, "genomes-finished"), recursive = TRUE)
 ```
 
 Load spreadsheet linking inoculum strains (plus T. mobilis) to their 16s and
@@ -42,7 +45,7 @@ accs <- inoculum_strains %>%
   filter(!is.na(accession_16s)) %>%
   pull(accession_16s)
 fasta <- rentrez::entrez_fetch(db="nuccore", accs, rettype = "fasta")
-write_lines(fasta, file.path(data_path, "16s-sequences.fasta"))
+write_lines(fasta, file.path(ref_path, "16s-sequences.fasta"))
 ```
 
 ### Fetch available genomes
@@ -69,7 +72,7 @@ tb <- inoculum_strains %>%
     ftype = c("fasta", "gff3")) %>%
   mutate(
     # Paths to save the fasta and gff3 files of the whole genomes
-    fn = file.path(data_path, "genomes-finished", glue("{accession}.{ftype}")),
+    fn = file.path(ref_path, "genomes-finished", glue("{accession}.{ftype}")),
     # urls to fetch said files
     url = glue('"https://www.ncbi.nlm.nih.gov/sviewer/viewer.cgi?db=nuccore&report={ftype}&id={accession}"'),
     # wget command to dl file
@@ -90,7 +93,7 @@ Overview: Combine all finished and draft contigs into one file and run
 
 Gunzip the draft genomes (finished genomes already plain text)
 ```{r}
-fns <- list.files(file.path(data_path, "genomes-draft"), pattern = "fsa_nt.gz",
+fns <- list.files(file.path(ref_path, "genomes-draft"), pattern = "fsa_nt.gz",
     full.names = TRUE)
 ftb <- tibble(fn = fns) %>%
   mutate(
@@ -104,10 +107,10 @@ walk(ftb$command, system)
 ```
 Cat them into one file with the finished genomes
 ```{r}
-fns <- list.files(file.path(data_path, "genomes-finished"), pattern = "fasta",
+fns <- list.files(file.path(ref_path, "genomes-finished"), pattern = "fasta",
     full.names = TRUE) %>%
   c(ftb$new_fn)
-all_fn <- file.path(data_path, "all-genomes.fasta")
+all_fn <- file.path(ref_path, "all-genomes.fasta")
 fns_string <- glue_collapse(fns, sep = " ")
 command <- glue("cat {fns_string} > {all_fn}")
 system(command)
@@ -115,8 +118,8 @@ system(command)
 Extract rRNA gene sequences with barrnap,
 ```{r}
 # Call syntax: barrnap -o rrna.fa < contigs.fa > rrna.gff
-fasta_out <- file.path(data_path, "all-genomes-barrnap.fasta")
-gff_out <- file.path(data_path, "all-genomes-barrnap.gff3")
+fasta_out <- file.path(ref_path, "all-genomes-barrnap.fasta")
+gff_out <- file.path(ref_path, "all-genomes-barrnap.gff3")
 command <- glue("barrnap --threads 4 -o {fasta_out} < {all_fn} > {gff_out}")
 system(command)
 ```
@@ -131,7 +134,7 @@ for the sequences provided by Zymo.
 
 Read in both sets (downloaded or extracted) of 16S sequences.
 ```{r}
-dna <- file.path(data_path, 
+dna <- file.path(ref_path, 
   c("16s-sequences.fasta", "all-genomes-barrnap.fasta")
 ) %>%
   Biostrings::readDNAStringSet() %>%
@@ -199,7 +202,7 @@ the form "Zymo::Escherichia_coli_16S_1 Escherichia coli Zymo"; the prefix
 "Zymo::" gives the sequence a distinct name, and the "Zymo" at the end marks
 the strain.
 ```{r}
-zymo <- file.path(data_path, "zymo-mock-16s.fasta") %>%
+zymo <- file.path(ref_path, "zymo-mock-16s.fasta") %>%
   Biostrings::readDNAStringSet()
 names(zymo)
 names(zymo) <- names(zymo) %>%
