@@ -50,9 +50,7 @@ Start with the shorter single-end data from S1 because
 - Simpler to analyze in some respects
 - Worst case for ambiguous mappings between strains
 * Pipeline
-
 BBMap version 38.86 used on the NCSU BRC cluster.
-
 ** Download and index reference genomes
 Download and index the reference genomes in the main VV data directory on the BRC cluster. References are downloaded from the NCBI FTP site.
 *** Bacterial reference genomes
@@ -357,9 +355,9 @@ The fewer reads matched by BBduk might be expected because of setting hdist=0.
 ** Align and bin reads against bacterial reference genomes with BBSplit
 *** sbatch command
 
-- BBSplit default mapping options (what are these?)
+- minid=0.97
 - Reference and scaffold/contig mapping stats saved
-- Alignments to reference saved for inspection
+- Alignments to reference saved for inspection (BAM file)
 - Unmapped reads saved for later inspection and assembly
 
 #+BEGIN_SRC shell :session brc
@@ -369,12 +367,14 @@ for SAMPLE in ${SAMPLES[*]}
 do
 sbatch --exclusive --wrap="
     bbsplit.sh -Xmx100g -eoom path=$DATA_PATH/references/bacteria \
-        ambiguous2=all \
+        minid=0.97 \
         in=out-2/$SAMPLE.fq.gz outm=out-3/$SAMPLE-mapped.bam \
         outu=out-3/$SAMPLE-unmapped.fq.gz refstats=out-3/$SAMPLE-refstats.tsv\
         scafstats=out-3/$SAMPLE-scafstats.tsv"
 done
 #+END_SRC
+
+Afterward, use `scp` to copy `out-3` folder to output/out-3 on local machine.
 
 *** BBSplit reference statistics
 **** R setup
@@ -433,17 +433,17 @@ done
 
 #+RESULTS:
 : 13_1
-: .001
+: .029
 :
 : 14_1
-: .078
+: .118
 :
 : 17_1
-: .007
+: .047
+:
 
 Notes
 - Largest for the inoculum sample; expected due to Staph contamination
-- Low fraction for fecal sample suggests E. coli H2 receiving nearly all E. coli reads
 - Perhaps I can get the fraction of unmapped reads from the refstats file or std out
 
 **** Sample 13_1: T. mobilis positive control
@@ -454,17 +454,14 @@ refstats %>% filter(sample == "13_1") %>% select(-sample)
 #+RESULTS:
 | species                      | % unambig | % ambig | unambig | ambig | assigned |
 |------------------------------+-----------+---------+---------+-------+----------|
-| Bacteroides ovatus           |   0.00013 |   2e-05 |       6 |     1 |        6 |
+| Bacteroides ovatus           |   0.00013 |       0 |       6 |     0 |        6 |
 | Bacteroides thetaiotaomicron |         0 |   2e-05 |       0 |     1 |        1 |
 | Bacteroides uniformis        |     2e-05 |       0 |       1 |     0 |        1 |
-| Collinsella aerofaciens      |         0 |   4e-05 |       0 |     2 |        2 |
-| Escherichia coli             |   0.00361 |   4e-05 |     166 |     2 |      166 |
-| Faecalibacterium prausnitzii |         0 | 0.00013 |       0 |     6 |        0 |
-| Marvinbryantia formatexigens |         0 | 0.00013 |       0 |     6 |        6 |
+| Escherichia coli             |   0.00354 |   2e-05 |     163 |     1 |      163 |
+| Faecalibacterium prausnitzii |   0.00011 |   2e-05 |       5 |     1 |        5 |
+| Marvinbryantia formatexigens |         0 |   2e-05 |       0 |     1 |        1 |
 | Roseburia intestinalis       |     2e-05 |       0 |       1 |     0 |        1 |
-| Thioflavicoccus mobilis      |  99.83172 | 0.00022 | 4590572 |    10 |  4590573 |
-
-0.1% reads unmapped
+| Thioflavicoccus mobilis      |  97.06175 |       0 | 4463200 |     0 |  4463200 |
 
 Notes
 - E. coli is a common contaminant; could explain higher fraction
@@ -477,29 +474,27 @@ refstats %>% filter(sample == "14_1") %>% select(-sample)
 #+RESULTS:
 | species                      | % unambig | % ambig | unambig | ambig | assigned |
 |------------------------------+-----------+---------+---------+-------+----------|
-| Akkermansia muciniphila      |    0.2521 | 0.00064 |    8678 |    22 |     8692 |
-| Bacteroides caccae           |    0.1492 | 0.00633 |    5136 |   218 |     5322 |
-| Bacteroides ovatus           |   0.37196 | 0.00883 |   12804 |   304 |    12804 |
-| Bacteroides thetaiotaomicron |   0.11585 |  0.0079 |    3988 |   272 |     4260 |
-| Bacteroides uniformis        |   0.37315 | 0.00851 |   12845 |   293 |    12851 |
-| Barnesiella intestinihominis |   0.00067 | 0.00052 |      23 |    18 |       41 |
-| Clostridium symbiosum        |  18.18653 | 0.02402 |  626033 |   827 |   626284 |
-| Collinsella aerofaciens      |   1.65736 | 0.00052 |   57051 |    18 |    57068 |
-| Escherichia coli             |  63.82434 | 0.00264 | 2197019 |    91 |  2197023 |
-| Eubacterium rectale          |   0.06159 | 0.02806 |    2120 |   966 |     2251 |
-| Faecalibacterium prausnitzii |   1.52413 | 0.01685 |   52465 |   580 |    52468 |
-| Marvinbryantia formatexigens |   4.06357 | 0.01389 |  139880 |   478 |   140067 |
-| Roseburia intestinalis       |   1.45182 | 0.03495 |   49976 |  1203 |    51170 |
-| Thioflavicoccus mobilis      |   0.01156 | 0.00244 |     398 |    84 |      461 |
-
-7.8% reads unmapped
+| Akkermansia muciniphila      |   0.22932 |   3e-05 |    7894 |     1 |     7894 |
+| Bacteroides caccae           |   0.14351 | 0.00386 |    4940 |   133 |     5052 |
+| Bacteroides ovatus           |   0.35848 | 0.00747 |   12340 |   257 |    12340 |
+| Bacteroides thetaiotaomicron |   0.11004 | 0.00694 |    3788 |   239 |     4027 |
+| Bacteroides uniformis        |    0.3597 | 0.00633 |   12382 |   218 |    12450 |
+| Barnesiella intestinihominis |     3e-05 |   3e-05 |       1 |     1 |        2 |
+| Clostridium symbiosum        |  16.68221 | 0.00729 |  574250 |   251 |   574284 |
+| Collinsella aerofaciens      |   1.60257 |   9e-05 |   55165 |     3 |    55168 |
+| Escherichia coli             |  61.79145 |   9e-05 | 2127041 |     3 |  2127041 |
+| Eubacterium rectale          |   0.04677 | 0.01694 |    1610 |   583 |     1685 |
+| Faecalibacterium prausnitzii |   1.45267 | 0.00799 |   50005 |   275 |    50005 |
+| Marvinbryantia formatexigens |   3.93157 | 0.00552 |  135336 |   190 |   135441 |
+| Roseburia intestinalis       |   1.38361 | 0.02312 |   47628 |   796 |    48424 |
+| Thioflavicoccus mobilis      |   0.00694 |   9e-05 |     239 |     3 |      242 |
 
 Notes
 - Barnesiella was undetected in a large fraction of protocol 1 inoculum samples in the A1 data, and had a frequency of ~10^-4 in the others.
-- Fraction 0.00014 of T. mobilis reads, vs 0.00045 in the A1 data
+- Fraction 0.00007 of T. mobilis reads, vs 0.00045 in the A1 data
 - Unclear on def of ambiguous and assigned reads
-  - e.g., why Barnesiella gets all its ambig reads, while Eubacterium retale get's only a few
-- Typically, ambig reads << unambig; but not always, esp. for rare taxa
+  - e.g., why does Eubacterium retale get only a small fraction of its ambig reads assigned
+- Typically, ambig reads << unambig; but not always, especially for rare taxa
 **** Sample 17_1: Fecal sample
 #+BEGIN_SRC R :session bbsplit
 refstats %>% filter(sample == "17_1") %>% select(-sample)
@@ -508,22 +503,20 @@ refstats %>% filter(sample == "17_1") %>% select(-sample)
 #+RESULTS:
 | species                      | % unambig | % ambig | unambig | ambig | assigned |
 |------------------------------+-----------+---------+---------+-------+----------|
-| Akkermansia muciniphila      |   4.03196 |   3e-05 |  118251 |     1 |   118251 |
-| Bacteroides caccae           |    4.3222 | 0.45297 |  126763 | 13285 |   138115 |
-| Bacteroides ovatus           |  49.52295 | 0.67876 | 1452428 | 19907 |  1452428 |
-| Bacteroides thetaiotaomicron |  18.65118 | 0.55925 |  547009 | 16402 |   563408 |
-| Bacteroides uniformis        |  18.75214 | 0.54538 |  549970 | 15995 |   550497 |
-| Barnesiella intestinihominis |    0.5211 | 0.00061 |   15283 |    18 |    15299 |
-| Clostridium symbiosum        |    0.2263 | 0.00068 |    6637 |    20 |     6639 |
-| Collinsella aerofaciens      |   0.00897 |       0 |     263 |     0 |      263 |
-| Escherichia coli             |   1.55361 |  0.0001 |   45565 |     3 |    45565 |
-| Eubacterium rectale          |   0.00058 | 0.00324 |      17 |    95 |       19 |
-| Faecalibacterium prausnitzii |    0.0002 | 0.00058 |       6 |    17 |        6 |
-| Marvinbryantia formatexigens |   0.33582 | 0.00027 |    9849 |     8 |     9853 |
-| Roseburia intestinalis       |   0.31226 | 0.00399 |    9158 |   117 |     9275 |
-| Thioflavicoccus mobilis      |    0.0001 |  0.0001 |       3 |     3 |        6 |
-
-0.7% reads unmapped
+| Akkermansia muciniphila      |   3.66546 |       0 |  107502 |     0 |   107502 |
+| Bacteroides caccae           |   4.16695 | 0.29269 |  122210 |  8584 |   129671 |
+| Bacteroides ovatus           |  47.80066 |  0.6521 | 1401916 | 19125 |  1401916 |
+| Bacteroides thetaiotaomicron |  17.97706 | 0.55458 |  527238 | 16265 |   543503 |
+| Bacteroides uniformis        |  18.12613 | 0.40156 |  531610 | 11777 |   535449 |
+| Barnesiella intestinihominis |   0.50272 | 0.00041 |   14744 |    12 |    14753 |
+| Clostridium symbiosum        |   0.20632 | 0.00048 |    6051 |    14 |     6052 |
+| Collinsella aerofaciens      |   0.00866 |       0 |     254 |     0 |      254 |
+| Escherichia coli             |   1.19785 |       0 |   35131 |     0 |    35131 |
+| Eubacterium rectale          |   0.00031 | 0.00283 |       9 |    83 |        9 |
+| Faecalibacterium prausnitzii |    0.0001 | 0.00051 |       3 |    15 |        3 |
+| Marvinbryantia formatexigens |   0.32351 | 0.00017 |    9488 |     5 |     9493 |
+| Roseburia intestinalis       |   0.30002 | 0.00358 |    8799 |   105 |     8904 |
+| Thioflavicoccus mobilis      |    0.0001 |       0 |       3 |     0 |        3 |
 
 Notes
 - How to consider presence absence and compute abundances for F. prausnitzii, E. rectale?
@@ -545,12 +538,8 @@ gal <- here("output/out-3/17_1-mapped.bam") %>%
   readGAlignments(use.names = FALSE)
 cvrg <- coverage(gal)
 rm(gal)
-#+END_SRC
 
-** Bacteriodes thetaiotaomicron chromosomal and plasmid coverage
-
-Get window averages for plotting
-#+BEGIN_SRC R :session R-coverage :results silent
+# Function for computing average coverage in non-overlapping genomic windows
 window_means <- function(x, width = 500) {
   ir <- IRanges(start = seq(1, length(x), by = width), width = width)
   end(ir)[length(ir)] <- length(x)
@@ -558,6 +547,12 @@ window_means <- function(x, width = 500) {
   tibble(start = start(ir), end = end(ir), width = width(ir), coverage = y)
 }
 
+#+END_SRC
+
+** Bacteriodes thetaiotaomicron chromosomal and plasmid coverage
+
+Get window averages for plotting
+#+BEGIN_SRC R :session R-coverage :results silent
 cvrg1 <- cvrg[[1]] %>% window_means(width = 1000)
 cvrg2 <- cvrg[[2]] %>% window_means(width = 200)
 #+END_SRC
@@ -598,7 +593,7 @@ cvrg.ecoli <- cvrg[idx][[1]] %>% window_means(width = 1000)
 #+END_SRC
 
 #+header: :width 7 :height 5 :units in :res 220
-#+BEGIN_SRC R :session R-coverage :results graphics file :file figures/ecoli-coverage.svg
+#+BEGIN_SRC R :session R-coverage :results graphics file :file figures/ecoli-coverage.png
 ggplot(cvrg.ecoli, aes(start, coverage)) +
   geom_line() +
   labs(x = "position",
