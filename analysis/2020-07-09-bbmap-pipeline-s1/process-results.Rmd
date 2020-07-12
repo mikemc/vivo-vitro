@@ -1,0 +1,89 @@
+
+```{r}
+library(tidyverse)
+library(here)
+library(fs)
+
+out_path <- here("analysis/2020-07-09-bbmap-pipeline-s1/output")
+```
+
+Map from species to genome accession
+```{r}
+strains <- here("strain-info/strains-uniprot.csv") %>%
+  read_csv(col_types = "cccccccicc") %>%
+  glimpse %>%
+  select(strain_type, species, strain, phylum,
+    accession = uniprot_assembly_accession)
+```
+
+## Host reads
+
+Load the BBSplit refstats results from mapping against the host,
+```{r}
+host <- tibble(fn = dir_ls(out_path, 
+    regexp = "[0-9]+_[1-4]-host-refstats.tsv")) %>%
+  mutate(
+    dna_sample_id = path_file(fn) %>% 
+      str_extract("[0-9]+_[1-4](?=-host-refstats)"),
+    sample_id = str_c("S1_", dna_sample_id),
+    data = map(fn, read_tsv, col_types = "cddddiiii")
+  ) %>%
+  select(-fn) %>%
+  unnest(data) %>%
+  janitor::clean_names() %>%
+  rename(name = number_name) %>%
+  glimpse
+```
+
+```{r}
+host %>% pull(unambiguous_reads) %>% summary
+host %>% pull(ambiguous_reads) %>% summary
+```
+
+## Bacterial reads
+
+First, load the BBSplit refstats results,
+```{r}
+res <- tibble(fn = dir_ls(out_path, regexp = "[0-9]+_[1-4]-refstats.tsv")) %>%
+  mutate(
+    dna_sample_id = path_file(fn) %>% str_extract("[0-9]+_[1-4](?=-refstats)"),
+    sample_id = str_c("S1_", dna_sample_id),
+    data = map(fn, read_tsv, col_types = "cddddiiii")
+  ) %>%
+  select(-fn) %>%
+  unnest(data) %>%
+  janitor::clean_names() %>%
+  rename(name = number_name) %>%
+  glimpse
+```
+Join the strain info,
+```{r}
+res0 <- res %>%
+  mutate(
+    accession = str_extract(name, "GCA_[0-9]+\\.[0-9]")
+    ) %>%
+  left_join(strains, by = "accession") %>%
+  arrange(sample_id, species)
+```
+Add the host mapping results,
+```{r}
+res1 <- bind_rows(
+  res0, 
+  host %>% mutate(species = "Mus musculus")
+  )
+```
+Finally, create and save an abundance matrix from the unambiguously-mapped read
+counts,
+```{r}
+mat <- res1 %>%
+  select(sample_id, species, unambiguous_reads) %>%
+  pivot_wider(names_from = species, values_from = unambiguous_reads,
+    names_sort = TRUE, values_fill = 0) %>%
+  column_to_rownames("sample_id") %>%
+  as("matrix")
+```
+
+```{r}
+saveRDS(mat, here("results", "s1", "count-matrix.Rds"))
+```
+
