@@ -1,0 +1,348 @@
+#+TITLE:Run BBMap-based shotgun analysis pipeline on S1 data
+* emacs setup
+** Interative display
+Get text and images to display nicely in emacs,
+#+BEGIN_SRC elisp :results silent
+;; Increase text width
+(setq visual-fill-column-width 100)
+;; Default inline image width
+(setq org-image-actual-width (list 800))
+#+END_SRC
+** Org-babel and remote shell setup
+#+PROPERTY: header-args:shell :eval never-export
+
+#+PROPERTY: header-args:R :results value :colnames yes :exports both :eval never-export
+
+The `brc` shell session will be logged into computer cluster.
+#+BEGIN_SRC shell :session brc :results silent
+ssh brc
+#+END_SRC
+* Pipeline
+BBMap version 38.86 used on the NCSU BRC cluster.
+** Download and index reference genomes
+Download and index the reference genomes in the main VV data directory on the BRC cluster. References are downloaded from the NCBI FTP site.
+*** Bacterial reference genomes
+Download the bacterial reference genomes from [[file:~/ncsu-drive/research/vivo-vitro/strain-info/strains-uniprot.csv][strains-uniprot.csv]]
+#+BEGIN_SRC shell :session brc
+mkdir -p ~/data/vivo-vitro/references/bacteria
+cd ~/data/vivo-vitro/references/bacteria
+wget ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/011/065/GCA_000011065.1_ASM1106v1/GCA_000011065.1_ASM1106v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/017/765/GCA_000017765.1_ASM1776v1/GCA_000017765.1_ASM1776v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/020/225/GCA_000020225.1_ASM2022v1/GCA_000020225.1_ASM2022v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/154/125/GCA_000154125.1_ASM15412v1/GCA_000154125.1_ASM15412v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/154/205/GCA_000154205.1_ASM15420v1/GCA_000154205.1_ASM15420v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/156/535/GCA_000156535.1_ASM15653v1/GCA_000156535.1_ASM15653v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/162/015/GCA_000162015.1_ASM16201v1/GCA_000162015.1_ASM16201v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/169/015/GCA_000169015.1_ASM16901v1/GCA_000169015.1_ASM16901v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/169/035/GCA_000169035.1_ASM16903v1/GCA_000169035.1_ASM16903v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/173/815/GCA_000173815.1_ASM17381v1/GCA_000173815.1_ASM17381v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/189/595/GCA_000189595.1_Clos_symb_WAL_14163_V1/GCA_000189595.1_Clos_symb_WAL_14163_V1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/209/935/GCA_000209935.1_ASM20993v1/GCA_000209935.1_ASM20993v1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/296/465/GCA_000296465.1_Barn_inte_YIT_11860_V1/GCA_000296465.1_Barn_inte_YIT_11860_V1_genomic.fna.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/327/045/GCA_000327045.1_ASM32704v1/GCA_000327045.1_ASM32704v1_genomic.fna.gz
+#+END_SRC
+
+Index bacterial genomes for use with BBSplit
+#+BEGIN_SRC shell :session brc
+cd ~/data/vivo-vitro/references/bacteria
+sbatch --exclusive --wrap="bbsplit.sh ref=."
+#+END_SRC
+
+#+RESULTS:
+: cd ~/data/vivo-vitro/references/bacteria
+
+*** Host (mouse) reference genome
+Download the mouse reference genome,
+#+BEGIN_SRC shell :session brc
+mkdir -p ~/data/vivo-vitro/references/mouse
+cd ~/data/vivo-vitro/references/mouse
+wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/635/GCF_000001635.26_GRCm38.p6/GCF_000001635.26_GRCm38.p6_genomic.fna.gz
+#+END_SRC
+
+Index mouse genome for use with BBSplit/BBMap,
+#+BEGIN_SRC shell :session brc :results value verbatim
+cd ~/data/vivo-vitro/references/mouse
+sbatch --exclusive --wrap="bbsplit.sh -eoom ref=GCF_000001635.26_GRCm38.p6_genomic.fna.gz"
+#+END_SRC
+
+*** paths
+#+BEGIN_SRC shell :session brc :results silent
+DATA_PATH=/home/mrmclare/data/vivo-vitro
+mkdir $DATA_PATH/s1/reads/clean
+mkdir $DATA_PATH/s1/reads/binned
+#+END_SRC
+
+Get the list of sample ids from the fastq file names
+#+BEGIN_SRC shell :session brc :results silent
+SAMPLES=($(ls $DATA_PATH/s1/reads/raw | sed 's/.fastq.gz//g'))
+#+END_SRC
+
+** Trim adapters + low quality read ends and filter PhiX reads with BBDuk
+*** sbatch command
+
+1. Remove adapter and transposase sequences, using BBMap's included adapter sequences
+2. Remove PhiX sequences, using BBMap's included PhiX genome
+3. Trim last bp and low quality read ends
+
+#+BEGIN_SRC shell :session brc :results verbatim
+cd $DATA_PATH/s1/reads
+# for SAMPLE in ${SAMPLES[1]}
+# for SAMPLE in ${SAMPLES[@]:1:30}
+for SAMPLE in ${SAMPLES[*]}
+do
+sbatch --exclusive --job-name=$SAMPLE-clean --output=slurm-%j-$SAMPLE-clean.out --wrap="
+    bbduk.sh -eoom in=raw/$SAMPLE.fastq.gz out=stdout.fq ref=adapters ktrim=r \
+        k=23 mink=11 hdist=1 stats=clean/$SAMPLE-adapters-stats.tsv |
+    bbduk.sh -eoom in=stdin.fq out=stdout.fq interleaved=f ref=phix k=31 hdist=1 \
+        stats=clean/$SAMPLE-phix-stats.tsv |
+    bbduk.sh -eoom in=stdin.fq out=stdout.fq interleaved=f ftr=99 qtrim=r \
+        trimq=5 stats=clean/$SAMPLE-trim-stats.tsv |
+    bbsplit.sh -eoom path=$DATA_PATH/references/mouse \
+        in=stdin.fq interleaved=f outu=clean/$SAMPLE.fastq.gz \
+        refstats=clean/$SAMPLE-host-refstats.tsv \
+        minratio=0.9 maxindel=3 bwr=0.16 bw=12 fast minhits=2 qtrim=r trimq=10 \
+        untrim idtag printunmappedcount kfilter=25 maxsites=1 k=14 \
+        bloom pigz unpigz ziplevel=6
+    "
+done
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+
+DATA_PATH/s1/reads[?2004l
+mrmclare@node0:~/data/vivo-vitro/s1/reads% [?2004h# for SAMPLE in ${SAMPLES[1]}[?2004l
+mrmclare@node0:~/data/vivo-vitro/s1/reads% [?2004h# for SAMPLE in ${SAMPLES[@]:1:30}[?2004l
+mrmclare@node0:~/data/vivo-vitro/s1/reads% [?2004hfor SAMPLE in ${SAMPLES[*]}[?2004l
+[?2004hdo[?2004l
+[?2004hsbatch --exclusive --job-name=$SAMPLE-clean --output=slurm-%j-$SAMPLE-clean.out --wrap="[?2004l
+[?2004h    bbduk.sh -eoom in=raw/$SAMPLE.fastq.gz out=stdout.fq ref=adapters ktrim=r \[?2004l
+[?2004h        k=23 mink=11 hdist=1 stats=clean/$SAMPLE-adapters-stats.tsv |[?2004l
+[?2004h    bbduk.sh -eoom in=stdin.fq out=stdout.fq interleaved=f ref=phix k=31 hdist=1 \[?2004l
+[?2004h        stats=clean/$SAMPLE-phix-stats.tsv |[?2004l
+[?2004h    bbduk.sh -eoom in=stdin.fq out=stdout.fq interleaved=f ftr=99 qtrim=r \[?2004l
+[?2004h        trimq=5 stats=clean/$SAMPLE-trim-stats.tsv |[?2004l
+[?2004h    bbsplit.sh -eoom path=$DATA_PATH/references/mouse \[?2004l
+[?2004h        in=stdin.fq interleaved=f outu=clean/$SAMPLE.fastq.gz \[?2004l
+[?2004h        refstats=clean/$SAMPLE-host-refstats.tsv \[?2004l
+[?2004h        minratio=0.9 maxindel=3 bwr=0.16 bw=12 fast minhits=2 qtrim=r trimq=10 \[?2004l
+[?2004h        untrim idtag printunmappedcount kfilter=25 maxsites=1 k=14 \[?2004l
+[?2004h        bloom pigz unpigz ziplevel=6[?2004l
+[?2004h    "[?2004l
+[?2004hdone[?2004l
+Submitted batch job 1504318
+Submitted batch job 1504319
+Submitted batch job 1504320
+Submitted batch job 1504321
+Submitted batch job 1504322
+Submitted batch job 1504323
+Submitted batch job 1504324
+Submitted batch job 1504325
+Submitted batch job 1504326
+Submitted batch job 1504327
+Submitted batch job 1504328
+Submitted batch job 1504329
+Submitted batch job 1504330
+Submitted batch job 1504331
+Submitted batch job 1504332
+Submitted batch job 1504333
+Submitted batch job 1504334
+Submitted batch job 1504335
+Submitted batch job 1504336
+Submitted batch job 1504337
+Submitted batch job 1504338
+Submitted batch job 1504339
+Submitted batch job 1504340
+Submitted batch job 1504341
+Submitted batch job 1504342
+Submitted batch job 1504343
+Submitted batch job 1504344
+Submitted batch job 1504345
+Submitted batch job 1504346
+Submitted batch job 1504347
+Submitted batch job 1504348
+Submitted batch job 1504349
+Submitted batch job 1504350
+Submitted batch job 1504351
+Submitted batch job 1504352
+Submitted batch job 1504353
+Submitted batch job 1504354
+Submitted batch job 1504355
+Submitted batch job 1504356
+Submitted batch job 1504357
+Submitted batch job 1504358
+Submitted batch job 1504359
+Submitted batch job 1504360
+Submitted batch job 1504361
+Submitted batch job 1504362
+Submitted batch job 1504363
+Submitted batch job 1504364
+Submitted batch job 1504365
+Submitted batch job 1504366
+Submitted batch job 1504367
+Submitted batch job 1504368
+Submitted batch job 1504369
+Submitted batch job 1504370
+Submitted batch job 1504371
+Submitted batch job 1504372
+Submitted batch job 1504373
+Submitted batch job 1504374
+Submitted batch job 1504375
+Submitted batch job 1504376
+Submitted batch job 1504377
+Submitted batch job 1504378
+Submitted batch job 1504379
+Submitted batch job 1504380
+Submitted batch job 1504381
+Submitted batch job 1504382
+Submitted batch job 1504383
+Submitted batch job 1504384
+Submitted batch job 1504385
+Submitted batch job 1504386
+Submitted batch job 1504387
+Submitted batch job 1504388
+Submitted batch job 1504389
+Submitted batch job 1504390
+Submitted batch job 1504391
+Submitted batch job 1504392
+Submitted batch job 1504393
+Submitted batch job 1504394
+Submitted batch job 1504395
+Submitted batch job 1504396
+Submitted batch job 1504397
+Submitted batch job 1504398
+Submitted batch job 1504399
+Submitted batch job 1504400
+Submitted batch job 1504401
+Submitted batch job 1504402
+Submitted batch job 1504403
+Submitted batch job 1504404
+Submitted batch job 1504405
+#+end_example
+
+The BBMap params are based off the recommendation from the BBMap guide (below), and the removehuman.sh script included in BBMap.
+
+#+begin_quote
+To map quickly with very high precision and lower sensitivity, as when removing contaminant reads specific to a genome without risking false-positives:
+bbmap.sh minratio=0.9 maxindel=3 bwr=0.16 bw=12 fast minhits=2 qtrim=r trimq=10 untrim idtag printunmappedcount kfilter=25 maxsites=1 k=14
+#+end_quote
+** Align and bin reads against bacterial reference genomes with BBSplit
+*** sbatch command
+
+- minid=0.97
+- Reference and scaffold/contig mapping stats saved
+- Alignments to reference saved for inspection (BAM file)
+- Unmapped reads saved for later inspection and assembly
+
+#+BEGIN_SRC shell :session brc :results verbatim
+cd $DATA_PATH/s1/reads
+for SAMPLE in ${SAMPLES[*]}
+do
+sbatch --exclusive --job-name=$SAMPLE-bin --output=slurm-%j-$SAMPLE-bin.out --wrap="
+    bbsplit.sh -eoom path=$DATA_PATH/references/bacteria \
+        minid=0.97 \
+        in=clean/$SAMPLE.fastq.gz outu=binned/$SAMPLE-unmapped.fastq.gz \
+        refstats=binned/$SAMPLE-refstats.tsv \
+        scafstats=binned/$SAMPLE-scafstats.tsv"
+done
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+
+DATA_PATH/s1/reads[?2004l
+mrmclare@node0:~/data/vivo-vitro/s1/reads% [?2004hfor SAMPLE in ${SAMPLES[*]}[?2004l
+[?2004hdo[?2004l
+[?2004hsbatch --exclusive --job-name=$SAMPLE-bin --output=slurm-%j-$SAMPLE-bin.out --wrap="[?2004l
+[?2004h    bbsplit.sh -eoom path=$DATA_PATH/references/bacteria \[?2004l
+[?2004h        minid=0.97 \[?2004l
+[?2004h        in=clean/$SAMPLE.fastq.gz outu=binned/$SAMPLE-unmapped.fastq.gz \[?2004l
+[?2004h        refstats=binned/$SAMPLE-refstats.tsv \[?2004l
+[?2004h        scafstats=binned/$SAMPLE-scafstats.tsv"[?2004l
+[?2004hdone[?2004l
+Submitted batch job 1504407
+Submitted batch job 1504408
+Submitted batch job 1504409
+Submitted batch job 1504410
+Submitted batch job 1504411
+Submitted batch job 1504412
+Submitted batch job 1504413
+Submitted batch job 1504414
+Submitted batch job 1504415
+Submitted batch job 1504416
+Submitted batch job 1504417
+Submitted batch job 1504418
+Submitted batch job 1504419
+Submitted batch job 1504420
+Submitted batch job 1504421
+Submitted batch job 1504422
+Submitted batch job 1504423
+Submitted batch job 1504424
+Submitted batch job 1504425
+Submitted batch job 1504426
+Submitted batch job 1504427
+Submitted batch job 1504428
+Submitted batch job 1504429
+Submitted batch job 1504430
+Submitted batch job 1504431
+Submitted batch job 1504432
+Submitted batch job 1504433
+Submitted batch job 1504434
+Submitted batch job 1504435
+Submitted batch job 1504436
+Submitted batch job 1504437
+Submitted batch job 1504438
+Submitted batch job 1504439
+Submitted batch job 1504440
+Submitted batch job 1504441
+Submitted batch job 1504442
+Submitted batch job 1504443
+Submitted batch job 1504444
+Submitted batch job 1504445
+Submitted batch job 1504446
+Submitted batch job 1504447
+Submitted batch job 1504448
+Submitted batch job 1504449
+Submitted batch job 1504450
+Submitted batch job 1504451
+Submitted batch job 1504452
+Submitted batch job 1504453
+Submitted batch job 1504454
+Submitted batch job 1504455
+Submitted batch job 1504456
+Submitted batch job 1504457
+Submitted batch job 1504458
+Submitted batch job 1504459
+Submitted batch job 1504460
+Submitted batch job 1504461
+Submitted batch job 1504462
+Submitted batch job 1504463
+Submitted batch job 1504464
+Submitted batch job 1504465
+Submitted batch job 1504466
+Submitted batch job 1504467
+Submitted batch job 1504468
+Submitted batch job 1504469
+Submitted batch job 1504470
+Submitted batch job 1504471
+Submitted batch job 1504472
+Submitted batch job 1504473
+Submitted batch job 1504474
+Submitted batch job 1504475
+Submitted batch job 1504476
+Submitted batch job 1504477
+Submitted batch job 1504478
+Submitted batch job 1504479
+Submitted batch job 1504480
+Submitted batch job 1504481
+Submitted batch job 1504482
+Submitted batch job 1504483
+Submitted batch job 1504484
+Submitted batch job 1504485
+Submitted batch job 1504486
+Submitted batch job 1504487
+Submitted batch job 1504488
+Submitted batch job 1504489
+Submitted batch job 1504490
+Submitted batch job 1504491
+Submitted batch job 1504492
+Submitted batch job 1504493
+Submitted batch job 1504494
+#+end_example
+** Download results
+Download the various stats output files to output/
+#+BEGIN_SRC shell
+mkdir output
+BRC_PATH=/home/mrmclare/data/vivo-vitro/s1/reads
+scp -r "brc:$BRC_PATH/clean/*.tsv" output
+scp -r "brc:$BRC_PATH/binned/*.tsv" output
+#+END_SRC
+
+#+RESULTS:
