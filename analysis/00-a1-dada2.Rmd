@@ -16,7 +16,7 @@ library(tidyverse)
 # library(here)
 library(dada2); packageVersion("dada2")
 #> [1] ‘1.14.0’
-# Other packages used: here, dotenv
+# Other packages used: here
 ```
 Path for saving dada2 results:
 ```{r}
@@ -25,9 +25,8 @@ dir.create(results_path, recursive = TRUE)
 ```
 Path to the fastq files:
 ```{r path}
-dotenv::load_dot_env(here::here(".env"))
-path <- file.path(Sys.getenv("DATA_PATH"), "a1", "reads")
-list.files(path) %>% head
+path <- here::here("data", "a1", "reads")
+list.files(file.path(path, "raw")) %>% head
 #> [1] "1-1_S28_L001_R1_001.fastq.gz"  "1-1_S28_L001_R2_001.fastq.gz" 
 #> [3] "1-2_S69_L001_R1_001.fastq.gz"  "1-2_S69_L001_R2_001.fastq.gz" 
 #> [5] "10-1_S16_L001_R1_001.fastq.gz" "10-1_S16_L001_R2_001.fastq.gz"
@@ -37,8 +36,10 @@ names.
 ```{r}
 # Forward and reverse fastq filenames have format: *_R1_001.fastq and
 # *_R2_001.fastq
-fnFs <- sort(list.files(path, pattern="_R1_001.fastq", full.names = TRUE))
-fnRs <- sort(list.files(path, pattern="_R2_001.fastq", full.names = TRUE))
+fnFs <- sort(list.files(file.path(path, "raw"), pattern="_R1_001.fastq", 
+    full.names = TRUE))
+fnRs <- sort(list.files(file.path(path, "raw"), pattern="_R2_001.fastq", 
+    full.names = TRUE))
 # Sample names are up to the first underscore,
 sample.names <- basename(fnFs) %>%
     str_extract("[^_]+")
