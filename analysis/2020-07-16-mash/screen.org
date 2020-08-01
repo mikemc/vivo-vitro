@@ -1,0 +1,224 @@
+#+TITLE: Test Mash Screen for screening shotgun data against RefSeq
+* setup
+#+PROPERTY: header-args:shell :eval never-export
+#+PROPERTY: header-args:R :results value :colnames yes :exports both :eval never-export
+
+#+BEGIN_SRC elisp :results silent
+;; Increase text width
+(setq visual-fill-column-width 100)
+;; Default inline image width
+(setq org-image-actual-width (list 800))
+#+END_SRC
+
+#+BEGIN_SRC shell :session mash :results silent
+msh_file=/home/michael/data/mash/refseq.genomes.k21s1000.msh
+mkdir output
+#+END_SRC
+
+* Usage notes
+#+BEGIN_SRC
+mash screen -w -p 2 -i ? -p ? $msh_file /path/to/files > output/$sample-screen.tsv
+#+END_SRC
+
+The tsv file does not include column names; the columns are: identity, shared-hashes, median-multiplicity, p-value, query-ID, query-comment
+
+Initial tests shows that running mash screen with the provided RefSeq genomes sketch uses 53% of my laptop's memory and takes about 4m to run on sample S1_17_1.
+* Screen a subset of fecal and inoculum samples against Refseq genomes
+- Goal: Identify organisms likely to be in the fecal and inoculum samples, and reference genomes that could be used for testing and improving our pipeine
+- Use the refseq.genomes.k21s1000.msh sketch downloaded from [[https://mash.readthedocs.io/en/latest/tutorials.html#screening-a-read-set-for-containment-of-refseq-genomes][The Mash Screen tutorial]].
+  - This is just genomes; sketches with plasmids or of genomes + plasmids are also available.
+- Screen with the "winner-take-all" strategy to reduce the number of genomes that are output
+- Screen the fecal and inoculum samples separately.
+- Choose 2 fecal specimens and 2 inoculum specimens, the first from each extraction batch, and use aliquots 1 and 2 for each specimen (to get both extraction protocols).
+- Use the S2 sequence data (forward and reverse reads)
+
+#+BEGIN_SRC R :session R :results silent
+library(tidyverse)
+library(here)
+
+dna_sam <- readRDS(here("sample-data", "dna-sample-data.Rds"))
+ftb <- here("sample-data", "sequencing-read-files.csv") %>%
+  read_csv %>%
+  left_join(dna_sam, by = "dna_sample_id")
+#+END_SRC
+
+Get four fecal samples from S2 - the first fecal specimen from each batch, R1 and R2.
+#+name: fecal-samples
+#+BEGIN_SRC R :session R :results value silent
+ftb %>%
+  filter(center_id == "S2", specimen_type == "fecal", aliquot_number %in% 1:2) %>%
+  group_by(extraction_batch) %>%
+  slice_min(specimen_id, n = 1) %>%
+  pull(path) %>%
+  here() %>%
+  str_c(collapse = " ")
+#   head(1)
+#+END_SRC
+
+Ideally, I could directly use the file names from the above R chunk into a shell chunk to construct the mash command, e.g.
+
+#+BEGIN_SRC shell :session mash :var samples=fecal-samples :results silent
+msh_file=/home/michael/data/mash/refseq.genomes.k21s1000.msh
+mash screen -w -p 3 -v 0.00000001 -i 0.8 $msh_file $samples > output/s2-fecal-screen.tsv
+#+END_SRC
+
+However, this isn't working; I think it has something to do with quotes surrounding the file names.
+
+#+BEGIN_SRC shell :var samples=fecal-samples :results silent
+# echo $samples
+sed -e 's/^"//' -e 's/"$//' <<<"$samples"
+#+END_SRC
+
+#+BEGIN_SRC shell :var samples=fecal-samples :results silent
+echo $samples
+#+END_SRC
+
+Not sure how to resolve at the moment; for now, just manually construct the mash commands,
+
+#+BEGIN_SRC shell :session mash :var samples=fecal-samples :results silent
+msh_file=/home/michael/data/mash/refseq.genomes.k21s1000.msh
+mash screen -w -p 3 -v 0.00000001 -i 0.8 $msh_file /home/michael/ncsu-drive/research/vivo-vitro/data/s2/reads/raw/A01_S13_CIDNS200509-022_R1_001.fastq.gz /home/michael/ncsu-drive/research/vivo-vitro/data/s2/reads/raw/A01_S13_CIDNS200509-022_R2_001.fastq.gz /home/michael/ncsu-drive/research/vivo-vitro/data/s2/reads/raw/D01_S16_CIDNS200509-022_R1_001.fastq.gz /home/michael/ncsu-drive/research/vivo-vitro/data/s2/reads/raw/D01_S16_CIDNS200509-022_R2_001.fastq.gz /home/michael/ncsu-drive/research/vivo-vitro/data/s2/reads/raw/B05_S46_CIDNS200509-022_R1_001.fastq.gz /home/michael/ncsu-drive/research/vivo-vitro/data/s2/reads/raw/B05_S46_CIDNS200509-022_R2_001.fastq.gz /home/michael/ncsu-drive/research/vivo-vitro/data/s2/reads/raw/F08_S35_CIDNS200518-023_R1_001.fastq.gz /home/michael/ncsu-drive/research/vivo-vitro/data/s2/reads/raw/F08_S35_CIDNS200518-023_R2_001.fastq.gz > output/s2-fecal-screen.tsv
+#+END_SRC
+
+#+name: inoculum-samples
+#+BEGIN_SRC R :session R :results value
+ftb %>%
+  filter(center_id == "S2", specimen_type == "inoculum", aliquot_number %in% 1:2) %>%
+  group_by(extraction_batch) %>%
+  slice_min(specimen_id, n = 1) %>%
+  pull(path) %>%
+  here() %>%
+  str_c(collapse = " ")
+#   head(1)
+#+END_SRC
+
+/home/michael/ncsu-drive/research/vivo-vitro/data/s2/reads/raw/E05_S49_CIDNS200509-022_R1_001.fastq.gz /home/michael/ncsu-drive/research/vivo-vitro/data/s2/reads/raw/E05_S49_CIDNS200509-022_R2_001.fastq.gz /home/michael/ncsu-drive/research/vivo-vitro/data/s2/reads/raw/G07_S28_CIDNS200518-023_R1_001.fastq.gz /home/michael/ncsu-drive/research/vivo-vitro/data/s2/reads/raw/G07_S28_CIDNS200518-023_R2_001.fastq.gz /home/michael/ncsu-drive/research/vivo-vitro/data/s2/reads/raw/C06_S16_CIDNS200518-023_R1_001.fastq.gz /home/michael/ncsu-drive/research/vivo-vitro/data/s2/reads/raw/C06_S16_CIDNS200518-023_R2_001.fastq.gz /home/michael/ncsu-drive/research/vivo-vitro/data/s2/reads/raw/F01_S18_CIDNS200509-022_R1_001.fastq.gz /home/michael/ncsu-drive/research/vivo-vitro/data/s2/reads/raw/F01_S18_CIDNS200509-022_R2_001.fastq.gz
+
+#+BEGIN_SRC shell :session mash :var samples=fecal-samples :results silent
+msh_file=/home/michael/data/mash/refseq.genomes.k21s1000.msh
+mash screen -w -p 3 -v 0.00000001 -i 0.8 $msh_file /home/michael/ncsu-drive/research/vivo-vitro/data/s2/reads/raw/E05_S49_CIDNS200509-022_R1_001.fastq.gz /home/michael/ncsu-drive/research/vivo-vitro/data/s2/reads/raw/E05_S49_CIDNS200509-022_R2_001.fastq.gz /home/michael/ncsu-drive/research/vivo-vitro/data/s2/reads/raw/G07_S28_CIDNS200518-023_R1_001.fastq.gz /home/michael/ncsu-drive/research/vivo-vitro/data/s2/reads/raw/G07_S28_CIDNS200518-023_R2_001.fastq.gz /home/michael/ncsu-drive/research/vivo-vitro/data/s2/reads/raw/C06_S16_CIDNS200518-023_R1_001.fastq.gz /home/michael/ncsu-drive/research/vivo-vitro/data/s2/reads/raw/C06_S16_CIDNS200518-023_R2_001.fastq.gz /home/michael/ncsu-drive/research/vivo-vitro/data/s2/reads/raw/F01_S18_CIDNS200509-022_R1_001.fastq.gz /home/michael/ncsu-drive/research/vivo-vitro/data/s2/reads/raw/F01_S18_CIDNS200509-022_R2_001.fastq.gz > output/s2-inoculum-screen.tsv
+#+END_SRC
+** Examine output
+*** fecal samples
+#+begin_src R :session R :results silent
+fcl <- read_tsv(
+  here("analysis/2020-07-16-mash/output", "s2-fecal-screen.tsv"),
+  col_names = c("identity", "shared-hashes", "median-multiplicity", "p-value",
+                "query-ID", "query-comment")
+) %>%
+  janitor::clean_names() %>%
+  ## mutate(
+  ##   shared_hashes = str_extract(shared_hashes, "^[0-9]+(?=/1000)") %>% as.integer
+  ## ) %>%
+  arrange(desc(identity))
+#+end_src
+
+#+BEGIN_SRC R :session R
+fcl %>%
+  transmute(identity, shared = shared_hashes,
+            query_comment = str_sub(query_comment, 1, 60)) %>%
+  slice_head(n = 30)
+#+END_SRC
+
+#+RESULTS:
+| identity | shared    | query_comment                                                |
+|----------+-----------+--------------------------------------------------------------|
+|        1 | 1000/1000 | [270 seqs] NZ_KE992784.1 Clostridium symbiosum ATCC 14940 ge |
+|        1 | 1000/1000 | NZ_CP012938.1 Bacteroides ovatus strain ATCC 8483, complete  |
+| 0.999952 | 999/1000  | NZ_CP007799.1 Escherichia coli Nissle 1917, complete genome  |
+| 0.999713 | 994/1000  | [102 seqs] NZ_GG692814.1 Roseburia intestinalis L1-82 genomi |
+| 0.999184 | 983/1000  | [52 seqs] NZ_FNPN01000052.1 Bacteroides uniformis strain DSM |
+| 0.999038 | 980/1000  | [2 seqs] NC_004663.1 Bacteroides thetaiotaomicron VPI-5482 c |
+|  0.99741 | 947/1000  | [21 seqs] NZ_AAVM02000021.1 Bacteroides caccae ATCC 43185 B_ |
+| 0.995415 | 908/1000  | [58 seqs] NZ_ACCL02000058.1 Marvinbryantia formatexigens DSM |
+|   0.9919 | 843/1000  | [5 seqs] NZ_JH815203.1 Barnesiella intestinihominis YIT 1186 |
+| 0.990824 | 824/1000  | [58 seqs] NZ_CCDQ010000001.1 Akkermansia muciniphila WGS pro |
+| 0.965268 | 476/1000  | NC_009800.1 Escherichia coli HS, complete genome             |
+| 0.952766 | 362/1000  | NC_029853.1 Mus musculus mobilized endogenous polytropic pro |
+|  0.94939 | 336/1000  | NC_019706.1 Enterobacteria phage mEp043 c-1, complete genome |
+| 0.933928 | 238/1000  | [25 seqs] NZ_AAVN02000022.1 Collinsella aerofaciens ATCC 259 |
+| 0.932215 | 229/1000  | NC_012781.1 Eubacterium rectale ATCC 33656, complete genome  |
+| 0.916976 | 162/1000  | NC_001416.1 Enterobacteria phage lambda, complete genome     |
+| 0.910933 | 141/1000  | NC_019488.1 Salmonella phage RE-2010, complete genome        |
+| 0.899042 | 107/1000  | NC_011357.1 Stx2-converting phage 1717, complete prophage ge |
+| 0.889242 | 85/1000   | NC_020518.1 Escherichia coli str. K-12 substr. MDS42 DNA, co |
+| 0.887203 | 81/1000   | NC_010655.1 Akkermansia muciniphila ATCC BAA-835, complete g |
+| 0.880455 | 69/1000   | NC_021190.1 Enterobacteria phage phi80, complete genome      |
+| 0.875303 | 61/1000   | NC_019445.1 Escherichia phage TL-2011b, complete genome      |
+| 0.872481 | 57/1000   | [1730 seqs] NZ_CDQO01000001.1 Bacteroides thetaiotaomicron g |
+| 0.870998 | 55/1000   | NC_009514.1 Phage cdtI DNA, complete genome                  |
+| 0.870238 | 54/1000   | NC_001702.1 Murine type C retrovirus, complete genome        |
+|  0.86537 | 48/1000   | NC_001954.1 Enterobacteria phage If1, complete genome        |
+| 0.861792 | 44/1000   | [125 seqs] NZ_FMYE01000123.1 Bacteroides ovatus strain NLAE- |
+|  0.85789 | 40/1000   | NC_011356.1 Enterobacteria phage YYZ-2008, complete prophage |
+| 0.853596 | 36/1000   | NC_018417.1 Candidatus Carsonella ruddii HT isolate Thao2000 |
+| 0.853272 | 24/672    | NC_018671.1 Sauropus leaf curl disease associated DNA beta,  |
+
+*** inoculum samples
+#+begin_src R :session R :results silent
+inclm <- read_tsv(
+  here("analysis/2020-07-16-mash/output", "s2-inoculum-screen.tsv"),
+  col_names = c("identity", "shared-hashes", "median-multiplicity", "p-value",
+                "query-ID", "query-comment")
+) %>%
+  janitor::clean_names() %>%
+  ## mutate(
+  ##   shared_hashes = str_extract(shared_hashes, "^[0-9]+(?=/1000)") %>% as.integer
+  ## ) %>%
+  arrange(desc(identity))
+#+end_src
+
+#+BEGIN_SRC R :session R
+inclm %>%
+  transmute(identity, shared = shared_hashes,
+            query_comment = str_sub(query_comment, 1, 60)) %>%
+  slice_head(n = 30)
+#+END_SRC
+
+#+RESULTS:
+| identity | shared    | query_comment                                                |
+|----------+-----------+--------------------------------------------------------------|
+|        1 | 1000/1000 | [25 seqs] NZ_AAVN02000022.1 Collinsella aerofaciens ATCC 259 |
+|        1 | 1000/1000 | [58 seqs] NZ_ACCL02000058.1 Marvinbryantia formatexigens DSM |
+| 0.999905 | 998/1000  | [12 seqs] NZ_GL384608.1 Propionibacterium acnes HL013PA1 Scf |
+| 0.999809 | 996/1000  | [270 seqs] NZ_KE992784.1 Clostridium symbiosum ATCC 14940 ge |
+| 0.999761 | 995/1000  | [20 seqs] NZ_GG697168.2 Faecalibacterium prausnitzii A2-165  |
+| 0.999618 | 992/1000  | [102 seqs] NZ_GG692814.1 Roseburia intestinalis L1-82 genomi |
+| 0.999377 | 987/1000  | NC_009800.1 Escherichia coli HS, complete genome             |
+|  0.99899 | 979/1000  | [183 seqs] NZ_AFEC01000183.1 Staphylococcus warneri VCU121 c |
+| 0.998649 | 972/1000  | [52 seqs] NZ_FNPN01000052.1 Bacteroides uniformis strain DSM |
+| 0.995727 | 914/1000  | [21 seqs] NZ_AAVM02000021.1 Bacteroides caccae ATCC 43185 B_ |
+| 0.992623 | 856/1000  | [2 seqs] NC_004663.1 Bacteroides thetaiotaomicron VPI-5482 c |
+| 0.990248 | 814/1000  | [58 seqs] NZ_CCDQ010000001.1 Akkermansia muciniphila WGS pro |
+|  0.98943 | 800/1000  | NC_012781.1 Eubacterium rectale ATCC 33656, complete genome  |
+| 0.988957 | 792/1000  | NZ_CP012938.1 Bacteroides ovatus strain ATCC 8483, complete  |
+| 0.983823 | 710/1000  | [33 seqs] NZ_AYSM01000001.1 Bacillus thuringiensis JM-Mgvxx- |
+| 0.982891 | 696/1000  | [20 seqs] NZ_LRFK01000001.1 Bacillus subtilis subsp. subtili |
+| 0.970913 | 538/1000  | [38 seqs] NZ_LAKF01000001.1 Staphylococcus pasteuri strain B |
+| 0.939055 | 267/1000  | [29 seqs] NZ_LXJX01000001.1 Bacillus sp. SM1 SM1_c1, whole g |
+| 0.924653 | 193/1000  | NZ_CP017313.1 Bacillus subtilis subsp. subtilis strain QB541 |
+| 0.915049 | 155/1000  | NC_019488.1 Salmonella phage RE-2010, complete genome        |
+| 0.901759 | 114/1000  | [78 seqs] NZ_LABQ01000003.1 Bacillus cereus strain RIVM BC 9 |
+| 0.896996 | 102/1000  | NC_023599.1 Bacillus phage phiCM3, complete genome           |
+| 0.890712 | 88/1000   | NC_020518.1 Escherichia coli str. K-12 substr. MDS42 DNA, co |
+| 0.886679 | 80/1000   | NC_010655.1 Akkermansia muciniphila ATCC BAA-835, complete g |
+| 0.881058 | 70/1000   | NC_019706.1 Enterobacteria phage mEp043 c-1, complete genome |
+| 0.874615 | 60/1000   | NC_019445.1 Escherichia phage TL-2011b, complete genome      |
+| 0.872481 | 57/1000   | [118 seqs] NZ_ANBY01000001.1 Staphylococcus sp. E463 contig0 |
+| 0.871746 | 56/1000   | NC_001954.1 Enterobacteria phage If1, complete genome        |
+| 0.869463 | 53/1000   | [83 seqs] NZ_JUWX01000028.1 Staphylococcus warneri strain 69 |
+| 0.869463 | 53/1000   | [1730 seqs] NZ_CDQO01000001.1 Bacteroides thetaiotaomicron g |
+** Discussion
+These results help to clarify the identity of contaminants or otherwise unexpected strains that are present in the two sample types. In particular, we can see that an E. coli Nissle genome is a better match for the E. coli in the fecal samples than the E. coli HS genome. We can also see several candidate Staphylococcus and Bacillus genomes to use for mapping the contaminants in the inoculum that I identified from the A1 data. Also note the presence of P. acnes in the inoculum, which I had not previously noticed in the A1 data.
+
+The E. coli Nissle genome:
+GCF_000714595.1_ASM71459v1_genomic.fna.gz
+NZ_CP007799.1 Escherichia coli Nissle 1917, complete genome
+https://www.ncbi.nlm.nih.gov/assembly/GCF_000714595.1/
+
+The results also suggest that E. coli HS might also be present in the mice.
+
+Follow ups:
+- Check if the E. coli V4 sequence that is unique to the fecal samples matches a Nissle 16S sequence. Simple thing to do is to load the Silva-dada2 species db into R and use Biostrings to pull all seq's that the ASV is an exact match to.
+- Use these results to selectively expand my reference genomes used for read mapping
+  - Question: Use these results, or do a more comprehensive screen? (or screen on the "clean" reads, after performing QC?)

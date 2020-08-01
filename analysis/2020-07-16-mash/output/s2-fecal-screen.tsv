@@ -1,0 +1,108 @@
+0.833811	22/1000	2	3.67187e-47	GCF_000005395.1_ASM539v1_genomic.fna.gz	[7479 seqs] NW_669745.1 Plasmodium berghei strain ANKA contig PB_PH0001, whole genome shotgun sequence [...]
+0.803086	10/1000	1	8.19525e-19	GCF_000008885.1_ASM888v1_genomic.fna.gz	[2 seqs] NC_004344.2 Wigglesworthia glossinidia endosymbiont of Glossina brevipalpis DNA, complete genome [...]
+0.999038	980/1000	82	0	GCF_000011065.1_ASM1106v1_genomic.fna.gz	[2 seqs] NC_004663.1 Bacteroides thetaiotaomicron VPI-5482 chromosome, complete genome [...]
+0.965268	476/1000	6	0	GCF_000017765.1_ASM1776v1_genomic.fna.gz	NC_009800.1 Escherichia coli HS, complete genome
+0.887203	81/1000	48	6.02794e-216	GCF_000020225.1_ASM2022v1_genomic.fna.gz	NC_010655.1 Akkermansia muciniphila ATCC BAA-835, complete genome
+0.932215	229/1000	1	0	GCF_000020605.1_ASM2060v1_genomic.fna.gz	NC_012781.1 Eubacterium rectale ATCC 33656, complete genome
+0.818742	15/1000	1	3.89264e-30	GCF_000021085.1_ASM2108v1_genomic.fna.gz	NC_011833.1 Buchnera aphidicola str. 5A (Acyrthosiphon pisum), complete genome
+0.823637	17/1000	1	7.01615e-35	GCF_000026205.1_ASM2620v1_genomic.fna.gz	NC_011047.1 Candidatus Phytoplasma mali strain AT complete chromosome
+0.810088	12/1000	1	3.07321e-23	GCF_000090965.1_ASM9096v1_genomic.fna.gz	[2 seqs] NC_008513.1 Buchnera aphidicola BCc, complete genome [...]
+0.816057	14/1000	72	8.32692e-28	GCF_000154525.1_ASM15452v1_genomic.fna.gz	[17 seqs] NZ_DS499677.1 Bacteroides stercoris ATCC 43183 Scfld_02_16 genomic scaffold, whole genome shotgun sequence [...]
+0.831966	21/1000	111	1.16007e-44	GCF_000156195.1_ASM15619v1_genomic.fna.gz	[33 seqs] NZ_GG688349.1 Bacteroides finegoldii DSM 17565 genomic scaffold Scfld32, whole genome shotgun sequence [...]
+0.999713	994/1000	11	0	GCF_000156535.1_ASM15653v1_genomic.fna.gz	[102 seqs] NZ_GG692814.1 Roseburia intestinalis L1-82 genomic scaffold Scfld102, whole genome shotgun sequence [...]
+0.99741	947/1000	28	0	GCF_000169015.1_ASM16901v1_genomic.fna.gz	[21 seqs] NZ_AAVM02000021.1 Bacteroides caccae ATCC 43185 B_caccae-MSIQ_Cont1330, whole genome shotgun sequence [...]
+0.933928	238/1000	1	0	GCF_000169035.1_ASM16903v1_genomic.fna.gz	[25 seqs] NZ_AAVN02000022.1 Collinsella aerofaciens ATCC 25986 C_aerofaciens-2.0_Cont809, whole genome shotgun sequence [...]
+0.995415	908/1000	3	0	GCF_000173815.1_ASM17381v1_genomic.fna.gz	[58 seqs] NZ_ACCL02000058.1 Marvinbryantia formatexigens DSM 14469 B_formatexigens-1.0.1_Cont57.1, whole genome shotgun sequence [...]
+0.803086	10/1000	11	8.19525e-19	GCF_000174195.1_ASM17419v1_genomic.fna.gz	[179 seqs] NZ_ACFY01000179.1 Roseburia inulinivorans DSM 16841 R_inulinivorans-1.0.1_Cont604.1, whole genome shotgun sequence [...]
+0.837273	24/1000	105	3.21574e-52	GCF_000185585.1_ASM18558v1_genomic.fna.gz	[38 seqs] NZ_GL622500.1 Bacteroides sp. 4_1_36 genomic scaffold supercont1.1, whole genome shotgun sequence [...]
+0.806739	11/1000	2	5.24413e-21	GCF_000186225.1_ASM18622v1_genomic.fna.gz	NC_014933.1 Bacteroides helcogenes P 36-108, complete genome
+0.813182	13/1000	20	1.66088e-25	GCF_000189615.1_Clos_symb_WAL_14673_V2_genomic.fna.gz	[55 seqs] NZ_GL834357.1 Clostridium symbiosum WAL-14673 genomic scaffold supercont1.1, whole genome shotgun sequence [...]
+0.806739	11/1000	191	5.24413e-21	GCF_000269545.1_PB_Bact_thet_CL09T03C10_V1_genomic.fna.gz	[16 seqs] NZ_AKBZ01000001.1 Bacteroides finegoldii CL09T03C10 cont1.1, whole genome shotgun sequence [...]
+0.806739	11/1000	199	5.24413e-21	GCF_000273315.1_Bact_xyla_CL03T12C04_V1_genomic.fna.gz	[13 seqs] NZ_JH724294.1 Bacteroides xylanisolvens CL03T12C04 genomic scaffold supercont1.1, whole genome shotgun sequence [...]
+0.816057	14/1000	1	8.32692e-28	GCF_000273465.1_PB_Bact_egge_1_2_48FAA_V1_genomic.fna.gz	[28 seqs] NZ_AKBX01000001.1 Bacteroides eggerthii 1_2_48FAA cont1.1, whole genome shotgun sequence [...]
+0.853596	36/1000	1	6.28358e-84	GCF_000287295.1_ASM28729v1_genomic.fna.gz	NC_018417.1 Candidatus Carsonella ruddii HT isolate Thao2000, complete genome
+0.9919	843/1000	2	0	GCF_000296465.1_Barn_inte_YIT_11860_V1_genomic.fna.gz	[5 seqs] NZ_JH815203.1 Barnesiella intestinihominis YIT 11860 genomic scaffold supercont1.1, whole genome shotgun sequence [...]
+0.803086	10/1000	18	8.19525e-19	GCF_000321325.1_ASM32132v1_genomic.fna.gz	[167 seqs] NZ_ANGL01000167.1 Campylobacter coli BIGS0001, whole genome shotgun sequence [...]
+0.889242	85/1000	13	2.25112e-228	GCF_000350185.1_ASM35018v1_genomic.fna.gz	NC_020518.1 Escherichia coli str. K-12 substr. MDS42 DNA, complete genome
+1	1000/1000	20	0	GCF_000466485.1_ASM46648v1_genomic.fna.gz	[270 seqs] NZ_KE992784.1 Clostridium symbiosum ATCC 14940 genomic scaffold Scaffold0, whole genome shotgun sequence [...]
+0.821262	16/1000	12	1.70432e-32	GCF_000500815.1_GSK202U_genomic.fna.gz	[276 seqs] NZ_AXOB01000001.1 Escherichia coli GSK202U isolate 202 contig001, whole genome shotgun sequence [...]
+0.999952	999/1000	13	0	GCF_000714595.1_ASM71459v1_genomic.fna.gz	NZ_CP007799.1 Escherichia coli Nissle 1917, complete genome
+0.990824	824/1000	46	0	GCF_000723745.1_PRJEB6027_Urmite_genomic.fna.gz	[58 seqs] NZ_CCDQ010000001.1 Akkermansia muciniphila WGS project CCDQ000000000 data, isolate Urmite, contig 00001, whole genome shotgun sequence [...]
+0.841982	27/1000	12	6.11217e-60	GCF_000798535.1_Escherichia_coli_CVM_N36837PS_v._1.0_genomic.fna.gz	[145 seqs] NZ_JUCE01000001.1 Escherichia coli strain CVM N36837PS N36837PS_contig_1, whole genome shotgun sequence [...]
+0.806739	11/1000	12	5.24413e-21	GCF_000800675.1_ASM80067v1_genomic.fna.gz	[208 seqs] NZ_JTDX01000001.1 Escherichia coli strain GSK252BU contig001, whole genome shotgun sequence [...]
+0.833811	22/1000	1	3.67187e-47	GCF_000829155.1_ASM82915v1_genomic.fna.gz	NZ_AP013293.1 Candidatus Sulcia muelleri PSPU DNA, complete genome
+0.86537	48/1000	14	1.90083e-117	GCF_000836925.1_ViralProj14039_genomic.fna.gz	NC_001954.1 Enterobacteria phage If1, complete genome
+0.916976	162/1000	14	0	GCF_000840245.1_ViralProj14204_genomic.fna.gz	NC_001416.1 Enterobacteria phage lambda, complete genome
+0.823637	17/1000	15	7.01615e-35	GCF_000843125.1_ViralProj14287_genomic.fna.gz	NC_004813.1 Enterobacteria phage BP-4795, complete genome
+0.813182	13/1000	1	1.66088e-25	GCF_000844745.1_ViralProj14444_genomic.fna.gz	NC_003403.1 Ageratum yellow vein virus-associated DNA beta, complete genome
+0.806739	11/1000	1	5.24413e-21	GCF_000844785.1_ViralProj14452_genomic.fna.gz	NC_005497.1 Tomato leaf curl Java virus-[Ageratum] satellite DNA, complete genome
+0.825882	18/1000	1	2.72516e-37	GCF_000845585.1_ViralProj14442_genomic.fna.gz	NC_005049.1 Tobacco leaf curl disease associated sequence virion, complete genome
+0.803086	10/1000	1	8.19525e-19	GCF_000846005.2_ViralProj14539_genomic.fna.gz	NC_005030.2 Tobacco leaf curl Yunnan virus satellite DNA beta clone 17, complete sequence
+0.835578	23/1000	2	1.11057e-49	GCF_000847465.1_ViralProj14655_genomic.fna.gz	NC_001506.1 Murine osteosarcoma virus, complete genome
+0.833811	22/1000	2	3.67187e-47	GCF_000848265.1_ViralProj14654_genomic.fna.gz	NC_001499.1 Abelson murine leukemia virus, complete genome
+0.803086	10/1000	6	8.19525e-19	GCF_000848385.1_ViralProj14678_genomic.fna.gz	NC_001782.1 Saccharomyces cerevisiae killer virus M1, complete genome
+0.816057	14/1000	13	8.32692e-28	GCF_000848825.1_ViralProj14592_genomic.fna.gz	NC_002167.1 Enterobacteria phage HK97, complete genome
+0.850067	33/1000	2	8.29638e-76	GCF_000849885.1_ViralProj14641_genomic.fna.gz	NC_001500.1 Spleen focus-forming virus, complete genome
+0.810088	12/1000	2	3.07321e-23	GCF_000852025.1_ViralMultiSegProj14767_genomic.fna.gz	[3 seqs] NC_003625.1 Impatiens necrotic spot virus segment L, complete sequence [...]
+0.810088	12/1000	6	3.07321e-23	GCF_000857145.1_ViralProj15162_genomic.fna.gz	NC_006957.1 Begomovirus-associated DNA-III, complete genome
+0.810088	12/1000	3	3.07321e-23	GCF_000859005.1_ViralProj15188_genomic.fna.gz	NC_003347.1 Grapevine fleck virus, complete genome
+0.870238	54/1000	1	9.7063e-135	GCF_000859085.1_ViralProj15204_genomic.fna.gz	NC_001702.1 Murine type C retrovirus, complete genome
+0.810088	12/1000	1	3.07321e-23	GCF_000864565.1_ViralProj16631_genomic.fna.gz	NC_007815.2 PreXMRV-1 provirus, complete genome
+0.806739	11/1000	2	5.24413e-21	GCF_000869565.1_ViralProj18249_genomic.fna.gz	NC_008579.1 Croton yellow vein mosaic virus satellite DNA beta, complete genome
+0.810088	12/1000	2	3.07321e-23	GCF_000871765.1_ViralProj19833_genomic.fna.gz	NC_009562.1 Alternanthera yellow vein virus satellite DNA beta, complete genome
+0.803086	10/1000	1	8.19525e-19	GCF_000872085.1_ViralProj20983_genomic.fna.gz	NC_009893.1 Tomato yellow dwarf disease associated satellite DNA beta-[Kochi] virus, complete genome
+0.806739	11/1000	1	5.24413e-21	GCF_000872545.1_ViralProj28283_genomic.fna.gz	NC_010235.1 Pepper leaf curl virus satellite DNA beta, complete genome
+0.803086	10/1000	3	8.19525e-19	GCF_000872785.1_ViralProj29233_genomic.fna.gz	NC_010569.1 Ludwigia leaf distortion betasatellite [India:Amadalavalasa:Hibiscus:2007], complete genome
+0.821262	16/1000	2	1.70432e-32	GCF_000873345.1_ViralProj19829_genomic.fna.gz	NC_009560.1 Tomato yellow leaf curl Vietnam virus satellite DNA beta, complete genome
+0.870998	55/1000	6	1.18762e-137	GCF_000873845.1_ViralProj19737_genomic.fna.gz	NC_009514.1 Phage cdtI DNA, complete genome
+0.899042	107/1000	15	3.16584e-298	GCF_000880675.1_ViralProj32213_genomic.fna.gz	NC_011357.1 Stx2-converting phage 1717, complete prophage genome
+0.816057	14/1000	2	8.32692e-28	GCF_000881315.1_ViralProj37893_genomic.fna.gz	NC_012666.1 Emilia yellow vein virus-associated DNA beta, complete genome
+0.85789	40/1000	13	6.29553e-95	GCF_000882275.1_ViralProj32231_genomic.fna.gz	NC_011356.1 Enterobacteria phage YYZ-2008, complete prophage genome
+0.806739	11/1000	2	5.24413e-21	GCF_000885355.1_ViralProj41305_genomic.fna.gz	NC_013424.1 Leucas zeylanica yellow vein virus satellite DNA beta, complete genome
+0.810088	12/1000	6	3.07321e-23	GCF_000888115.1_ViralProj45931_genomic.fna.gz	NC_013801.1 Croton yellow vein mosaic alphasatellite, complete genome
+0.853272	24/672	4	2.06157e-56	GCF_000899295.1_ViralProj176433_genomic.fna.gz	NC_018671.1 Sauropus leaf curl disease associated DNA beta, complete genome
+0.818742	15/1000	2	3.89264e-30	GCF_000900915.1_ViralProj181248_genomic.fna.gz	NC_019532.1 Tomato yellow leaf curl China betasatellite, complete genome
+0.851276	34/1000	14	1.67847e-78	GCF_000901015.1_ViralProj183139_genomic.fna.gz	NC_019710.1 Enterobacteria phage HK140, complete genome
+0.831966	21/1000	15	1.16007e-44	GCF_000901055.1_ViralProj183147_genomic.fna.gz	NC_019704.1 Enterobacteria phage mEp237, complete genome
+0.94939	336/1000	9	0	GCF_000902075.1_ViralProj183145_genomic.fna.gz	NC_019706.1 Enterobacteria phage mEp043 c-1, complete genome
+0.835578	23/1000	13	1.11057e-49	GCF_000902695.1_ViralProj183144_genomic.fna.gz	NC_019711.1 Enterobacteria phage HK629, complete genome
+0.844852	29/1000	7	3.60207e-65	GCF_000902715.1_ViralProj183148_genomic.fna.gz	NC_019716.1 Enterobacteria phage mEp460, complete genome
+0.910933	141/1000	13	0	GCF_000903195.1_ViralProj181070_genomic.fna.gz	NC_019488.1 Salmonella phage RE-2010, complete genome
+0.875303	61/1000	13	2.69839e-155	GCF_000903215.1_ViralProj181074_genomic.fna.gz	NC_019445.1 Escherichia phage TL-2011b, complete genome
+0.810088	12/1000	8	3.07321e-23	GCF_000903615.1_ViralProj183150_genomic.fna.gz	NC_019705.1 Enterobacteria phage mEpX2, complete genome
+0.806739	11/1000	10	5.24413e-21	GCF_000906375.1_ViralMultiSegProj198687_genomic.fna.gz	[2 seqs] NC_021098.1 Hop trefoil cryptic virus 2 isolate IPP_GelbSK segment RNA 1, complete sequence [...]
+0.847114	20/652	2	6.22085e-46	GCF_000910735.1_ViralProj214366_genomic.fna.gz	NC_021929.1 Malvastrum leaf curl Philippines betasatellite, complete sequence
+0.823637	17/1000	16	7.01615e-35	GCF_000912815.1_ViralMultiSegProj225921_genomic.fna.gz	[2 seqs] NC_022614.1 Dill cryptic virus 1 isolate IPP_hortorum segment 1, complete sequence [...]
+0.850067	33/1000	141	8.29638e-76	GCF_000913735.1_ViralProj227000_genomic.fna.gz	NC_022749.1 Shigella phage SfIV, complete genome
+0.816057	14/1000	2	8.32692e-28	GCF_000915275.1_ViralProj233414_genomic.fna.gz	NC_023292.1 Papaya leaf curl alphasatellite clone PaLCuA[PK/Mul/07], complete sequence
+0.806739	11/1000	1	5.24413e-21	GCF_000915855.1_ViralProj230991_genomic.fna.gz	NC_023015.1 Hedyotis uncinella yellow mosaic betasatellite isolate VN1, complete genome
+0.831966	21/1000	4	1.16007e-44	GCF_000920515.2_ViralProj243492_genomic.fna.gz	NC_023876.2 Andrographis yellow vein leaf curl betasatellite clone bt-2, complete sequence
+0.829075	13/666	6	8.27782e-28	GCF_000922435.1_ViralProj259986_genomic.fna.gz	NC_024777.1 Small begomovirus-associated satellite isolate Sa19-S1, complete sequence
+0.803086	10/1000	1	8.19525e-19	GCF_000923375.1_ViralProj257741_genomic.fna.gz	NC_024695.1 Rose leaf curl betasatellite isolate AS23, complete sequence
+0.880455	69/1000	11	3.07903e-179	GCF_001015325.1_ViralProj284780_genomic.fna.gz	NC_021190.1 Enterobacteria phage phi80, complete genome
+0.803086	10/1000	16	8.19525e-19	GCF_001257335.1_9870_7_2_genomic.fna.gz	[139 seqs] NZ_CXNS01000001.1 Shigella sonnei strain 144366, whole genome shotgun sequence [...]
+0.833811	22/1000	8	3.67187e-47	GCF_001284165.1_8205_3_33_genomic.fna.gz	[29 seqs] NZ_CYDZ01000001.1 Escherichia coli strain 402078, whole genome shotgun sequence [...]
+1	1000/1000	233	0	GCF_001314995.1_ASM131499v1_genomic.fna.gz	NZ_CP012938.1 Bacteroides ovatus strain ATCC 8483, complete genome
+0.872481	57/1000	84	1.6796e-143	GCF_001373135.1_2e6A_assembly_genomic.fna.gz	[1730 seqs] NZ_CDQO01000001.1 Bacteroides thetaiotaomicron genome assembly 2e6A_assembly, contig CC.2e6_A_c1, whole genome shotgun sequence [...]
+0.830035	20/1000	9	3.49495e-42	GCF_001398275.1_7501_6_61_genomic.fna.gz	[53 seqs] NZ_CVNW01000001.1 Chlamydia trachomatis genome assembly 7501_6#61, scaffold ERS082930SCcontig000001, whole genome shotgun sequence [...]
+0.810088	12/1000	43	3.07321e-23	GCF_001401365.1_ViralProj299179_genomic.fna.gz	NC_028095.1 Torulaspora delbrueckii dsRNA Mbarr-1 killer virus strain EX1180 Kbarr-1 killer toxin gene, complete cds
+0.828011	19/1000	111	1.00178e-39	GCF_001403955.1_2a7B_assembly2_genomic.fna.gz	[929 seqs] NZ_CELP01000001.1 Bacteroides uniformis genome assembly 2a7B_assembly2, contig CC_2a7_B_c1, whole genome shotgun sequence [...]
+0.835578	23/1000	212	1.11057e-49	GCF_001404475.1_13414_6_24_genomic.fna.gz	[40 seqs] NZ_CYZH01000001.1 Bacteroides finegoldii strain 2789STDY5608840, whole genome shotgun sequence [...]
+0.806739	11/1000	76	5.24413e-21	GCF_001405255.1_13414_6_57_genomic.fna.gz	[31 seqs] NZ_CYYB01000001.1 Bacteroides thetaiotaomicron strain 2789STDY5608873, whole genome shotgun sequence [...]
+0.803086	10/1000	2	8.19525e-19	GCF_001406835.1_T1815_genomic.fna.gz	[90 seqs] NZ_CVRQ01000001.1 [Eubacterium] rectale strain T1-815 genome assembly, contig: T1815_10, whole genome shotgun sequence [...]
+0.825882	18/1000	3	2.72516e-37	GCF_001429995.1_ViralProj300248_genomic.fna.gz	NC_028116.1 Ageratum conyzoides symptomless alphasatellite isolate WOK80, complete sequence
+0.806739	11/1000	7	5.24413e-21	GCF_001433605.1_ViralMultiSegProj301071_genomic.fna.gz	[2 seqs] NC_028251.1 Rosellinia necatrix partitivirus 6 RdRp gene for RNA dependent RNA polymerase, complete cds, strain: W113 [...]
+0.848822	32/1000	83	3.97604e-73	GCF_001470915.2_ViralProj306295_genomic.fna.gz	NC_028696.2 Salmonella phage SEN22, complete genome
+0.835578	23/1000	1	1.11057e-49	GCF_001477375.1_ASM147737v1_genomic.fna.gz	[145 seqs] NZ_LDTS01000001.1 Staphylococcus warneri strain SA10 contig_1, whole genome shotgun sequence [...]
+0.828011	19/1000	11	1.00178e-39	GCF_001567055.1_ViralProj312709_genomic.fna.gz	NC_029302.1 Piscine myocarditis-like virus isolate Golden shiner/PMCLV/USA/MN/2014, complete genome
+0.952766	362/1000	2	0	GCF_001619015.1_ViralProj318036_genomic.fna.gz	NC_029853.1 Mus musculus mobilized endogenous polytropic provirus clone 15 truncated gag-pol polyprotein (gag) and envelope protein (env) genes, complete cds
+0.825882	18/1000	1	2.72516e-37	GCF_001669805.1_ViralProj326001_genomic.fna.gz	NC_030309.1 Chayote yellow mosaic Benin betasatellite isolate Cameroon-Kumba-Papaya-20-14, complete sequence
+0.806739	11/1000	1	5.24413e-21	GCF_001677255.1_ASM167725v1_genomic.fna.gz	NZ_CP016223.1 Candidatus Sulcia muelleri strain NC, complete genome
+0.84754	31/1000	195	1.84588e-70	GCF_001688725.1_ASM168872v1_genomic.fna.gz	NZ_CP015401.1 Bacteroides caecimuris strain I48, complete genome
+0.828011	19/1000	40	1.00178e-39	GCF_001688765.1_ASM168876v1_genomic.fna.gz	NZ_CP015409.1 Akkermansia muciniphila strain YL44, complete genome
+0.821262	16/1000	3	1.70432e-32	GCF_001723045.1_ViralMultiSegProj342456_genomic.fna.gz	[2 seqs] NC_030878.1 Fusarium poae partitivirus 2 genomic RNA, segment 1, complete sequence [...]
+0.803086	10/1000	4	8.19525e-19	GCF_001744215.1_ViralProj344312_genomic.fna.gz	NC_031129.1 Salmonella phage SJ46, complete genome
+0.818742	15/1000	1	3.89264e-30	GCF_900016785.1_BTsPazieg1.0_genomic.fna.gz	[3 seqs] NZ_LN890285.1 Buchnera aphidicola (Tuberolachnus salignus) strain BTs genome assembly, chromosome: 1 [...]
+0.810088	12/1000	319	3.07321e-23	GCF_900100465.1_IMG-taxon_2654588146_annotated_assembly_genomic.fna.gz	[174 seqs] NZ_FNDO01000173.1 Bacteroides ovatus strain NLAE-zl-C57, whole genome shotgun sequence [...]
+0.861792	44/1000	219	4.17631e-106	GCF_900102645.1_IMG-taxon_2654588143_annotated_assembly_genomic.fna.gz	[125 seqs] NZ_FMYE01000123.1 Bacteroides ovatus strain NLAE-zl-C500, whole genome shotgun sequence [...]
+0.999184	983/1000	106	0	GCF_900107315.1_IMG-taxon_2693429911_annotated_assembly_genomic.fna.gz	[52 seqs] NZ_FNPN01000052.1 Bacteroides uniformis strain DSM 6597, whole genome shotgun sequence [...]
