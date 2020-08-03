@@ -1,0 +1,235 @@
+host_sex,species,week,condition,detected
+female,Bacteroides ovatus,Weeks 1-3,Standard chow,TRUE
+female,Bacteroides ovatus,Week 4,Cocoa butter diet,FALSE
+female,Bacteroides ovatus,Week 5,Standard chow Pre-re-gavage,TRUE
+female,Bacteroides ovatus,Week 6,Standard chow and re-gavaged,TRUE
+female,Bacteroides ovatus,Week 7,Soybean oil diet,TRUE
+female,Bacteroides ovatus,Week 8,Corn oil diet,TRUE
+female,Bacteroides ovatus,Week 9,Standard chow,TRUE
+female,Bacteroides ovatus,Week 10,Whey protein diet (fat = corn oil),TRUE
+female,Bacteroides ovatus,Week 11,Repeat of Soybean oil diet,FALSE
+female,Bacteroides uniformis,Weeks 1-3,Standard chow,TRUE
+female,Bacteroides uniformis,Week 4,Cocoa butter diet,FALSE
+female,Bacteroides uniformis,Week 5,Standard chow Pre-re-gavage,TRUE
+female,Bacteroides uniformis,Week 6,Standard chow and re-gavaged,TRUE
+female,Bacteroides uniformis,Week 7,Soybean oil diet,TRUE
+female,Bacteroides uniformis,Week 8,Corn oil diet,TRUE
+female,Bacteroides uniformis,Week 9,Standard chow,TRUE
+female,Bacteroides uniformis,Week 10,Whey protein diet (fat = corn oil),TRUE
+female,Bacteroides uniformis,Week 11,Repeat of Soybean oil diet,FALSE
+female,Bacteroides caccae,Weeks 1-3,Standard chow,TRUE
+female,Bacteroides caccae,Week 4,Cocoa butter diet,FALSE
+female,Bacteroides caccae,Week 5,Standard chow Pre-re-gavage,TRUE
+female,Bacteroides caccae,Week 6,Standard chow and re-gavaged,TRUE
+female,Bacteroides caccae,Week 7,Soybean oil diet,TRUE
+female,Bacteroides caccae,Week 8,Corn oil diet,TRUE
+female,Bacteroides caccae,Week 9,Standard chow,TRUE
+female,Bacteroides caccae,Week 10,Whey protein diet (fat = corn oil),FALSE
+female,Bacteroides caccae,Week 11,Repeat of Soybean oil diet,FALSE
+female,Bacteroides thetaiomicron,Weeks 1-3,Standard chow,TRUE
+female,Bacteroides thetaiomicron,Week 4,Cocoa butter diet,FALSE
+female,Bacteroides thetaiomicron,Week 5,Standard chow Pre-re-gavage,FALSE
+female,Bacteroides thetaiomicron,Week 6,Standard chow and re-gavaged,TRUE
+female,Bacteroides thetaiomicron,Week 7,Soybean oil diet,TRUE
+female,Bacteroides thetaiomicron,Week 8,Corn oil diet,TRUE
+female,Bacteroides thetaiomicron,Week 9,Standard chow,TRUE
+female,Bacteroides thetaiomicron,Week 10,Whey protein diet (fat = corn oil),TRUE
+female,Bacteroides thetaiomicron,Week 11,Repeat of Soybean oil diet,FALSE
+female,Banesiella intestinihominis,Weeks 1-3,Standard chow,TRUE
+female,Banesiella intestinihominis,Week 4,Cocoa butter diet,FALSE
+female,Banesiella intestinihominis,Week 5,Standard chow Pre-re-gavage,FALSE
+female,Banesiella intestinihominis,Week 6,Standard chow and re-gavaged,TRUE
+female,Banesiella intestinihominis,Week 7,Soybean oil diet,TRUE
+female,Banesiella intestinihominis,Week 8,Corn oil diet,FALSE
+female,Banesiella intestinihominis,Week 9,Standard chow,TRUE
+female,Banesiella intestinihominis,Week 10,Whey protein diet (fat = corn oil),FALSE
+female,Banesiella intestinihominis,Week 11,Repeat of Soybean oil diet,FALSE
+female,Eubacterium rectale,Weeks 1-3,Standard chow,FALSE
+female,Eubacterium rectale,Week 4,Cocoa butter diet,FALSE
+female,Eubacterium rectale,Week 5,Standard chow Pre-re-gavage,FALSE
+female,Eubacterium rectale,Week 6,Standard chow and re-gavaged,FALSE
+female,Eubacterium rectale,Week 7,Soybean oil diet,FALSE
+female,Eubacterium rectale,Week 8,Corn oil diet,FALSE
+female,Eubacterium rectale,Week 9,Standard chow,FALSE
+female,Eubacterium rectale,Week 10,Whey protein diet (fat = corn oil),FALSE
+female,Eubacterium rectale,Week 11,Repeat of Soybean oil diet,FALSE
+female,Roseburia intestinalis,Weeks 1-3,Standard chow,TRUE
+female,Roseburia intestinalis,Week 4,Cocoa butter diet,FALSE
+female,Roseburia intestinalis,Week 5,Standard chow Pre-re-gavage,TRUE
+female,Roseburia intestinalis,Week 6,Standard chow and re-gavaged,TRUE
+female,Roseburia intestinalis,Week 7,Soybean oil diet,TRUE
+female,Roseburia intestinalis,Week 8,Corn oil diet,FALSE
+female,Roseburia intestinalis,Week 9,Standard chow,TRUE
+female,Roseburia intestinalis,Week 10,Whey protein diet (fat = corn oil),FALSE
+female,Roseburia intestinalis,Week 11,Repeat of Soybean oil diet,FALSE
+female,Faecalibacterium prausnitzii,Weeks 1-3,Standard chow,FALSE
+female,Faecalibacterium prausnitzii,Week 4,Cocoa butter diet,FALSE
+female,Faecalibacterium prausnitzii,Week 5,Standard chow Pre-re-gavage,FALSE
+female,Faecalibacterium prausnitzii,Week 6,Standard chow and re-gavaged,FALSE
+female,Faecalibacterium prausnitzii,Week 7,Soybean oil diet,FALSE
+female,Faecalibacterium prausnitzii,Week 8,Corn oil diet,FALSE
+female,Faecalibacterium prausnitzii,Week 9,Standard chow,FALSE
+female,Faecalibacterium prausnitzii,Week 10,Whey protein diet (fat = corn oil),FALSE
+female,Faecalibacterium prausnitzii,Week 11,Repeat of Soybean oil diet,FALSE
+female,Marvinbryantia formatexigens,Weeks 1-3,Standard chow,TRUE
+female,Marvinbryantia formatexigens,Week 4,Cocoa butter diet,FALSE
+female,Marvinbryantia formatexigens,Week 5,Standard chow Pre-re-gavage,FALSE
+female,Marvinbryantia formatexigens,Week 6,Standard chow and re-gavaged,TRUE
+female,Marvinbryantia formatexigens,Week 7,Soybean oil diet,TRUE
+female,Marvinbryantia formatexigens,Week 8,Corn oil diet,FALSE
+female,Marvinbryantia formatexigens,Week 9,Standard chow,TRUE
+female,Marvinbryantia formatexigens,Week 10,Whey protein diet (fat = corn oil),FALSE
+female,Marvinbryantia formatexigens,Week 11,Repeat of Soybean oil diet,FALSE
+female,Clostridium symbiosum,Weeks 1-3,Standard chow,TRUE
+female,Clostridium symbiosum,Week 4,Cocoa butter diet,FALSE
+female,Clostridium symbiosum,Week 5,Standard chow Pre-re-gavage,TRUE
+female,Clostridium symbiosum,Week 6,Standard chow and re-gavaged,TRUE
+female,Clostridium symbiosum,Week 7,Soybean oil diet,TRUE
+female,Clostridium symbiosum,Week 8,Corn oil diet,FALSE
+female,Clostridium symbiosum,Week 9,Standard chow,TRUE
+female,Clostridium symbiosum,Week 10,Whey protein diet (fat = corn oil),FALSE
+female,Clostridium symbiosum,Week 11,Repeat of Soybean oil diet,FALSE
+female,Collinsella aerofaciens,Weeks 1-3,Standard chow,TRUE
+female,Collinsella aerofaciens,Week 4,Cocoa butter diet,FALSE
+female,Collinsella aerofaciens,Week 5,Standard chow Pre-re-gavage,TRUE
+female,Collinsella aerofaciens,Week 6,Standard chow and re-gavaged,TRUE
+female,Collinsella aerofaciens,Week 7,Soybean oil diet,TRUE
+female,Collinsella aerofaciens,Week 8,Corn oil diet,FALSE
+female,Collinsella aerofaciens,Week 9,Standard chow,TRUE
+female,Collinsella aerofaciens,Week 10,Whey protein diet (fat = corn oil),FALSE
+female,Collinsella aerofaciens,Week 11,Repeat of Soybean oil diet,FALSE
+female,Akkermansia muciniphila,Weeks 1-3,Standard chow,TRUE
+female,Akkermansia muciniphila,Week 4,Cocoa butter diet,FALSE
+female,Akkermansia muciniphila,Week 5,Standard chow Pre-re-gavage,TRUE
+female,Akkermansia muciniphila,Week 6,Standard chow and re-gavaged,TRUE
+female,Akkermansia muciniphila,Week 7,Soybean oil diet,TRUE
+female,Akkermansia muciniphila,Week 8,Corn oil diet,TRUE
+female,Akkermansia muciniphila,Week 9,Standard chow,TRUE
+female,Akkermansia muciniphila,Week 10,Whey protein diet (fat = corn oil),TRUE
+female,Akkermansia muciniphila,Week 11,Repeat of Soybean oil diet,FALSE
+female,Escherichia coli,Weeks 1-3,Standard chow,TRUE
+female,Escherichia coli,Week 4,Cocoa butter diet,FALSE
+female,Escherichia coli,Week 5,Standard chow Pre-re-gavage,TRUE
+female,Escherichia coli,Week 6,Standard chow and re-gavaged,TRUE
+female,Escherichia coli,Week 7,Soybean oil diet,TRUE
+female,Escherichia coli,Week 8,Corn oil diet,TRUE
+female,Escherichia coli,Week 9,Standard chow,TRUE
+female,Escherichia coli,Week 10,Whey protein diet (fat = corn oil),FALSE
+female,Escherichia coli,Week 11,Repeat of Soybean oil diet,FALSE
+male,Bacteroides ovatus,Weeks 1-3,Standard chow,TRUE
+male,Bacteroides ovatus,Week 4,Cocoa butter diet,FALSE
+male,Bacteroides ovatus,Week 5,Standard chow Pre-re-gavage,TRUE
+male,Bacteroides ovatus,Week 6,Standard chow and re-gavaged,TRUE
+male,Bacteroides ovatus,Week 7,Soybean oil diet,TRUE
+male,Bacteroides ovatus,Week 8,Corn oil diet,FALSE
+male,Bacteroides ovatus,Week 9,Standard chow,TRUE
+male,Bacteroides ovatus,Week 10,Whey protein diet (fat = corn oil),FALSE
+male,Bacteroides ovatus,Week 11,Repeat of Soybean oil diet,FALSE
+male,Bacteroides uniformis,Weeks 1-3,Standard chow,TRUE
+male,Bacteroides uniformis,Week 4,Cocoa butter diet,FALSE
+male,Bacteroides uniformis,Week 5,Standard chow Pre-re-gavage,TRUE
+male,Bacteroides uniformis,Week 6,Standard chow and re-gavaged,TRUE
+male,Bacteroides uniformis,Week 7,Soybean oil diet,TRUE
+male,Bacteroides uniformis,Week 8,Corn oil diet,FALSE
+male,Bacteroides uniformis,Week 9,Standard chow,TRUE
+male,Bacteroides uniformis,Week 10,Whey protein diet (fat = corn oil),FALSE
+male,Bacteroides uniformis,Week 11,Repeat of Soybean oil diet,FALSE
+male,Bacteroides caccae,Weeks 1-3,Standard chow,TRUE
+male,Bacteroides caccae,Week 4,Cocoa butter diet,FALSE
+male,Bacteroides caccae,Week 5,Standard chow Pre-re-gavage,TRUE
+male,Bacteroides caccae,Week 6,Standard chow and re-gavaged,TRUE
+male,Bacteroides caccae,Week 7,Soybean oil diet,TRUE
+male,Bacteroides caccae,Week 8,Corn oil diet,FALSE
+male,Bacteroides caccae,Week 9,Standard chow,TRUE
+male,Bacteroides caccae,Week 10,Whey protein diet (fat = corn oil),FALSE
+male,Bacteroides caccae,Week 11,Repeat of Soybean oil diet,FALSE
+male,Bacteroides thetaiomicron,Weeks 1-3,Standard chow,TRUE
+male,Bacteroides thetaiomicron,Week 4,Cocoa butter diet,FALSE
+male,Bacteroides thetaiomicron,Week 5,Standard chow Pre-re-gavage,TRUE
+male,Bacteroides thetaiomicron,Week 6,Standard chow and re-gavaged,TRUE
+male,Bacteroides thetaiomicron,Week 7,Soybean oil diet,TRUE
+male,Bacteroides thetaiomicron,Week 8,Corn oil diet,FALSE
+male,Bacteroides thetaiomicron,Week 9,Standard chow,TRUE
+male,Bacteroides thetaiomicron,Week 10,Whey protein diet (fat = corn oil),FALSE
+male,Bacteroides thetaiomicron,Week 11,Repeat of Soybean oil diet,FALSE
+male,Banesiella intestinihominis,Weeks 1-3,Standard chow,TRUE
+male,Banesiella intestinihominis,Week 4,Cocoa butter diet,FALSE
+male,Banesiella intestinihominis,Week 5,Standard chow Pre-re-gavage,FALSE
+male,Banesiella intestinihominis,Week 6,Standard chow and re-gavaged,TRUE
+male,Banesiella intestinihominis,Week 7,Soybean oil diet,TRUE
+male,Banesiella intestinihominis,Week 8,Corn oil diet,FALSE
+male,Banesiella intestinihominis,Week 9,Standard chow,TRUE
+male,Banesiella intestinihominis,Week 10,Whey protein diet (fat = corn oil),FALSE
+male,Banesiella intestinihominis,Week 11,Repeat of Soybean oil diet,FALSE
+male,Eubacterium rectale,Weeks 1-3,Standard chow,FALSE
+male,Eubacterium rectale,Week 4,Cocoa butter diet,FALSE
+male,Eubacterium rectale,Week 5,Standard chow Pre-re-gavage,FALSE
+male,Eubacterium rectale,Week 6,Standard chow and re-gavaged,FALSE
+male,Eubacterium rectale,Week 7,Soybean oil diet,FALSE
+male,Eubacterium rectale,Week 8,Corn oil diet,FALSE
+male,Eubacterium rectale,Week 9,Standard chow,FALSE
+male,Eubacterium rectale,Week 10,Whey protein diet (fat = corn oil),FALSE
+male,Eubacterium rectale,Week 11,Repeat of Soybean oil diet,FALSE
+male,Roseburia intestinalis,Weeks 1-3,Standard chow,TRUE
+male,Roseburia intestinalis,Week 4,Cocoa butter diet,FALSE
+male,Roseburia intestinalis,Week 5,Standard chow Pre-re-gavage,FALSE
+male,Roseburia intestinalis,Week 6,Standard chow and re-gavaged,TRUE
+male,Roseburia intestinalis,Week 7,Soybean oil diet,TRUE
+male,Roseburia intestinalis,Week 8,Corn oil diet,FALSE
+male,Roseburia intestinalis,Week 9,Standard chow,TRUE
+male,Roseburia intestinalis,Week 10,Whey protein diet (fat = corn oil),FALSE
+male,Roseburia intestinalis,Week 11,Repeat of Soybean oil diet,FALSE
+male,Faecalibacterium prausnitzii,Weeks 1-3,Standard chow,FALSE
+male,Faecalibacterium prausnitzii,Week 4,Cocoa butter diet,FALSE
+male,Faecalibacterium prausnitzii,Week 5,Standard chow Pre-re-gavage,FALSE
+male,Faecalibacterium prausnitzii,Week 6,Standard chow and re-gavaged,FALSE
+male,Faecalibacterium prausnitzii,Week 7,Soybean oil diet,FALSE
+male,Faecalibacterium prausnitzii,Week 8,Corn oil diet,FALSE
+male,Faecalibacterium prausnitzii,Week 9,Standard chow,FALSE
+male,Faecalibacterium prausnitzii,Week 10,Whey protein diet (fat = corn oil),FALSE
+male,Faecalibacterium prausnitzii,Week 11,Repeat of Soybean oil diet,FALSE
+male,Marvinbryantia formatexigens,Weeks 1-3,Standard chow,TRUE
+male,Marvinbryantia formatexigens,Week 4,Cocoa butter diet,FALSE
+male,Marvinbryantia formatexigens,Week 5,Standard chow Pre-re-gavage,FALSE
+male,Marvinbryantia formatexigens,Week 6,Standard chow and re-gavaged,TRUE
+male,Marvinbryantia formatexigens,Week 7,Soybean oil diet,TRUE
+male,Marvinbryantia formatexigens,Week 8,Corn oil diet,FALSE
+male,Marvinbryantia formatexigens,Week 9,Standard chow,TRUE
+male,Marvinbryantia formatexigens,Week 10,Whey protein diet (fat = corn oil),FALSE
+male,Marvinbryantia formatexigens,Week 11,Repeat of Soybean oil diet,FALSE
+male,Clostridium symbiosum,Weeks 1-3,Standard chow,TRUE
+male,Clostridium symbiosum,Week 4,Cocoa butter diet,FALSE
+male,Clostridium symbiosum,Week 5,Standard chow Pre-re-gavage,TRUE
+male,Clostridium symbiosum,Week 6,Standard chow and re-gavaged,TRUE
+male,Clostridium symbiosum,Week 7,Soybean oil diet,TRUE
+male,Clostridium symbiosum,Week 8,Corn oil diet,FALSE
+male,Clostridium symbiosum,Week 9,Standard chow,TRUE
+male,Clostridium symbiosum,Week 10,Whey protein diet (fat = corn oil),FALSE
+male,Clostridium symbiosum,Week 11,Repeat of Soybean oil diet,FALSE
+male,Collinsella aerofaciens,Weeks 1-3,Standard chow,TRUE
+male,Collinsella aerofaciens,Week 4,Cocoa butter diet,FALSE
+male,Collinsella aerofaciens,Week 5,Standard chow Pre-re-gavage,TRUE
+male,Collinsella aerofaciens,Week 6,Standard chow and re-gavaged,TRUE
+male,Collinsella aerofaciens,Week 7,Soybean oil diet,TRUE
+male,Collinsella aerofaciens,Week 8,Corn oil diet,FALSE
+male,Collinsella aerofaciens,Week 9,Standard chow,TRUE
+male,Collinsella aerofaciens,Week 10,Whey protein diet (fat = corn oil),FALSE
+male,Collinsella aerofaciens,Week 11,Repeat of Soybean oil diet,FALSE
+male,Akkermansia muciniphila,Weeks 1-3,Standard chow,TRUE
+male,Akkermansia muciniphila,Week 4,Cocoa butter diet,FALSE
+male,Akkermansia muciniphila,Week 5,Standard chow Pre-re-gavage,TRUE
+male,Akkermansia muciniphila,Week 6,Standard chow and re-gavaged,TRUE
+male,Akkermansia muciniphila,Week 7,Soybean oil diet,TRUE
+male,Akkermansia muciniphila,Week 8,Corn oil diet,FALSE
+male,Akkermansia muciniphila,Week 9,Standard chow,TRUE
+male,Akkermansia muciniphila,Week 10,Whey protein diet (fat = corn oil),FALSE
+male,Akkermansia muciniphila,Week 11,Repeat of Soybean oil diet,FALSE
+male,Escherichia coli,Weeks 1-3,Standard chow,TRUE
+male,Escherichia coli,Week 4,Cocoa butter diet,FALSE
+male,Escherichia coli,Week 5,Standard chow Pre-re-gavage,TRUE
+male,Escherichia coli,Week 6,Standard chow and re-gavaged,TRUE
+male,Escherichia coli,Week 7,Soybean oil diet,TRUE
+male,Escherichia coli,Week 8,Corn oil diet,FALSE
+male,Escherichia coli,Week 9,Standard chow,TRUE
+male,Escherichia coli,Week 10,Whey protein diet (fat = corn oil),FALSE
+male,Escherichia coli,Week 11,Repeat of Soybean oil diet,FALSE

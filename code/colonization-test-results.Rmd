@@ -1,0 +1,38 @@
+---
+author: Michael McLaren
+---
+
+```{r}
+library(tidyverse)
+library(here)
+```
+
+This script tidies up the lab colonization assay results from the file
+"colonization-summary.xlsx". The original source is the file
+"Summary_Colonization.docx" received via email from Angie Mordant on
+2020-02-25. To obtain "colonization-summary.xlsx", I copied this table into a
+[Google Sheet](https://docs.google.com/spreadsheets/d/1w26gw4avdt8UYobSr1JW7w974VPFmzR08Ua2o9zHibQ/),
+filled in all green cells with "TRUE", fixed some spelling errors, and edited
+the column titles, then exported to an Excel file.
+
+```{r}
+fn <- here("data/lab", "colonization-summary.xlsx")
+tb <- c(female = 1, male = 2) %>%
+  map_dfr(~readxl::read_excel(fn, sheet = .), .id = "host_sex")
+glimpse(tb)
+```
+
+```{r}
+tb1 <- tb %>%
+  rename_at("Species", str_to_lower) %>%
+  pivot_longer(c(-host_sex, -species), 
+    names_to = "week_condition",
+    values_to = "detected"
+  ) %>%
+  mutate_at("detected", replace_na, FALSE) %>%
+  separate(week_condition, into = c("week", "condition"), 
+    sep = "(?<=\\d)\\s+") %>%
+  glimpse
+write_csv(tb1, here("results/lab", "colonization-test-results.csv"))
+```
+
