@@ -1,0 +1,84 @@
+/* Reduce margins  */
+.remark-slide-content > h1:first-of-type {
+  margin-top: 0px;
+}
+
+.remark-slide-content {
+  padding-top: 40px;
+  padding-left: 40px;
+  padding-right: 40px;
+  padding-bottom: 40px;
+}
+/* h1 { */
+/*   color: red; */
+/*   font-size: 100px; */
+/* } */
+/* Change body-text size */
+/* .remark-slide-content { */
+/*   font-size: 32px; */
+/* } */
+/* Reduce h1 headings; also reduces all h1, h2, h3 headings proportionally */
+/* .remark-slide-content h1 { */
+/*   font-size: 42px; */
+/*   color: green; */
+/* } */
+.hljs-github h1 {
+  font-size: 42px;
+  /* color: red; */
+}
+.hljs-github h2 {
+  font-size: 36px;
+  /* color: red; */
+}
+.hljs-github h3 {
+  font-size: 32px;
+  /* color: red; */
+}
+/* .remark-slide-content h2 { */
+/*   font-size: 12; */
+/*   color: red; */
+/* } */
+/* .remark-slide-content h3 { */
+/*   font-size: 28; */
+/* } */
+
+/* /* Two-column layout */ */
+/* .left-column { */
+/*   color: #777; */
+/*   width: 20%; */
+/*   /* height: 92%; */ */
+/*   float: left; */
+/* } */
+/* .left-column h2:last-of-type, .left-column h3:last-child { */
+/*   color: #000; */
+/* } */
+/* .right-column { */
+/*   width: 75%; */
+/*   float: right; */
+/*   /* padding-top: 1em; */ */
+/* } */
+
+
+/* https://stackoverflow.com/questions/53510905/can-i-center-and-middle-a-figure-in-html-xaringan-r */
+.center2 {
+  margin: 0;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  -ms-transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%);
+}
+
+
+/* Two-column layout */
+/* Remove padding so that top of left and right columns align */
+.right-column {
+  padding-top: 0em;
+}
+
+.footnote {
+  /* position: absolute; */
+  bottom: 0em;
+  /* padding-right: 4em; */
+  /* font-size: 90%; */
+}

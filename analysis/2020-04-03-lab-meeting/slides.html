@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Measuring differential bias to validate   microbiome calibration controls</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Michael McLaren" />
+    <meta name="date" content="2020-04-03" />
+    <script src="libs/header-attrs-2.3/header-attrs.js"></script>
+    <link href="libs/remark-css-0.0.1/default.css" rel="stylesheet" />
+    <link rel="stylesheet" href="my-theme.css" type="text/css" />
+    <link rel="stylesheet" href="my-fonts.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Measuring differential bias to validate <br> microbiome calibration controls
+## Callahan lab meeting
+### Michael McLaren
+### 2020-04-03
+
+---
+
+
+&lt;!-- Measuring differential bias between metagenomics protocols provides a
+method for validating microbiome calibration controls --&gt;
+
+&lt;!-- Setup {{{1 --&gt;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+&lt;!-- Introduction {{{1 --&gt;
+
+# Different metagenomics protocols make &lt;br&gt; different microbiome measurements
+
+&lt;br&gt;
+
+&lt;img src="figures/costea-phase3-ordination.svg" width="60%"&gt;
+
+???
+
+TODO: switch orientation to match next slide; may need to use layout
+
+Metagenomics-based microbiome measurements have protocol-specific biases that
+cause some taxa to be overestimated while others go virtually undetected.
+
+---
+
+# Bias estimated from control samples can be used &lt;br&gt; to correct target samples (calibration)
+
+&lt;img src="figures/calibration-summary.svg" width="95%"&gt;
+
+???
+
+left panel: calibration schematic; right panel: calibration before/after. Or
+just show calibration schematic.
+
+We (and others?) have previously proposed a methodology for measuring bias from
+control samples and correcting it in co-measured unknown samples (calibration). 
+
+---
+
+# Calibration controls must reflect bias in the target samples
+
+&lt;!-- &lt;img src="figures/D6300_ZymoBIOMICS&amp;#45;Microbial&amp;#45;Community&amp;#45;Standard.jpg" width="10%"&gt; --&gt;
+
+.pull-left[
+  .center[
+  &lt;br&gt; &lt;br&gt; &lt;br&gt; &lt;br&gt;
+   &lt;img src="figures/D6300_ZymoBIOMICS-Microbial-Community-Standard.jpg" alt="Zymo mock community" width="30%"&gt;
+  ]
+]
+
+.pull-right[
+&lt;img src="https://www.healthline.com/hlcmsresource/images/poop_sample-1200x628-facebook.20180514233932653.jpg" width=65% &gt;
+
+&lt;img src="https://bloximages.chicago2.vip.townnews.com/farmtalknewspaper.com/content/tncms/assets/v3/editorial/b/60/b6061efe-cbcf-11e8-8696-a7a2683e944a/5bbcbb59146eb.image.jpg?resize=750%2C448" width=65%&gt;
+
+&lt;img src="figures/20150126-skin-cropped.jpg" width=65%&gt;
+]
+
+
+???
+
+Industrial, academic, and governmental organizations have developed microbiome
+control materials for characterizing the bias of a given protocol. E.g. Zymo,
+
+But control communities differ from natural samples in a variety of ways (such
+as) ...
+
+how do we know that the bias in the controls accurately reflects the bias in
+measurements of natural samples?
+
+(on left, show a mock community ideally zymo; on the right, show different
+types of natural samples e.g. stool, swab, soil) 
+
+So we need a way to test that bias is consistent between control and natural
+samples.
+
+---
+
+&lt;!-- Task --&gt;
+
+# Goal: Develop a method to test whether bias is consistent &lt;br&gt; across sample types and apply it to fecal microbiomes
+
+.pull-left[
+&lt;figure&gt;
+  &lt;img src="figures/Callahan_Ben_crop-300x247.jpg" width=60%&gt;
+  &lt;figcaption&gt;
+  Ben Callahan (NCSU)
+  &lt;/figcaption&gt;
+&lt;/figure&gt;
+&lt;br&gt;
+&lt;figure&gt;
+  &lt;img src="figures/DC-twitter_400x400.jpg" width=45%&gt;
+  &amp;nbsp; &amp;nbsp;
+  &lt;img src="figures/AW-twitter-photo.jpg" width=45%&gt;
+  &lt;figcaption&gt;
+  David Clausen &amp; Amy Willis (UW Biostatistics)
+  &lt;/figcaption&gt;
+&lt;/figure&gt;
+]
+.pull-right[
+&lt;br&gt;
+&lt;br&gt;
+&lt;figure&gt;
+  &lt;img src="figures/Angie-400x600.jpg" width=45%&gt;
+  &amp;nbsp; &amp;nbsp;
+  &lt;img src="figures/kleiner-400x600.jpg" width=45%&gt;
+  &lt;figcaption&gt;
+  Angie Mordant &amp; Manuel Kleiner (NCSU Plant and Microbial Biology)
+  &lt;/figcaption&gt;
+&lt;/figure&gt;
+]
+
+???
+
+We are developing an experimental and statistical methodology for such
+assessments and apply it to test whether bias is consistent between artificial
+and natural communities.
+
+(show collabs on the slide, perhaps split between experimenters and
+non-experimenters)
+perhaps show two icons for the artificial and natural samples that I'll use
+throughout; e.g. a test tube and a poop emoji
+
+main message
+
+Today I'm going to describe the methodology, the experiment, and my initial
+analysis of our the data we have so far.
+
+(perhaps revise this after writing body and conclusions). Consider bringing in
+all collaborators here.
+
+---
+
+&lt;!-- Body {{{1 --&gt;
+&lt;!-- The experiment {{{2 --&gt;
+
+# Problem: Can't measure bias in natural samples &lt;br&gt; because the true composition is unknown
+
+&lt;br&gt;
+
+&lt;img src="figures/differential-bias-example-1.png" width=100%&gt;
+
+---
+
+# Solution: Measure the differential bias between protocols &lt;br&gt; &amp;nbsp;
+
+&lt;br&gt;
+
+&lt;img src="figures/differential-bias-example-3.png" width=100%&gt;
+
+&lt;br&gt;
+
+--
+
+* Differential bias = Bias of Protocol 1 / Bias of Protocol 2, &lt;br&gt;
+  but can be measured without knowing either
+
+* Inconsistent differential bias &amp;harr; inconsistent bias (approx.)
+
+???
+
+The primary difficulty facing such assessments is that a protocol's bias cannot
+be measured in natural samples, as their true composition is unknown. We
+surmount this problem by instead measuring the differential bias between
+different protocols applied to the same sample. Inconsistent differential bias
+-&gt; inconsistent bias in one or both protocols.
+
+This approach requires applying multiple protocols applied to different sample
+types containing the same taxa
+
+---
+
+# Proposed validation method: Compare differential bias&lt;br&gt;in control and natural communities
+
+&lt;img src="inkscape/experiment-logic.svg" width=90%&gt;
+
+--
+
+.center[
+### Ideal (initial) experiment: Same strains in both sample types
+]
+
+
+---
+
+layout: true
+
+# Mordant and Kleiner mouse experiment: &lt;br&gt; Who eats what in the gut
+
+---
+
+&lt;img src="figures/mordant-experiment-goal.png" width="75%"&gt;
+
+???
+angie + manuel experiment: Gnotobiotic (known life) mice - inoculated with
+microbial consortium, aim to understand how bacteria consume mouse diet; 
+
+Our question: Is bias of the inoculum taxa the same in the lab-created mixtures
+and mouse fecal pellets? Might differ b/c the microbes are in a different
+matrix and have potentially physiological differences. Also a validation of
+this methodology. 
+
+Task: Apply different extraction and sequencing protocols, to measure the
+differential bias.
+
+---
+
+&lt;img src="figures/mordant-lab.jpg" width="48%"&gt;
+&amp;nbsp;
+&lt;img src="figures/germ-free-facility.jpg" width="48%"&gt;
+
+.pull-left[
+&lt;img src="figures/mouse-gavage.png" width="90%"&gt;
+]
+.pull-right[
+
+* 200uL of fresh inoculum per mouse
+
+* gavaged 3 consecutive days, &lt;br&gt;weeks 1 and 5
+
+* fecal pellets collected, weeks 2 and 6
+]
+.footnote[
+Images from Angie Mordant
+]
+
+---
+
+layout: true
+
+# Each specimen measured by 2 extraction protocols &lt;br&gt; &amp;times; 2 replicates &amp;times; 4 sequencing methods
+
+&lt;!-- # 1 specimen X 2 extraction protocols X 2 technical replicates X 4 sequencing centers --&gt;
+
+---
+
+&lt;img src="figures/specimen-aliquoting.svg" width="95%"&gt;
+
+---
+
+&lt;img src="figures/specimen-aliquoting-a1.svg" width="95%"&gt;
+
+???
+
+Extraction protocol 1: Modified Fast DNA Stool
+Extraction protocol 2: Modified DNeasy Blood and Tissue
+
+---
+
+layout: false
+
+# Specimen overview
+
+
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt; specimen_type &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; n &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; fecal &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 16 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; inoculum &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 8 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; T. mobilis &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;br&gt;&lt;br&gt;
+
+.pull-left[
+Fecal (mouse) specimens
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt; batch &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; week &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; host_sex &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; n &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; 1 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 2 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; female &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 4 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; 1 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 2 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; male &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 4 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; 2 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 6 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; female &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 4 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; 2 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 6 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; male &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 4 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+]
+.pull-right[
+Inoculum specimens
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt; batch &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; week &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; n &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; 1 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 1 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 3 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; 2 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 1 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; 2 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 5 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 3 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+]
+
+---
+
+# The two protocols had specimen-type-specific &lt;br&gt; differences in DNA yield
+
+&lt;img src="slides_files/figure-html/unnamed-chunk-7-1.png" width="576" /&gt;
+
+???
+
+useful to talk about here.
+- difference between inoc and natural samples - creates a difference between
+  inoc and natural samples that we didn't initially intend; could affect bias
+  (though not expected) but perhaps just noise.
+- difference in yields flipped - indicates inconsistent bias? or an effect of
+  host DNA, or cell concentration?
+
+---
+
+&lt;!-- Preparatory analysis {{{2 --&gt;
+
+# Bioinformatic analysis of A1 sequencing data
+
+&lt;br&gt;
+
+1. Use DADA2 to filter and correct sequencing errors
+
+  - Obtain amplicon sequence variant (ASVs) abundance matrix
+
+--
+
+2. Assign Silva taxonomy to all ASVs with built-in DADA2 functions
+
+  - Useful but insufficient for identifying to species and strain level
+
+--
+
+3. Make custom assignments of ASVs to experimental strains
+
+  - Find ASVs that exactly match a reference sequence for experimental strain
+
+  - Find additional ASVs that appear to be from the same genome
+
+
+---
+
+# DADA2 yields a matrix of counts for each sample &lt;br&gt; and amplicon sequence variant (ASV)
+
+First 5 samples and ASVs:
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt;   &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; A1_ASV1 &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; A1_ASV2 &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; A1_ASV3 &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; A1_ASV4 &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; A1_ASV5 &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; A1_1_1 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 95 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 62 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 14 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 39 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 35 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; A1_1_2 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 3229 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 990 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1170 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1607 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1309 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; A1_10_1 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 18937 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 6839 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 4613 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 7537 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 7597 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; A1_10_2 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 23763 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 10948 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 17179 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 7795 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 7320 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; A1_10_3 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 25428 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 10168 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 14994 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 10319 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 9866 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;br&gt;
+
+```
+#&gt; DNAStringSet object of length 5:
+#&gt;     width seq                                         names               
+#&gt; [1]   253 TACGGAGGATCCGAGCGTTA...AAGTGTGGGTATCAAACAGG A1_ASV1
+#&gt; [2]   253 TACGGAGGGTGCAAGCGTTA...AAGCGTGGGGAGCAAACAGG A1_ASV2
+#&gt; [3]   253 TACAGAGGTCTCAAGCGTTG...AGGCCAGGGGAGCGAAAGGG A1_ASV3
+#&gt; [4]   253 TACGGAGGATCCGAGCGTTA...AAGTGTGGGTATCAAACAGG A1_ASV4
+#&gt; [5]   253 TACGGAGGATCCGAGCGTTA...AAGTGTGGGTATCAAACAGG A1_ASV5
+```
+
+---
+
+# Custom assignment of experimental strains
+
+&lt;br&gt;
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt; asv &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; silva_genus &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; vv_organism &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; vv_source &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; A1_ASV1 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Bacteroides &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Bacteroides ovatus &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; inoculum &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; A1_ASV2 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Escherichia/Shigella &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Escherichia coli &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; inoculum &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; A1_ASV3 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Akkermansia &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Akkermansia muciniphila &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; inoculum &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; A1_ASV4 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Bacteroides &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Bacteroides uniformis &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; inoculum &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; A1_ASV5 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Bacteroides &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Bacteroides thetaiotaomicron &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; inoculum &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; A1_ASV6 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Staphylococcus &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Staphylococcus aureus &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Other &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; A1_ASV7 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Lachnoclostridium &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Clostridium symbiosum &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; inoculum &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; A1_ASV8 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Bacteroides &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Bacteroides ovatus &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; inoculum &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; A1_ASV9 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Roseburia &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Roseburia intestinalis &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; inoculum &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; A1_ASV10 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Bacteroides &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Bacteroides caccae &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; inoculum &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; A1_ASV11 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Thioflavicoccus &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Thioflavicoccus mobilis &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; T. mobilis &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+.footnote[
+(First 11 ASVs shown)
+]
+
+???
+
+- only showing first 11 ASVs
+- All expected strains detected + others
+- Agree with Silva but not a 1-1 match. E.g. Clostridium symbiosum.
+- 2 ASVs per strain - sometimes both in custom reference, sometimes not. E.g.
+  B. ovatus, not.
+- Abundant ASV6 - putative inoc contaminant. Few other rare putative inoc
+  contaminants
+
+---
+
+# ASVs from the same genome identified by &lt;br&gt; genetic distance, correlation, and expected ratio
+
+.left-column[
+Bacteroides ovatus
+]
+
+.right-column[
+&lt;img src="slides_files/figure-html/unnamed-chunk-11-1.png" width="504" /&gt;
+]
+
+???
+
+TODO: try to remove extra padding at the top of the right column
+
+---
+
+# E. coli in the inoculum versus the fecal (mice) samples
+
+
+
+
+* ASV2 matches the E. coli H2 reference
+
+* ASV14 differs from ASV2 by 1 nucleotide;
+  &lt;br&gt; only present in fecal samples
+
+&lt;img src="slides_files/figure-html/unnamed-chunk-13-1.png" width="576" /&gt;
+
+---
+
+# Correlation suggests same genome, but ratio is off expectation
+
+.left-column[
+Escherichia coli
+]
+.right-column[
+&lt;img src="slides_files/figure-html/unnamed-chunk-14-1.png" width="504" /&gt;
+]
+
+???
+
+The true ratio is roughly 4:1 (so would actually look good if I used the CN=5
+from the previous figure.
+
+TODO: remove right column and add possible explanations instead
+
+Possible explanations?
+
+---
+
+
+# Pattern of cross-contamination from positive controls &lt;br&gt; indicates index switching at about 0.4% per sample
+
+&lt;img src="slides_files/figure-html/unnamed-chunk-15-1.png" width="648" /&gt;
+
+???
+
+TODO: Consider changing title to be more accurate - it shows index switching is
+at play, but that might not be the only thing contributing to the 0.4%.
+
+May be other types of cross-contam as well.
+
+Doing some crude calculations based on the T. mobilis fractionthis suggests
+`0.00006 / 4 * (8 - 1) * 12 \approx 0.0013` from wells in a different row, plus
+0.00275 from wells in the same row, for a total of about 0.004 = .4% from other
+wells in total, or about `10^-2.4`.
+
+---
+
+&lt;!-- Abundance calculations --&gt;
+
+
+
+
+
+
+
+
+
+# Overview of strain presence and proportions
+
+&lt;img src="slides_files/figure-html/unnamed-chunk-20-1.png" width="720" /&gt;
+
+---
+
+# Strains &gt;100X below the plate average are likely absent
+
+&lt;img src="slides_files/figure-html/unnamed-chunk-21-1.png" width="720" /&gt;
+
+???
+
+Expected based on rate of observed cross contamination from T. mobilis.
+
+---
+
+# All others (12/13 inoculum strains) are likely present
+
+&lt;img src="slides_files/figure-html/unnamed-chunk-22-1.png" width="720" /&gt;
+
+???
+
+- above or below based on how the proportions in the fecal vs. inoculum differ
+
+- Note that there is very little variation in composition among mouse samples,
+  even across cages and timepoints. Different cages are more similar than
+  different time points
+
+---
+
+# "Other" ~ 2nd E. coli ASV (fecal) + Staph contamination (inoc.)
+
+&lt;img src="slides_files/figure-html/unnamed-chunk-23-1.png" width="720" /&gt;
+&lt;!-- # "Other" &amp;asymp; 2nd E. coli ASV (fecal) + Staph contamination (inoc.) --&gt;
+
+???
+
+(I'm pretty sure)
+
+
+HERE - focus on bias from this point on; I think this is good enough for the
+strain presence part; if have time, could add another overview figure.
+
+---
+
+# Little variation across mice
+
+&lt;img src="slides_files/figure-html/unnamed-chunk-24-1.png" width="720" /&gt;
+
+???
+
+---
+
+&lt;!-- Bias {{{2 --&gt;
+
+
+
+
+
+
+
+
+# Strain proportions suggests low differential bias overall
+
+.left-column[
+Extraction&lt;br&gt;Batch 1
+]
+.right-column[
+&lt;img src="slides_files/figure-html/unnamed-chunk-28-1.png" width="648" /&gt;
+]
+
+???
+
+Thoughts - could do CLR; trades off problem of one type of compositional
+dependence for another. Perhaps better if do ALR with B. caccae, or pick the
+denom to be the least noisy taxa.
+
+---
+
+# (Differential) bias between a pair of taxa is a ratio of ratios
+
+&lt;br&gt;&lt;br&gt;
+For a single specimen,
+&lt;br&gt;&lt;br&gt;
+
+.pull-left[
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt; protocol &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; taxon &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; abundance &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; 1 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; a &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; x_1a &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; 1 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; b &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; x_1b &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; 2 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; a &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; x_2a &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; 2 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; b &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; x_2b &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+]
+
+.pull-right[
+Bias of Protocol 1 : Protocol 2 &lt;br&gt; for Taxon 1 : Taxon 2
+```
+  = (x_1a / x_1b) / (x_2a / x_2b)
+
+  = (x_1a / x_2a) / (x_1b / x_2b)
+```
+]
+
+
+---
+
+&lt;!-- pw ratio calculations --&gt;
+
+
+
+# Bias within Bacteroides: Small overall, &lt;br&gt; some evidence of differences between specimen types
+
+&lt;img src="slides_files/figure-html/unnamed-chunk-31-1.png" width="576" /&gt;
+
+???
+
+
+
+---
+
+# Bias of E. coli to Bacteroides spp. in inoculum &gt;&gt; in fecal samples
+
+&lt;img src="slides_files/figure-html/unnamed-chunk-32-1.png" width="720" /&gt;
+
+???
+
+---
+
+# Similarly for Clostridium symbiosum to Bacteroides spp.
+
+&lt;img src="slides_files/figure-html/unnamed-chunk-33-1.png" width="720" /&gt;
+
+---
+
+# Eubacterium rectale bias differs between &lt;br&gt; male and female cages in Batch 1 only
+
+
+&lt;img src="slides_files/figure-html/unnamed-chunk-34-1.png" width="720" /&gt;
+
+---
+
+# Eubacterium rectale bias differs between &lt;br&gt; male and female cages in Batch 1 only
+
+&lt;img src="slides_files/figure-html/unnamed-chunk-35-1.png" width="720" /&gt;
+
+
+
+&lt;br&gt;
+
+&lt;!-- Proportion on plate: 0.004  --&gt;
+
+
+???
+
+analysis Limitations of bias analysis so far 
+
+- presence/absence due to dropouts -&gt; non-normally distributed? need to account
+  for count variation?
+
+- don't have effect estimates yet
+
+- we're exploring two ways to do this
+
+---
+
+# Next steps
+
+Sequencing of remaining plates
+
+- Amplicon sequencing of V3-V4 by NCSU's Genome Sciences Laboratory (delayed)
+
+- Shallow shotgun sequencing (single-end, ~2M reads per sample) by CoreBiome
+  and CosmosID
+
+- Unique dual indexing to mitigate index hopping
+
+--
+
+Data analysis
+
+- DC and I are separately developing approaches for estimation
+
+- I'm looking for better ways to visualize bias and bias differences
+
+--
+
+Interpretation
+
+- ???
+
+???
+
+The additional sequencing should clarify the E. coli issue, and will also allow
+us to check that index hopping isn't a confounder.
+
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
