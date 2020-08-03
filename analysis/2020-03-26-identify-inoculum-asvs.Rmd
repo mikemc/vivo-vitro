@@ -1,0 +1,504 @@
+---
+title: Assign ASVs to strains in the A1 data
+author: Michael McLaren
+date: "`r Sys.Date()`"
+description:
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    fig_width: 6
+    dev: "svg"
+---
+
+Goal: Create a table with a row for each ASV from a (planned) inoculum strain,
+the additional E. coli ASV found in the fecal samples, and the Zymo strains.
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(progress = TRUE, verbose = TRUE)
+# Global chunk options
+knitr::opts_chunk$set(
+  cache = TRUE, autodep = TRUE,
+  include = TRUE, echo = TRUE,
+  warning = TRUE, message = FALSE, 
+  fig.width = 7, fig.height = 7
+)
+```
+
+## Setup
+
+```{r}
+library(tidyverse)
+library(here)
+library(cowplot)
+library(ggridges)
+library(ggbeeswarm)
+library(ggforce)
+library(speedyseq)
+import::from(metacal, mutate_by)
+theme_set(theme_cowplot(12))
+```
+
+```{r}
+my_psmelt <- function(physeq) {
+  speedyseq::psmelt(physeq) %>%
+    as_tibble %>%
+    rename(taxon = OTU, sample = Sample, abundance = Abundance)
+}
+as_tibble.phyloseq <- function(x) {
+  x %>% my_psmelt
+}
+as_tibble.sample_data <- function(x) {
+  x %>% as("data.frame") %>% as_tibble(rownames = "sample")
+}
+as_tibble.taxonomyTable <- function(x) {
+  x %>% as("matrix") %>% as_tibble(rownames = "taxon")
+}
+as_tibble.XStringSet <- function(x) {
+  x %>% as.character %>% enframe("taxon", "sequence")
+}
+```
+
+Phyloseq object w/ the A1 sequencing data,
+```{r}
+ps <- readRDS(here("results", "a1", "a1-phyloseq-silva-v138.Rds"))
+tax <- tax_table(ps) %>% as_tibble
+sam <- sample_data(ps) %>% as_tibble
+sam %>%
+  pull(specimen_type) %>%
+  table
+```
+
+Load the reference 16S sequences for inoculum strains, T. mobilis strain, and
+the Zymo mock strains. Simplify the sequence names, and parse the original
+names into a table with information about each sequence.
+```{r}
+ref_dna <- here("strain-info", "inoculum-tmob-zymo-16s.fasta") %>%
+  Biostrings::readDNAStringSet()
+# Table with strain info for each reference sequence
+seq_names <- names(ref_dna)
+ref_tb <- tibble(name = seq_names) %>%
+  separate(name, 
+    into = c("seqid", "genus", "species", "strain"), 
+    sep = " ", 
+    extra = "merge",
+    remove = TRUE
+  ) %>%
+  mutate(
+    source = case_when(
+      strain == "Zymo" ~ "Zymo DNA mock",
+      species == "mobilis" ~ "T. mobilis",
+      TRUE ~ "inoculum"
+    )
+  )
+ref_tb %>% head
+# Set the names to just the seqid's
+names(ref_dna) <- names(ref_dna) %>%
+  str_extract("^\\S+")
+```
+
+Load rough 16S copy number estimates, which are useful for matching ASVs
+from the same genome (see below),
+```{r}
+copy_numbers <- read_csv(
+  here("strain-info", "16s-copy-numbers.csv"),
+  col_type = "ccccciccc"
+)
+copy_numbers %>%
+  select(type, genus, species, copy_number, source, notes) %>%
+  print(n=Inf)
+```
+
+### Filter low-abundance ASVs
+
+A large fraction of ASVs have very low total abundance (read count),
+```{r, fig.dim = c(5,4)}
+taxa_sums(ps) %>%
+  enframe %>%
+  ggplot(aes(value)) +
+  stat_ecdf(geom = "step") +
+  scale_x_log10(breaks = c(2, 10, 1e2, 1e3))
+```
+
+Those with less than 10 reads are unlikely to be of interest to us. Some are
+spurious ASV calls derived from sequencing errors from high-abundance ASVs;
+others may be low-level reagent or other types of contamination. Either way
+they are too rare to interfere with interpretations our our analyses if we
+simply filter them out. 
+
+To reduce the number of ASVs we need to consider, let's filter to those in at
+least 10 total reads,
+```{r}
+ps0 <- ps %>%
+  filter_taxa2(~sum(.) >= 10) %>%
+  print
+```
+
+Get a pairwise distance matrix between all ASVs and reference sequences,
+```{r}
+dna <- c(refseq(ps0), ref_dna)
+nproc <- 4
+aln <- DECIPHER::AlignSeqs(dna, processors = nproc, verbose = FALSE)
+d <- DECIPHER::DistanceMatrix(aln, processors = nproc, verbose = FALSE)
+dtb <- d %>%
+  as.dist(diag = FALSE, upper = TRUE) %>%
+  broom::tidy() %>%
+  mutate_at(vars(starts_with("item")), as.character)
+```
+
+## First pass: Strain assignment by exact matching
+
+Goal: Assign ASVs to strains using reference sequences. As a first pass, I'll
+look for exact matches between the ASVs and the reference 16S sequences.
+
+```{r}
+unique_or_na <- function(x) {
+  if (length(unique(x)) == 1)
+    x[[1]]
+  else
+    NA_character_
+}
+assignments <- dtb %>%
+  filter(distance == 0) %>%
+  filter(str_detect(item1, "A1_ASV"), !str_detect(item2, "A1_ASV")) %>%
+  left_join(ref_tb, by = c("item2" = "seqid")) %>%
+  rename(asv = item1) %>%
+  group_by(asv) %>%
+  summarize(
+    genus = unique_or_na(genus),
+    species = unique_or_na(species),
+    # strain = unique(strain) %>% paste(collapse = ";")
+    source = unique(source) %>% paste(collapse = ";")
+  ) %>%
+  arrange(source,genus,species) %>%
+  print(n=Inf)
+```
+
+Note: ASV6 matches the reference sequence for the S. aureus in the Zymo mock,
+but is also at high abundance in the inoculum samples, likely due to lab
+contamination.
+
+Is every expected organism represented?
+```{r}
+ref_tb %>%
+  select(genus, species, source) %>%
+  distinct %>%
+  arrange(source, genus, species) %>%
+  print(n=Inf)
+```
+
+Yes, every inoculum and Zymo strain is matched by at least one ASV.
+
+## Find other candidate ASVs
+
+Unfortunately the 16S reference sequences I was able to find do not always
+match every ASV that appears to be derived from these organisms, even for the
+Zymo strains where the reference sequences are from the company. ASVs that are
+highly similar (~< 1% diverged) may be from the same genomes as the identified
+ASVs.
+
+## Example: Bacteroides ovatus
+
+```{r, include = FALSE}
+prop_plot <- function(ps, min_prop = NULL) {
+  ptb <- ps %>% as_tibble %>%
+    mutate(proportion = abundance / reads_final) %>%
+    mutate(taxon = factor(taxon, taxa_names(ps)))
+  if (is.null(min_prop)) {
+    min_prop <- ptb %>%
+      filter(proportion > 0) %>%
+      pull(proportion) %>%
+      min %>%
+      {signif(. / 3, 2)}
+  }
+  ptb %>%
+    ggplot(aes(taxon, log10(proportion + min_prop), color = taxon)) +
+    geom_quasirandom(groupOnX = TRUE) +
+    scale_color_brewer(type = "qual", palette = 6, guide = FALSE) +
+    labs(
+      y = str_glue("log10(proportion + {min_prop})"),
+      x = "Specimen type",
+      title = "Proportion of ASVs by specimen type"
+    ) +
+    facet_wrap(~specimen_type, scales = "fixed") +
+    theme(
+      panel.spacing = unit(0.05, "npc"),
+    )
+}
+
+cor_plot <- function(ps) {
+  stopifnot(ntaxa(ps) == 2)
+  asvs <- taxa_names(ps)
+  ps %>%
+    as_tibble %>%
+    select(-rank_names(ps)) %>%
+    mutate(abundance = abundance / reads_final) %>%
+    pivot_wider(names_from = taxon, values_from = abundance) %>%
+    # ggplot(aes_string(asvs[1], asvs[2], color = "specimen_type")) +
+    ggplot(aes_string(asvs[1], asvs[2])) +
+    geom_point() +
+    # scale_color_brewer(type = "qual", palette = 2) +
+    facet_wrap(~specimen_type, scales = "free") +
+    labs(
+      title = "Correlation between ASV proportions in each specimen type"
+    ) +
+    theme(
+      panel.spacing = unit(0.05, "npc"),
+    )
+}
+
+#' @param ps A phyloseq object subset to the ASVs putatively from the same
+#' genome
+#' @param cn The purported CN of that genome
+cn_plot <- function(ps, cn) {
+  copy_number <- cn
+  ps %>%
+    as_tibble %>%
+    mutate_by(sample, 
+      abundance_per_genome = copy_number * abundance / sum(abundance)
+    ) %>%
+    mutate(
+      taxon = fct_reorder(taxon, abundance_per_genome, .desc = TRUE)
+    ) %>%
+    ggplot(aes(x = taxon, y = abundance_per_genome,
+        color = taxon)) +
+    geom_quasirandom(groupOnX = TRUE, alpha = 0.5) +
+    scale_y_continuous(
+      limits = c(0, copy_number), 
+      breaks = seq(0, copy_number)
+    ) +
+    # stat_summary() +
+    facet_wrap(~specimen_type) +
+    theme_minimal_hgrid(12) +
+    scale_color_brewer(type = "qual", palette = 6,
+      guide = FALSE) +
+    labs(
+      x = "Amplicon sequence variant", 
+      y = "Est. abundance per genome",
+      title = str_glue("Estimated per-genome ASV abundances assuming CN = {cn}")
+    ) +
+    theme(
+      panel.spacing = unit(0.05, "npc"),
+    )
+}
+
+id_plot <- function(ps, cn = NA, min_prop = 1e-4) {
+  p1 <- prop_plot(ps, min_prop = min_prop)
+  p2 <- cor_plot(ps)
+  if (is.na(cn))
+    p3 <- NULL
+  else
+    p3 <- cn_plot(ps, cn)
+  plot_grid(p1, NULL, p2, NULL, p3,
+    ncol = 1,
+    rel_heights = c(1, 0.1, 1, 0.1, 1)
+  )
+}
+
+prop_and_cor_plot <- function(ps) {
+  p1 <- prop_plot(ps)
+  p2 <- cor_plot(ps)
+  plot_grid(p1, NULL, p2,
+    ncol = 1,
+    rel_heights = c(1, 0.1, 1)
+  )
+}
+```
+
+ASVs from the same genome should have highly correlated proportions, since they
+appear biologically in a constant ratio. Also, if there is no intragenomic bias
+then when we multiply the strain's 16S copy number by the proportion of one
+ASV's reads out of all ASV's reads from the same organism we should get an
+integer. In my experience, there are usually only 2 ASVs from the same genome
+and one of those is much more abundant than the other, suggesting that one ASV
+appears in the large majority of 16S copies. Here is a clear example with
+Bacteroides ovatus.
+
+```{r, fig.dim = c(7, 9)}
+ps0 %>%
+  prune_taxa(c("A1_ASV1", "A1_ASV8"), .) %>%
+  subset_samples(specimen_type %in% c("inoculum", "fecal")) %>%
+  # prop_and_cor_plot
+  id_plot(cn = 5)
+```
+
+
+### Systematically find candidate ASVs from same genome
+
+To find candidates, let's first get all pairs of ASVs within 3% divergence (<=
+4 nucleotide changes) from each other.
+```{r}
+candidates <- dtb %>%
+  filter(
+    item1 %in% taxa_names(ps0), 
+    item2 %in% taxa_names(ps0),
+    distance < 0.03
+  ) %>%
+  arrange(distance)
+```
+
+```{r}
+candidates %>%
+  filter(item1 < item2) %>%
+  left_join(tax %>% select(taxon, genus, species), 
+    by = c("item1" = "taxon")) %>%
+  left_join(tax %>% select(taxon, genus, species), 
+    by = c("item2" = "taxon"),
+    suffix = c("1", "2")
+  ) %>%
+  print(n=Inf)
+```
+
+Based on (dis)agreement between genus and species assignments, it looks like
+the only the `r candidates %>% filter(distance < 0.01, item1 < item2) %>% nrow`
+pairs with distance < 0.01 (corresponding to 1 or 2 mismatches) are candidates
+for being from the same genome.
+
+#### Focus on cases of interest
+
+For now I will ignore contaminants and just worry about the inoculum and zymo
+strains (T. mobilis only gave 1 ASV).
+
+Find pairs where distance < 0.01 and at least one ASV was assigned,
+```{r}
+focal_candidates <- candidates %>%
+  filter(item1 %in% assignments$asv, distance < 0.01) %>%
+  left_join(assignments, by = c("item1" = "asv")) %>%
+  print
+```
+Note ASV19, ASV20 appears twice because both were assigned, whereas in other
+cases only one ASV was assigned.
+
+Check the copy numbers,
+```{r}
+focal_candidates %>%
+  select(-distance) %>%
+  left_join(
+    copy_numbers %>% select(genus, species, copy_number),
+    by = c("genus", "species")
+  ) %>%
+  distinct
+```
+
+##### Escherichia coli. Conclusion: Complex / unclear
+
+```{r, fig.dim = c(7, 9)}
+ps0 %>%
+  subset_samples(specimen_type %in% c("DNA mock", "inoculum", "fecal")) %>%
+  # subset_taxa(genus == "Escherichia/Shigella") %>%
+  prune_taxa(c("A1_ASV2", "A1_ASV14"), .) %>%
+  id_plot(cn = 7)
+```
+
+The first two rows suggest that the E. coli in the fecal samples carries both
+ASV2 and ASV14, but the E. coli in the inoculum only carries ASV2. However, the
+CN plot (bottom row) does not show integer numbers, suggesting that ASV2 and
+ASV14 might be highly correlated in the fecal samples but not in fact in the
+same genome. E.g., the fecal samples were perhaps colonized by the inoculum E.
+coli and another closely related organism.
+
+##### Roseburia intestinalis. Conclusion: Same genome
+
+```{r, fig.dim = c(7, 9)}
+ps0 %>%
+  subset_samples(specimen_type %in% c("inoculum", "fecal")) %>%
+  # subset_taxa(genus == "Roseburia") %>%
+  prune_taxa(c("A1_ASV9", "A1_ASV17"), .) %>%
+  id_plot(cn = 6)
+```
+
+##### Barnesiella intestinihominis. Conclusion: Same genome
+
+```{r, fig.dim = c(7, 9)}
+ps0 %>%
+  subset_samples(specimen_type %in% c("inoculum", "fecal")) %>%
+  prune_taxa(c("A1_ASV19", "A1_ASV20"), .) %>%
+  id_plot(cn = 4, min_prop = 1e-5)
+```
+
+Here the answer is less obvious. However, the correlation in the fecal samples
+is very high, and the abundance in the inoculum samples is to low to make
+anything out of. Meanwhile, the CN of 4 is from a draft genome and might not be
+reliable. A CN of 5 gives a reasonably close fit to integer number in the fecal
+samples in row 3. Finally, both ASVs matched reference sequences for the
+expected strain, so we can safely conclude these are in the same genome.
+
+##### Bacteroides ovatus (shown above). Conclusion: Same genome
+
+##### Salmonella enterica (Zymo): Same genome
+
+```{r, fig.dim = c(7, 9)}
+ps0 %>%
+  subset_samples(specimen_type %in% c("DNA mock", "inoculum", "fecal")) %>%
+  prune_taxa(c("A1_ASV23", "A1_ASV29"), .) %>%
+  id_plot(cn = 7, min_prop = 1e-5)
+```
+
+In this case, we expect all the reads outside the DNA mock to be
+cross-contamination / index-hopping. Though we only have one meaningful data
+point, the fact that the ratio is nearly exactly 6:1 suggests these ASVs are
+from the same genome.
+
+##### Bacillus ASV22 and ASV24: Different genomes
+
+```{r, fig.dim = c(7, 9)}
+ps0 %>%
+  subset_samples(specimen_type %in% c("DNA mock", "inoculum", "fecal")) %>%
+  prune_taxa(c("A1_ASV22", "A1_ASV24"), .) %>%
+  id_plot(cn = 10, min_prop = 1e-5)
+```
+
+ASV22 was assigned to the Zymo reference sequence for Bacillus subtilis, while
+ASV24 did not match a reference sequence. From the plot it appears that
+
+* ASV22 is the only ASV for the Zymo B. subtilis strain, is biologically
+  absent in other samples and occasionally appears at very low frequency due
+  to cross-contamination
+* ASV24 is a contaminant of the inoculum and is biologically absent in all
+  other samples, occasionally appearing in fecal samples due to
+  cross-contamination
+
+
+#### Inoculum contaminants
+
+##### Bacillus ASV13 and ASV26: Same genome
+
+todo - Create / print the table showing these (they are not in the focal
+table), and check for other contaminant pairs.
+
+```{r, fig.dim = c(7, 9)}
+ps0 %>%
+  subset_samples(specimen_type %in% c("DNA mock", "inoculum", "fecal")) %>%
+  prune_taxa(c("A1_ASV13", "A1_ASV26"), .) %>%
+  id_plot(cn = NA, min_prop = 1e-5)
+```
+
+The Bacillus ASV13-ASV26 cases looks like lab contamination in the inoculum,
+generating sequences that have index hopped into the fecal samples.
+
+## Manual assignments
+
+For now I will focus on ASVs from (intentional) inoculum strains the Zymo
+strains and ignore contaminants (unless they are in the fecal samples; see
+below).
+
+```{r}
+assignments_new <- focal_candidates %>%
+  filter(
+    genus %in% c("Escherichia", "Roseburia", "Salmonella", "Bacteroides")
+  ) %>%
+  rename(asv = item2) %>%
+  select(-item1, -distance) %>%
+  mutate(source = ifelse(asv == "A1_ASV14", "fecal", source))
+assignments_full <- bind_rows(assignments, assignments_new) %>%
+  arrange(source, genus, species) %>%
+  print(n = Inf) 
+```
+
+Save along with the amplicon sequences,
+```{r}
+assignments_full %>%
+  rename(feature_id = asv) %>%
+  left_join(refseq(ps) %>% as_tibble, by = c(feature_id = "taxon")) %>%
+  write_csv(here("results", "a1", "a1-asv-strain-assignments.csv"))
+```
