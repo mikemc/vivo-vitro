@@ -1,0 +1,352 @@
+#+TITLE:Run BBMap-based shotgun analysis pipeline on S2 data
+* emacs setup
+** Interative display
+Get text and images to display nicely in emacs,
+#+BEGIN_SRC elisp :results silent
+;; Increase text width
+(setq visual-fill-column-width 100)
+;; Default inline image width
+(setq org-image-actual-width (list 800))
+#+END_SRC
+** Org-babel and remote shell setup
+#+PROPERTY: header-args:shell :eval never-export
+
+#+PROPERTY: header-args:R :results value :colnames yes :exports both :eval never-export
+
+The `brc` shell session will be logged into computer cluster.
+#+BEGIN_SRC shell :session brc :results silent
+ssh brc
+#+END_SRC
+* Pipeline
+BBMap version 38.86 used on the NCSU BRC cluster.
+
+Set data path and create directories for processed reads and mapping results on the cluster
+#+BEGIN_SRC shell :session brc :results silent
+DATA_PATH=/home/mrmclare/data/vivo-vitro
+mkdir $DATA_PATH/s2/reads/clean
+mkdir $DATA_PATH/s2/reads/binned
+mkdir $DATA_PATH/s2/reads/slurm-out
+#+END_SRC
+
+Check the read files,
+#+BEGIN_SRC shell :session brc :results verbatim
+ls $DATA_PATH/s2/reads/raw | head -n 4
+#+END_SRC
+
+#+RESULTS:
+: [?2004l
+: A01_S13_CIDNS200509-022_R1_001.fastq.gz
+: A01_S13_CIDNS200509-022_R2_001.fastq.gz
+: A02_S21_CIDNS200509-022_R1_001.fastq.gz
+: A02_S21_CIDNS200509-022_R2_001.fastq.gz
+
+Get a deduplicated list of the prefixes up to the _R*_001.fastq.gz, which each correspond to an individual sample.
+#+BEGIN_SRC shell :session brc :results silent
+SAMPLES=($(ls $DATA_PATH/s2/reads/raw | sed 's/_R[12]_001.fastq.gz//g'))
+typeset -aU SAMPLES
+#+END_SRC
+
+** Trim adapters + low quality read ends and filter PhiX reads with BBDuk
+*** sbatch command
+
+1. Remove adapter and transposase sequences, using BBMap's included adapter sequences
+2. Remove PhiX sequences, using BBMap's included PhiX genome
+3. Trim last bp and low quality read ends
+
+#+BEGIN_SRC shell :session brc :results verbatim
+cd $DATA_PATH/s2/reads
+for SAMPLE in ${SAMPLES[*]}
+do
+WELL=${SAMPLE:0:3}
+sbatch --exclusive --job-name=$WELL-clean --output=slurm-out/slurm-%j-$WELL-clean.out --wrap="
+    bbduk.sh -eoom \
+        in=raw/${SAMPLE}_R1_001.fastq.gz in2=raw/${SAMPLE}_R2_001.fastq.gz \
+        out=stdout.fq ref=adapters ktrim=r tpe tbo \
+        k=23 mink=11 hdist=1 stats=clean/$WELL-adapters-stats.tsv |
+    bbduk.sh -eoom in=stdin.fq out=stdout.fq interleaved=t ref=phix k=31 hdist=1 \
+        stats=clean/$WELL-phix-stats.tsv |
+    bbduk.sh -eoom in=stdin.fq out=stdout.fq interleaved=t ftr=99 qtrim=r \
+        trimq=5 stats=clean/$WELL-trim-stats.tsv |
+    bbsplit.sh -eoom path=$DATA_PATH/references/mouse \
+        in=stdin.fq interleaved=t outu=clean/$WELL.fastq.gz \
+        refstats=clean/$WELL-host-refstats.tsv \
+        minratio=0.9 maxindel=3 bwr=0.16 bw=12 fast minhits=2 qtrim=r trimq=10 \
+        untrim idtag printunmappedcount kfilter=25 maxsites=1 k=14 \
+        bloom pigz unpigz ziplevel=6
+    "
+done
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+
+DATA_PATH/s2/reads[?2004l
+mrmclare@node0:~/data/vivo-vitro/s2/reads% [?2004hfor SAMPLE in ${SAMPLES[*]}[?2004l
+[?2004hdo[?2004l
+[?2004hWELL=${SAMPLE:0:3}[?2004l
+[?2004hsbatch --exclusive --job-name=$WELL-clean --output=slurm-out/slurm-%j-$WELL-clean.out --wrap="[?2004l
+[?2004h    bbduk.sh -eoom \[?2004l
+[?2004h        in=raw/${SAMPLE}_R1_001.fastq.gz in2=raw/${SAMPLE}_R2_001.fastq.gz \[?2004l
+[?2004h        out=stdout.fq ref=adapters ktrim=r tpe tbo \[?2004l
+[?2004h        k=23 mink=11 hdist=1 stats=clean/$WELL-adapters-stats.tsv |[?2004l
+[?2004h    bbduk.sh -eoom in=stdin.fq out=stdout.fq interleaved=t ref=phix k=31 hdist=1 \[?2004l
+[?2004h        stats=clean/$WELL-phix-stats.tsv |[?2004l
+[?2004h    bbduk.sh -eoom in=stdin.fq out=stdout.fq interleaved=t ftr=99 qtrim=r \[?2004l
+[?2004h        trimq=5 stats=clean/$WELL-trim-stats.tsv |[?2004l
+[?2004h    bbsplit.sh -eoom path=$DATA_PATH/references/mouse \[?2004l
+[?2004h        in=stdin.fq interleaved=t outu=clean/$WELL.fastq.gz \[?2004l
+[?2004h        refstats=clean/$WELL-host-refstats.tsv \[?2004l
+[?2004h        minratio=0.9 maxindel=3 bwr=0.16 bw=12 fast minhits=2 qtrim=r trimq=10 \[?2004l
+[?2004h        untrim idtag printunmappedcount kfilter=25 maxsites=1 k=14 \[?2004l
+[?2004h        bloom pigz unpigz ziplevel=6[?2004l
+[?2004h    "[?2004l
+[?2004hdone[?2004l
+Submitted batch job 1519306
+echo 'org_babel_sh_eoe'
+Submitted batch job 1519307
+Submitted batch job 1519308
+Submitted batch job 1519309
+Submitted batch job 1519310
+Submitted batch job 1519311
+Submitted batch job 1519312
+Submitted batch job 1519313
+Submitted batch job 1519314
+Submitted batch job 1519315
+Submitted batch job 1519316
+Submitted batch job 1519317
+Submitted batch job 1519318
+Submitted batch job 1519319
+Submitted batch job 1519320
+Submitted batch job 1519321
+Submitted batch job 1519322
+Submitted batch job 1519323
+Submitted batch job 1519324
+Submitted batch job 1519325
+Submitted batch job 1519326
+Submitted batch job 1519327
+Submitted batch job 1519328
+Submitted batch job 1519329
+Submitted batch job 1519330
+Submitted batch job 1519331
+Submitted batch job 1519332
+Submitted batch job 1519333
+Submitted batch job 1519334
+Submitted batch job 1519335
+Submitted batch job 1519336
+Submitted batch job 1519337
+Submitted batch job 1519338
+Submitted batch job 1519339
+Submitted batch job 1519340
+Submitted batch job 1519341
+Submitted batch job 1519342
+Submitted batch job 1519343
+Submitted batch job 1519344
+Submitted batch job 1519345
+Submitted batch job 1519346
+Submitted batch job 1519347
+Submitted batch job 1519348
+Submitted batch job 1519349
+Submitted batch job 1519350
+Submitted batch job 1519351
+Submitted batch job 1519352
+Submitted batch job 1519353
+Submitted batch job 1519354
+Submitted batch job 1519355
+Submitted batch job 1519356
+Submitted batch job 1519357
+Submitted batch job 1519358
+Submitted batch job 1519359
+Submitted batch job 1519360
+Submitted batch job 1519361
+Submitted batch job 1519362
+Submitted batch job 1519363
+Submitted batch job 1519364
+Submitted batch job 1519365
+Submitted batch job 1519366
+Submitted batch job 1519367
+Submitted batch job 1519368
+Submitted batch job 1519369
+Submitted batch job 1519370
+Submitted batch job 1519371
+Submitted batch job 1519372
+Submitted batch job 1519373
+Submitted batch job 1519374
+Submitted batch job 1519375
+Submitted batch job 1519376
+Submitted batch job 1519377
+Submitted batch job 1519378
+Submitted batch job 1519379
+Submitted batch job 1519380
+Submitted batch job 1519381
+Submitted batch job 1519382
+Submitted batch job 1519383
+Submitted batch job 1519384
+Submitted batch job 1519385
+Submitted batch job 1519386
+Submitted batch job 1519387
+Submitted batch job 1519388
+Submitted batch job 1519389
+Submitted batch job 1519390
+Submitted batch job 1519391
+Submitted batch job 1519392
+Submitted batch job 1519393
+Submitted batch job 1519394
+Submitted batch job 1519395
+Submitted batch job 1519396
+Submitted batch job 1519397
+Submitted batch job 1519398
+Submitted batch job 1519399
+#+end_example
+
+The BBDuk params from the "Adapter trimming" example in the BBDuk Usage Guide. They are the same as for S1, expect for the addition of "tpe" and "tpo", which only apply to paired reads.
+
+The BBSplit params are based off the recommendation from the BBMap guide (below), and the removehuman.sh script included in BBMap.
+
+#+begin_quote
+To map quickly with very high precision and lower sensitivity, as when removing contaminant reads specific to a genome without risking false-positives:
+bbmap.sh minratio=0.9 maxindel=3 bwr=0.16 bw=12 fast minhits=2 qtrim=r trimq=10 untrim idtag printunmappedcount kfilter=25 maxsites=1 k=14
+#+end_quote
+
+** Align and bin reads against bacterial reference genomes with BBSplit
+*** sbatch command
+
+- minid=0.97
+- Reference and scaffold/contig mapping stats saved
+- Alignments to reference saved for inspection (BAM file)
+- Unmapped reads saved for later inspection and assembly
+
+#+BEGIN_SRC shell :session brc :results verbatim
+cd $DATA_PATH/s2/reads
+for SAMPLE in ${SAMPLES[*]}
+do
+WELL=${SAMPLE:0:3}
+sbatch --exclusive --job-name=$WELL-bin --output=slurm-out/slurm-%j-$WELL-bin.out --wrap="
+    bbsplit.sh -eoom path=$DATA_PATH/references/bacteria \
+        interleaved=t minid=0.97 \
+        in=clean/$WELL.fastq.gz outu=binned/$WELL-unmapped.fastq.gz \
+        refstats=binned/$WELL-refstats.tsv \
+        scafstats=binned/$WELL-scafstats.tsv"
+done
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+
+DATA_PATH/s2/reads[?2004l
+mrmclare@node0:~/data/vivo-vitro/s2/reads% [?2004hfor SAMPLE in ${SAMPLES[*]}[?2004l
+[?2004hdo[?2004l
+[?2004hWELL=${SAMPLE:0:3}[?2004l
+[?2004hsbatch --exclusive --job-name=$WELL-bin --output=slurm-out/slurm-%j-$WELL-bin.out --wrap="[?2004l
+[?2004h    bbsplit.sh -eoom path=$DATA_PATH/references/bacteria \[?2004l
+[?2004h        interleaved=t minid=0.97 \[?2004l
+[?2004h        in=clean/$WELL.fastq.gz outu=binned/$WELL-unmapped.fastq.gz \[?2004l
+[?2004h        refstats=binned/$WELL-refstats.tsv \[?2004l
+[?2004h        scafstats=binned/$WELL-scafstats.tsv"[?2004l
+[?2004hdone[?2004l
+Submitted batch job 1519411
+echo 'org_babel_sh_eoe'
+Submitted batch job 1519412
+Submitted batch job 1519413
+Submitted batch job 1519414
+Submitted batch job 1519415
+Submitted batch job 1519416
+Submitted batch job 1519417
+Submitted batch job 1519418
+Submitted batch job 1519419
+Submitted batch job 1519420
+Submitted batch job 1519421
+Submitted batch job 1519422
+Submitted batch job 1519423
+Submitted batch job 1519424
+Submitted batch job 1519425
+Submitted batch job 1519426
+Submitted batch job 1519427
+Submitted batch job 1519428
+Submitted batch job 1519429
+Submitted batch job 1519430
+Submitted batch job 1519431
+Submitted batch job 1519432
+Submitted batch job 1519433
+Submitted batch job 1519434
+Submitted batch job 1519435
+Submitted batch job 1519436
+Submitted batch job 1519437
+Submitted batch job 1519438
+Submitted batch job 1519439
+Submitted batch job 1519440
+Submitted batch job 1519441
+Submitted batch job 1519442
+Submitted batch job 1519443
+Submitted batch job 1519444
+Submitted batch job 1519445
+Submitted batch job 1519446
+Submitted batch job 1519447
+Submitted batch job 1519448
+Submitted batch job 1519449
+Submitted batch job 1519450
+Submitted batch job 1519451
+Submitted batch job 1519452
+Submitted batch job 1519453
+Submitted batch job 1519454
+Submitted batch job 1519455
+Submitted batch job 1519456
+Submitted batch job 1519457
+Submitted batch job 1519458
+Submitted batch job 1519459
+Submitted batch job 1519460
+Submitted batch job 1519461
+Submitted batch job 1519462
+Submitted batch job 1519463
+Submitted batch job 1519464
+Submitted batch job 1519465
+Submitted batch job 1519466
+Submitted batch job 1519467
+Submitted batch job 1519468
+Submitted batch job 1519469
+Submitted batch job 1519470
+Submitted batch job 1519471
+Submitted batch job 1519472
+Submitted batch job 1519473
+Submitted batch job 1519474
+Submitted batch job 1519475
+Submitted batch job 1519476
+Submitted batch job 1519477
+Submitted batch job 1519478
+Submitted batch job 1519479
+Submitted batch job 1519480
+Submitted batch job 1519481
+Submitted batch job 1519482
+Submitted batch job 1519483
+Submitted batch job 1519484
+Submitted batch job 1519485
+Submitted batch job 1519486
+Submitted batch job 1519487
+Submitted batch job 1519488
+Submitted batch job 1519489
+Submitted batch job 1519490
+Submitted batch job 1519491
+Submitted batch job 1519492
+Submitted batch job 1519493
+Submitted batch job 1519494
+Submitted batch job 1519495
+Submitted batch job 1519496
+Submitted batch job 1519497
+Submitted batch job 1519498
+Submitted batch job 1519499
+Submitted batch job 1519500
+Submitted batch job 1519501
+Submitted batch job 1519502
+Submitted batch job 1519503
+Submitted batch job 1519504
+#+end_example
+
+** Download results
+Download the various stats output files to output/
+#+BEGIN_SRC shell
+mkdir output
+BRC_PATH=/home/mrmclare/data/vivo-vitro/s2/reads
+scp -r "brc:$BRC_PATH/clean/*.tsv" output
+scp -r "brc:$BRC_PATH/binned/*.tsv" output
+#+END_SRC
+
+#+RESULTS:
