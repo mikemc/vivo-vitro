@@ -1,0 +1,449 @@
+---
+title: Presence/absence of inoculum strains in fecal samples (A1 data)
+author: Michael McLaren
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    toc: true
+    fig_width: 6
+    dev: "svg"
+---
+
+```{r, include = FALSE}
+# knitr chunk options
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  echo = TRUE, include = TRUE, 
+  warning = TRUE, message = FALSE, 
+  fig.width = 7, fig.height = 7
+)
+```
+
+Goal: Examine which inoculum strains appear to be in the mice samples in the A1
+data, and compare to the lab assay results. This analyses was conducted on
+2020-03-10, and was updated on 2020-08-05 to use the new results files and
+create an html report.
+
+## Setup
+
+```{r, message = FALSE}
+library(tidyverse)
+library(here)
+library(cowplot)
+library(patchwork)
+library(speedyseq)
+import::from(metacal, mutate_by, close_elts)
+theme_set(theme_cowplot(12))
+```
+
+```{r}
+my_psmelt <- function(physeq) {
+  speedyseq::psmelt(physeq) %>%
+    as_tibble %>%
+    rename(taxon = OTU, sample = Sample, abundance = Abundance)
+}
+as_tibble.phyloseq <- function(x) {
+  x %>% my_psmelt
+}
+as_tibble.sample_data <- function(x) {
+  x %>% as("data.frame") %>% as_tibble(rownames = "sample")
+}
+as_tibble.taxonomyTable <- function(x) {
+  x %>% as("matrix") %>% as_tibble(rownames = "taxon")
+}
+as_tibble.XStringSet <- function(x) {
+  x %>% as.character %>% enframe("taxon", "sequence")
+}
+```
+
+```{r}
+# Phyloseq object w/ the A1 sequencing data,
+ps <- readRDS(here("results", "a1", "a1-phyloseq-silva-v138.Rds")) %>%
+  filter_taxa2(~sum(.) >= 10)
+sample_data(ps)$specimen_id <- sample_data(ps)$specimen_id %>% as.factor
+# Strain assignments
+assignments <- here("results", "a1", "a1-asv-strain-assignments.csv") %>%
+  read_csv
+# Angie's test results
+pcr_results <- read_csv(here("results/lab", "colonization-test-results.csv"))
+# Add cols vv_organism and vv_source to the tax table for the inoc + fecal
+tmp <- assignments %>%
+  # filter(str_detect("in
+  transmute(
+    taxon = feature_id,
+    vv_organism = paste(genus, species),
+    vv_source = source
+  )
+new_tax <- tax_table(ps) %>%
+  as_tibble %>%
+  left_join(tmp, by = "taxon") %>%
+  replace_na(list(vv_source = "Other")) %>%
+  column_to_rownames("taxon") %>%
+  as("matrix") %>%
+  tax_table
+tax_table(ps) <- new_tax
+rm(tmp, new_tax)
+# Tibbles for downstream use
+tax <- tax_table(ps) %>% as_tibble
+sam <- sample_data(ps) %>% as_tibble
+pstb <- ps %>%
+  as_tibble %>%
+  mutate_by(sample, 
+    proportion = close_elts(abundance)
+  )
+```
+
+```{r}
+tax %>% filter(!is.na(vv_organism)) %>%
+  select(taxon, vv_organism, vv_source) %>% print(n=Inf)
+```
+
+## What should the threshold for presence be?
+
+Our goal is to define presence in the fecal samples. However, index hopping
+means that we may see reads of a strain in the fecal samples that originated
+from other samples, particularly for abundant strains. 
+
+What do we know?
+
+- We have some idea of the percentage of reads per sample that are from other
+  samples in the same row
+- This roughly sets a background proportion of abundance due to index hops for
+  each taxon based on its plate-level proportion.
+- We have replicates (usually 4) of each specimen; we also expect presence to
+  be similar between mice in the same cage + timepoint.
+
+### Simple check against lab PCR results
+
+
+```{r}
+sam %>%
+  filter(specimen_type == "fecal") %>%
+  select(starts_with("collection")) %>%
+  distinct
+pcr_results %>%
+  filter(week %in% c("Weeks 1-3", "Week 6")) %>%
+  select(-condition) %>%
+  unite("week_sex", week, host_sex) %>%
+  pivot_wider(names_from = week_sex, values_from = detected, names_sort = TRUE)
+```
+
+Our samples are from Week 2 and 6; based on the PCR results, we should expect
+to see all species in the fecal samples except Eubacterium rectale and
+Faecalibacterium prausnitzii.
+
+```{r}
+```
+
+Get a phyloseq object with just the inoculum ASVs (note, excludes the second E.
+coli ASV), and merge ASVs from the same organism,
+```{r}
+ps0 <- ps %>%
+  subset_taxa(str_detect(vv_source, "inoculum"))
+# tax_table(ps0) <- tax_table(ps0)[, c("vv_organism")]
+ps0 <- merge_taxa_vec(ps0, c(tax_table(ps0)[, c("vv_organism")]), 
+  tax_adjust = 0)
+taxa_names(ps0) <- tax_table(ps0)[, c("vv_organism")]
+```
+
+
+Global proportions on the plate of each inoculum taxon,
+```{r}
+global_props <- ps0 %>%
+  as_tibble %>%
+  group_by(taxon) %>%
+  summarize_at(vars(abundance, reads_final), sum) %>%
+  mutate(proportion = abundance / reads_final) %>%
+  arrange(-proportion) %>%
+  print
+```
+
+A crude way to define presence in the specimen is > Y times the plate
+proportion, where Y is a small number, say ~1e-2, after averaging replicates to
+account for protocol bias.
+
+Let's also get specimen-level average proportions. In this case, I think I
+want to compute proportions prior to merging.
+```{r}
+specimen_props <- ps0 %>%
+  subset_samples(specimen_type == "fecal") %>%
+  as_tibble %>%
+  mutate(proportion = abundance / reads_final) %>%
+  group_by(taxon, host_sex, collection_week, specimen_id) %>%
+  summarize_at(vars(proportion), mean) %>%
+  ungroup
+specimen_props0 <- specimen_props %>%
+  left_join(
+    global_props %>% select(taxon, global_proportion = proportion), 
+    by = "taxon"
+  ) %>%
+  left_join(tax_table(ps0) %>% as_tibble, by = "taxon")
+specimen_props1 <- specimen_props0 %>%
+  # mutate(present = proportion > global_proportion * 1e-2)
+  mutate(present = proportion > global_proportion * 1e-1) # conservative
+```
+
+Combine to the cage-timepoint level,
+```{r}
+specimen_props2 <- specimen_props1 %>%
+  mutate(taxon = paste(genus, species)) %>%
+  group_by(taxon, host_sex, collection_week) %>%
+  summarize(prevalence = mean(present)) %>%
+  ungroup
+ptb <- specimen_props2 %>%
+  pivot_wider(names_from = collection_week, values_from = prevalence) %>%
+  arrange(host_sex, taxon)
+
+print(ptb, n = Inf)
+```
+
+This strongly suggests that all taxa except F. prausnitzii were able to
+colonize.
+
+Another way to do this at the cage-week level could be to compute the average
+proportion for the cage-week as a function of the plate-level proportion.
+
+Let's check on E. rectale,
+```{r}
+ps0 %>%
+  subset_samples(specimen_type %in% c("fecal", "inoculum")) %>%
+  prune_taxa("Eubacterium rectale", .) %>%
+  as_tibble %>%
+  mutate(
+    type = case_when(
+      specimen_type == "fecal" ~ host_sex,
+      specimen_type == "inoculum" ~ "inoculum",
+      )
+    ) %>%
+  mutate(proportion = abundance / reads_final) %>%
+  ggplot(aes(collection_week, 1e-5 + proportion, color = type)) +
+  # geom_quasirandom() +
+  geom_text(aes(label = specimen_id), position = position_quasirandom()) +
+  scale_y_log10() +
+  facet_wrap(~extraction_protocol, ncol = 1)
+```
+
+Puzzling bias pattern! Why would protocol P2 fail to extract E. rectale in
+males only (week 2), but seemingly not in any of the mice in week 6?  What
+alternative explanations besides a (protocol:cage interation in bias) might
+there be, that I can rule out?  Is it possible that we didn't alternate
+aliquots for these mice? E.g. maybe we aliquoted in the order 1-3-2-4, and made
+aliquots 1 and 3 P1 and 2 and 4 P2, and then in the second batch, we did them
+1-2-3-4. But that seems unlikely, since we paused before doing this and made
+the decision to do the plan of aliquoting 1-2-3-4 and spliting (1,3) and (2,4)
+for the two protocols. Also, for this to explain the by-cage pattern we'd need
+to have done it one way for specimen 5-8 and another way for specimen 9-12.
+Other things to check: DNA conc differences? Read depth differences?
+
+
+Check same plot for another taxon
+```{r}
+ps0 %>%
+  subset_samples(specimen_type %in% c("fecal", "inoculum")) %>%
+  subset_taxa(genus == "Marvinbryantia") %>%
+  as_tibble %>%
+  mutate(
+    type = case_when(
+      specimen_type == "fecal" ~ host_sex,
+      specimen_type == "inoculum" ~ "inoculum",
+      )
+    ) %>%
+  mutate(proportion = abundance / reads_final) %>%
+  ggplot(aes(collection_week, 1e-5 + proportion, color = type)) +
+  # geom_quasirandom() +
+  geom_text(aes(label = specimen_id), position = position_quasirandom()) +
+  scale_y_log10() +
+  facet_wrap(~extraction_protocol, ncol = 1)
+```
+
+
+## All taxa
+
+
+```{r, fig.dim = c(10, 7)}
+ps0 %>%
+  subset_samples(specimen_type %in% c("fecal")) %>%
+  as_tibble %>%
+  mutate(proportion = abundance / reads_final) %>%
+  ggplot(aes(taxon, 1e-5 + proportion, color = host_sex)) +
+  # geom_hline(yintercept = 1e-5, color = "lightgrey") +
+  geom_quasirandom() +
+  scale_color_brewer(type = "qual", name = "cage") +
+  scale_y_log10() +
+  geom_point(data = global_props, shape = 3, size = 2, color = "darkgrey") +
+  geom_text(
+    data = tibble(
+      taxon = "Eubacterium rectale", 
+      proportion = 1e-1,
+      extraction_protocol = "2",
+      extraction_batch = 1),
+    label = "<- weird", color = "black"
+  ) +
+  coord_flip() +
+  facet_grid(extraction_batch ~ extraction_protocol,
+    labeller = labeller(
+      extraction_batch = function(x) paste("Batch", x),
+      protocol = function(x) paste("Protocol", x)
+    )
+  ) +
+  labs(x = "") +
+  theme(
+    panel.spacing = unit(0.05, "npc")
+  ) +
+  plot_annotation(
+    title = "Species proportions in fecal samples",
+    subtitle = "+ denotes plate average"
+  )
+```
+
+Something a little bit like this might be happening with Roseburia and with
+Akkermansia in Batch 2.
+
+Is there a better figure I can make to more directly show the phenomenon in
+question - is the bias different in male and female mice? One way is with a
+ratio-of-ratio plot. But showing the proportions is easier for understanding
+true presence vs. index hopping. 
+
+E. rectale in batch 2 is also weird
+
+```{r, fig.dim = c(10, 7)}
+ps0 %>%
+  subset_samples(specimen_type %in% c("fecal")) %>%
+  as_tibble %>%
+  mutate(proportion = abundance / reads_final) %>%
+  ggplot(aes(extraction_protocol, qlogis(1e-5 + proportion), 
+      color = host_sex)) +
+  geom_hline(yintercept = qlogis(1e-5), color = "lightgrey") +
+  geom_quasirandom() +
+  scale_color_brewer(type = "qual", name = "cage") +
+  # scale_y_log10() +
+  coord_flip() +
+  facet_grid(taxon~extraction_batch,
+    labeller = labeller(
+      extraction_batch = function(x) paste("Batch", x)
+    )
+  ) +
+  labs(
+    x = "",
+    title = "Species proportions in fecal samples"
+  ) +
+  theme(
+    panel.spacing.x = unit(0.05, "npc"),
+    panel.spacing.y = unit(0.02, "npc"),
+    strip.text.y = element_text(angle = 0, hjust = 0)
+  )
+```
+
+
+## E. rectale only
+
+
+```{r}
+er_prop <- global_props %>%
+  filter(taxon == "Eubacterium rectale") %>%
+  pull(proportion)
+```
+
+```{r, fig.dim = c(6, 5)}
+ps0 %>%
+  subset_samples(specimen_type %in% c("fecal")) %>%
+  prune_taxa("Eubacterium rectale", .) %>%
+  as_tibble %>%
+  mutate(
+    type = case_when(
+      specimen_type == "fecal" ~ host_sex,
+      specimen_type == "inoculum" ~ "inoculum",
+      )
+    ) %>%
+  mutate(proportion = abundance / reads_final) %>%
+  ggplot(aes(host_sex, 1e-5 + proportion, color = extraction_protocol)) +
+  geom_hline(yintercept = er_prop, color = "grey") +
+  geom_quasirandom(dodge.width = 0.25) +
+  scale_y_log10() +
+  facet_wrap(~extraction_batch,
+    labeller = labeller(
+      extraction_batch = function(x) paste("Batch", x),
+      extraction_protocol = function(x) paste("Protocol", x)
+    )
+  ) +
+  labs(
+    x = "Cage / host sex"
+  #   title = "Species proportions in fecal samples; + denotes plate average"
+  ) +
+  scale_color_brewer(type = "qual", name = "Protocol") +
+  theme(
+    panel.spacing = unit(0.05, "npc")
+  )
+```
+
+Index hopping gives 0.005 or about -2.5 logs times global prop. Based on below
+observations, can note that the baseline prop of 1e-5 typically corresponds to
+about 1 read.  What type of counts are these very-low proportions?
+
+```{r, fig.dim = c(6, 5)}
+ps0 %>%
+  subset_samples(specimen_type == "fecal") %>%
+  sample_sums %>%
+  ecdf %>%
+  plot
+```
+
+```{r, fig.dim = c(6, 5)}
+ps0 %>%
+  subset_samples(specimen_type %in% c("fecal")) %>%
+  prune_taxa("Eubacterium rectale", .) %>%
+  as_tibble %>%
+  mutate(
+    reads = abundance,
+    proportion = reads / reads_final
+    ) %>%
+  ggplot(aes(reads, proportion, color = extraction_protocol)) +
+  geom_point() +
+  # geom_quasirandom(dodge.width = 0.25) +
+  scale_y_log10() +
+  scale_x_log10()
+```
+
+```{r, fig.dim = c(6, 5)}
+ps0 %>%
+  subset_samples(specimen_type %in% c("fecal")) %>%
+  prune_taxa("Eubacterium rectale", .) %>%
+  as_tibble %>%
+  mutate(
+    type = case_when(
+      specimen_type == "fecal" ~ host_sex,
+      specimen_type == "inoculum" ~ "inoculum",
+      )
+    ) %>%
+  rename(reads = abundance) %>%
+  mutate(
+    proportion = reads / reads_final + 1e-5,
+    reads = reads + 1
+    ) %>%
+  pivot_longer(c(proportion, reads)) %>%
+  ggplot(aes(host_sex, value, color = extraction_protocol)) +
+  geom_quasirandom(dodge.width = 0.25) +
+  scale_y_log10() +
+  facet_grid(name ~ extraction_batch,
+    labeller = labeller(
+      extraction_batch = function(x) paste("Batch", x),
+      extraction_protocol = function(x) paste("Protocol", x)
+    ),
+    scales = "free_y"
+  ) +
+  labs(
+    x = "Cage / host sex"
+  #   title = "Species proportions in fecal samples; + denotes plate average"
+  ) +
+  scale_color_brewer(type = "qual", name = "Protocol") +
+  theme(
+    panel.spacing = unit(0.05, "npc")
+  )
+```
+
+Although there is a ~2.5X range in read depths, this seems to make little
+difference for understanding what is happneing, and we can roughly just take
+the read depth to be 1e5 for purposes of considering the number of counts from
+the proportions.
+
