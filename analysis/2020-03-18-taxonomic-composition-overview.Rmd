@@ -1,0 +1,154 @@
+---
+title: Overview of taxonomic compositions in the A1 data
+author: Michael McLaren
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    toc: true
+    fig_width: 6
+    dev: "svg"
+---
+
+```{r, include = FALSE}
+# knitr chunk options
+knitr::opts_chunk$set(
+  cache = TRUE,
+  autodep = TRUE,
+  cache.comments = FALSE,
+  collapse = TRUE,
+  comment = "#>",
+  warning = TRUE, message = FALSE, 
+  fig.width = 7, fig.height = 7
+)
+```
+
+## Setup
+
+```{r}
+library(tidyverse)
+library(here)
+library(cowplot)
+library(patchwork)
+library(speedyseq)
+import::from(metacal, mutate_by)
+theme_set(theme_cowplot(12))
+```
+
+```{r}
+my_psmelt <- function(physeq) {
+  speedyseq::psmelt(physeq) %>%
+    as_tibble %>%
+    rename(taxon = OTU, sample = Sample, abundance = Abundance)
+}
+as_tibble.phyloseq <- function(x) {
+  x %>% my_psmelt
+}
+as_tibble.sample_data <- function(x) {
+  x %>% as("data.frame") %>% as_tibble(rownames = "sample")
+}
+as_tibble.taxonomyTable <- function(x) {
+  x %>% as("matrix") %>% as_tibble(rownames = "taxon")
+}
+as_tibble.XStringSet <- function(x) {
+  x %>% as.character %>% enframe("taxon", "sequence")
+}
+```
+
+```{r}
+# Phyloseq object w/ the A1 sequencing data,
+ps <- readRDS(here("results", "a1", "a1-phyloseq-silva-v138.Rds")) %>%
+  filter_taxa2(~sum(.) >= 10)
+sample_data(ps)$specimen_id <- sample_data(ps)$specimen_id %>% as.factor
+tax <- tax_table(ps) %>% as_tibble
+sam <- sample_data(ps) %>% as_tibble
+# Strain assignments
+assignments <- here("results", "a1", "a1-asv-strain-assignments.csv") %>%
+  read_csv
+# Angie's test results
+pcr_results <- read_csv(here("results/lab", "colonization-test-results.csv"))
+```
+
+```{r}
+# Focus on species intended to be in the inoculum (include both E. coli ASVs)
+focal_taxa <- assignments %>%
+  filter(!(source %in% c("Zymo DNA mock", "T. mobilis"))) %>%
+  transmute(taxon = feature_id, organism = str_c(genus, species, sep = " "))
+```
+
+
+## Bar plot of all specimens
+
+```{r}
+ptb <- ps %>%
+  subset_samples(specimen_type %in% c("fecal", "inoculum")) %>%
+  # normalize to proportions
+  transform_sample_counts(~. / sum(.)) %>%
+  # build data frame
+  as_tibble %>%
+  # config organism and phylum for plotting with "Other" category
+  left_join(focal_taxa, by = "taxon") %>%
+  replace_na(list(organism = "Other")) %>%
+  mutate(phylum = ifelse(organism == "Other", "Other", phylum)) %>%
+  # Average proportion across samples of each specimen
+  group_by(specimen_type, extraction_protocol, specimen_id, phylum, organism,
+    taxon) %>%
+  summarize(proportion = mean(abundance), .groups = "drop_last") %>%
+  # Merge ASVs from the same organism to avoid visible gaps in the vector
+  # output of the barplot
+  summarize(proportion = sum(proportion), .groups = "drop")
+```
+
+```{r color-scale}
+palette_list <- c("Blues", "Greens", "Reds", "Purples", "Oranges", 
+      "Greys")
+# Color tibble
+ctb <- ptb %>%
+  select(phylum, organism) %>%
+  distinct %>%
+  arrange(phylum, organism) %>%
+  group_by(phylum) %>%
+  summarize(organism = list(organism), n = n(), .groups = "drop") %>%
+  mutate(
+    phylum = fct_relevel(phylum, "Other", after = Inf)
+  ) %>%
+  arrange(phylum)
+ctb <- ctb %>%
+  mutate(
+    palette = palette_list[row_number()],
+    # Note, brewer.pal always returns at least 3 colors, so for n < 3 we'll
+    # explicitly ask for 3 and then subset to just the first n
+    color = map2(n, palette, 
+      ~RColorBrewer::brewer.pal(n = max(.x, 3), name = .y) %>% tail(.x)
+    )
+  ) %>%
+  unnest(cols = c(organism, color)) %>%
+  mutate(color = ifelse(organism == "Other", "lightgrey", color))
+```
+
+```{r bar-plot}
+ptb %>%
+  mutate_at("organism", fct_relevel, ctb$organism) %>%
+  ggplot(aes(factor(specimen_id), proportion, fill = organism)) +
+  geom_col() +
+  facet_grid(extraction_protocol ~ specimen_type, 
+    scales = "free_x", space = "free_x",
+    labeller = labeller(
+      extraction_protocol = function(x) paste("Protocol", x)
+    )
+  ) +
+  scale_fill_manual(values = ctb$color) +
+  labs(
+    x = "Specimen id", y = "Proportion", fill = "Species"
+  ) +
+  theme(
+    axis.line = element_blank()
+  ) +
+  plot_annotation("Average composition of each specimen")
+```
+
+```{r}
+ggsave(
+  here("results/figures", "2020-03-18-a1-bar-plot.pdf"),
+  width = 8, height = 7, units = "in", scale = 1.1
+)
+```
