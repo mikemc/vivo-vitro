@@ -1,0 +1,210 @@
+---
+title: Inspect fecal homogenization in the A1 data
+author: Michael McLaren
+date: "`r Sys.Date()`"
+description:
+output:
+  html_document:
+    toc: true
+    fig_width: 6
+    dev: "svg"
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(progress = TRUE, verbose = TRUE)
+# Global chunk options
+knitr::opts_chunk$set(
+  include = TRUE, echo = TRUE,
+  warning = TRUE, message = FALSE, 
+  fig.width = 7, fig.height = 7
+)
+```
+
+Goal: Check if the homogenization of specimens prior to aliquoting seems to
+have successfully resulted in uniform aliquots. This analysis is crude and is
+just trying to see if the experiment worked well enough to proceed.
+This analyses was conducted on 2020-02-29 and was updated on 2020-08-05 to use
+the new results files and create an html report.
+
+## Setup
+
+```{r}
+library(tidyverse)
+library(here)
+library(cowplot)
+library(ggridges)
+library(ggbeeswarm)
+library(ggforce)
+library(speedyseq)
+import::from(metacal, mutate_by, clr)
+theme_set(theme_cowplot(12))
+```
+
+```{r}
+my_psmelt <- function(physeq) {
+  speedyseq::psmelt(physeq) %>%
+    as_tibble %>%
+    rename(taxon = OTU, sample = Sample, abundance = Abundance)
+}
+as_tibble.phyloseq <- function(x) {
+  x %>% my_psmelt
+}
+as_tibble.sample_data <- function(x) {
+  x %>% as("data.frame") %>% as_tibble(rownames = "sample")
+}
+as_tibble.taxonomyTable <- function(x) {
+  x %>% as("matrix") %>% as_tibble(rownames = "taxon")
+}
+as_tibble.XStringSet <- function(x) {
+  x %>% as.character %>% enframe("taxon", "sequence")
+}
+```
+
+```{r}
+# Phyloseq object w/ the A1 sequencing data,
+ps <- readRDS(here("results", "a1", "a1-phyloseq-silva-v138.Rds")) %>%
+  filter_taxa2(~sum(.) >= 10)
+sample_data(ps)$specimen_id <- sample_data(ps)$specimen_id %>% as.factor
+tax <- tax_table(ps) %>% as_tibble
+sam <- sample_data(ps) %>% as_tibble
+# Strain assignments
+assignments <- here("results", "a1", "a1-asv-strain-assignments.csv") %>%
+  read_csv
+```
+
+```{r}
+# Focus on species intended to be in the inoculum (include both E. coli ASVs)
+focal_taxa <- assignments %>%
+  filter(!(source %in% c("Zymo DNA mock", "T. mobilis"))) %>%
+  transmute(taxon = feature_id, organism = str_c(genus, species, sep = " "))
+```
+
+## fecal samples
+
+
+Goal: Compute pairwise distances after filtering to taxa supposed to be
+present.
+
+```{r}
+ps0 <- ps %>%
+  subset_samples(specimen_type == "fecal") %>%
+  filter_taxa2(~mean(.>10) > 0.9)
+```
+
+
+Compute pw Aitchison distances:
+```{r}
+pw_dists <- ps0 %>%
+  transform_sample_counts(~clr(1 + .)) %>%
+  distance("euclidean") %>%
+  broom::tidy() %>%
+  rename_all(str_replace, "item", "sample.") %>%
+  left_join(sam, by = c("sample.1" = "sample")) %>%
+  left_join(sam, by = c("sample.2" = "sample"), suffix = c(".1", ".2"))
+```
+
+
+visualize pw distances:
+```{r, fig.width = 10}
+pw_dists %>%
+  mutate(
+    type = case_when(
+      # specimen_type.1 == specimen_type.2 ~ "same "
+      specimen_id.1 == specimen_id.2 & 
+        extraction_protocol.1 == extraction_protocol.2 ~ 
+        "same specimen, same protocol",
+      specimen_id.1 == specimen_id.2 & 
+        extraction_protocol.1 != extraction_protocol.2 ~ 
+        "same specimen, different protocol",
+      specimen_id.1 != specimen_id.2 & 
+        extraction_protocol.1 == extraction_protocol.2 ~ 
+        "different specimen, same protocol",
+      specimen_id.1 != specimen_id.2 & 
+        extraction_protocol.1 != extraction_protocol.2 ~ 
+        "different specimen, different protocol",
+    ),
+    same_batch = extraction_batch.1 == extraction_batch.2,
+    batches = ifelse(same_batch, str_glue("both {extraction_batch.1}"), 
+      "different batches")
+  ) %>%
+  ggplot(aes(x = type, y = distance, color = batches)) +
+  geom_quasirandom() +
+  coord_flip() +
+  scale_color_brewer(type = "qual", palette = 2)
+```
+
+Should look more into the structure of the comparisons between specimens (same
+protocol).  Host sex (equiv cage) does not make a difference (not shown), but
+extraction batch / collection week is apparently to be an important factor.
+Notably, we can't tell statistically if this is because of a batch effect or
+biological differences.
+
+```{r, fig.dim = c(7, 5)}
+pw_dists %>%
+  filter(specimen_id.1 == specimen_id.2) %>%
+  mutate_at(vars(starts_with("aliquot_number")), as.integer) %>%
+  mutate(
+    aliquot_diff = abs(aliquot_number.1 - aliquot_number.2),
+    same_protocol = extraction_protocol.1 == extraction_protocol.2,
+    protocols = ifelse(same_protocol, str_glue("both {extraction_protocol.1}"), 
+      "different protocols")
+    ) %>%
+  ggplot(aes(aliquot_diff, distance, color = protocols)) +
+  geom_quasirandom() +
+  coord_flip() +
+  scale_color_brewer(type = "qual", palette = 2,
+    guide = guide_legend(reverse = TRUE)
+  )
+```
+
+From these two plots there is no evidence of a homogenization
+failure in the fecal samples. Or, perhaps better to say that the effect is much
+less than the protocol effect.
+
+Note, we did not design the experiment to detect a homogenization effect, and I
+interleaved the aliquots by protocol to try to minimize what such an effect
+might have been.
+
+```{r, fig.dim = c(7, 5)}
+pw_dists %>%
+  filter(specimen_id.1 == specimen_id.2) %>%
+  mutate_at(vars(starts_with("aliquot_number")), as.integer) %>%
+  mutate(
+    aliquot_diff = abs(aliquot_number.1 - aliquot_number.2),
+    aliquot_pair = str_glue("{aliquot_number.2}, {aliquot_number.1}"),
+    same_protocol = extraction_protocol.1 == extraction_protocol.2,
+    protocols = ifelse(same_protocol, str_glue("both {extraction_protocol.1}"), 
+      "different protocols")
+    ) %>%
+  ggplot(aes(aliquot_pair, distance, color = protocols)) +
+  geom_quasirandom() +
+  coord_flip() +
+  scale_color_brewer(type = "qual", palette = 2,
+    guide = guide_legend(reverse = TRUE)
+  )
+```
+
+The worry is that earlier aliquots have more of certain types of microbes than
+later aliquots. In that case, we would expect that aliquot numbers only 1 apart
+will be more similar than those that are 3 apart. In this figure, we can see
+that the further apart case, (1,4) does not lead to greater distances than the
+cases where the aliquots are only separated by 1 aliquot. I think perhaps the
+previous figure shows this more simply.
+
+
+Additional checks might want to try:
+- try with another distance measure that is less sensitive to low-frequency
+  taxa (e.g. BC, Hellinger)
+- try different tax filtering
+- plot an ordination
+- fit a complm model and see if `aliquot_number` explains anything beyond
+  `specimen_id` and `protocol`.
+
+For the Methods:
+
+Note that we observed more fibrous particles in the earlier aliquots. We
+suspected these to be relatively devoid of microbes and so to not affect our
+results. However, to minimize the possibility that ... (a systematic effect) we
+alternated protocols.
+
