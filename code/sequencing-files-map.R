@@ -2,10 +2,7 @@ library(tidyverse)
 library(here)
 library(fs)
 
-dotenv::load_dot_env(here::here(".env"))
-data_path <- file.path(Sys.getenv("DATA_PATH"))
-
-dna_sam <- readRDS(here("sample-data", "dna-sample-data.Rds"))
+dna_sam <- readRDS(here("output/sample-data", "dna-sample-data.Rds"))
 
 # A1 files
 x <- "data/a1/reads/raw"
@@ -66,4 +63,4 @@ ftb <- bind_rows(a1_files, s1_files, s2_files) %>%
   relocate(dna_sample_id, .after = center_id)
 ftb
 
-write_csv(ftb, here("sample-data", "sequencing-read-files.csv"))
+write_csv(ftb, here("output/sample-data", "sequencing-read-files.csv"))

@@ -56,16 +56,16 @@ as_tibble.XStringSet <- function(x) {
 
 ```{r}
 # Phyloseq object w/ the A1 sequencing data,
-ps <- readRDS(here("results", "a1", "a1-phyloseq-silva-v138.Rds")) %>%
+ps <- readRDS(here("output", "a1", "a1-phyloseq-silva-v138.Rds")) %>%
   filter_taxa2(~sum(.) >= 10)
 sample_data(ps)$specimen_id <- sample_data(ps)$specimen_id %>% as.factor
 tax <- tax_table(ps) %>% as_tibble
 sam <- sample_data(ps) %>% as_tibble
 # Strain assignments
-assignments <- here("results", "a1", "a1-asv-strain-assignments.csv") %>%
+assignments <- here("output", "a1", "a1-asv-strain-assignments.csv") %>%
   read_csv
 # Angie's test results
-pcr_results <- read_csv(here("results/lab", "colonization-test-results.csv"))
+pcr_results <- read_csv(here("output/lab", "colonization-test-results.csv"))
 ```
 
 ```{r}
@@ -148,7 +148,7 @@ ptb %>%
 
 ```{r}
 ggsave(
-  here("results/figures", "2020-03-18-a1-bar-plot.pdf"),
+  here("output/figures", "2020-03-18-a1-bar-plot.pdf"),
   width = 8, height = 7, units = "in", scale = 1.1
 )
 ```

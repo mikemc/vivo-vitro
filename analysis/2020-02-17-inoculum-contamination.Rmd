@@ -58,7 +58,7 @@ as_tibble.XStringSet <- function(x) {
 
 Import into phyloseq.
 ```{r}
-ps <- readRDS(here("results/a1/a1-phyloseq-silva-v138.Rds")) %>%
+ps <- readRDS(here("output/a1/a1-phyloseq-silva-v138.Rds")) %>%
   print
 sample_data(ps) <- sample_data(ps) %>%
   transform(extraction_batch = as.factor(extraction_batch))
@@ -157,7 +157,7 @@ ps0 %>%
   labs(title = "Histogram of the proportion Staphylococcus in each sample") +
   theme(title = element_text(size = 10))
 ggsave(
-  here("results/figures", "2020-02-17-staph-contam.pdf"),
+  here("output/figures", "2020-02-17-staph-contam.pdf"),
   width = 6,
   height = 3
 )
@@ -213,7 +213,7 @@ ps0 %>%
   labs(title = "Proportion Bacillus ASVs in each sample") +
   theme(title = element_text(size = 10))
 ggsave(
-  here("results/figures", "2020-02-25-bacillus-contam.pdf"),
+  here("output/figures", "2020-02-25-bacillus-contam.pdf"),
   width = 6,
   height = 8
 )

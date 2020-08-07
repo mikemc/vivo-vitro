@@ -68,7 +68,7 @@ as_tibble.XStringSet <- function(x) {
 
 Load phyloseq object,
 ```{r}
-ps <- readRDS(here("results/a1/a1-phyloseq-silva-v138.Rds")) %>%
+ps <- readRDS(here("output/a1/a1-phyloseq-silva-v138.Rds")) %>%
   print
 sample_data(ps) <- sample_data(ps) %>%
   transform(extraction_batch = as.factor(extraction_batch))

@@ -9,7 +9,7 @@ library(here)
 ### Prepare the primary sample data
 
 ```{r}
-dna_sam <- readRDS(here("sample-data", "dna-sample-data.Rds"))
+dna_sam <- readRDS(here("output", "sample-data", "dna-sample-data.Rds"))
 centers <- c("A1", "A2", "S1", "S2")
 ```
 
@@ -68,7 +68,7 @@ rename_samples <- function(x) {
 Index sequences from A1 sequencing report,
 ```{r}
 indexqc <- read_csv(
-  here::here("sample-data", "a1-index-qc.csv"),
+  here::here("data/sample-data", "a1-index-qc.csv"),
   col_types = "iccccddd"
   ) %>%
   janitor::clean_names() %>%
@@ -85,7 +85,7 @@ indexqc0 <- indexqc %>%
 Read counts from DADA2 tracking table,
 ```{r}
 track <- read_csv(
-  here("results", "a1", "dada2", "track.csv"),
+  here("output", "a1", "dada2", "track.csv"),
   col_types = "ciiiiii"
   ) %>%
   glimpse
@@ -113,7 +113,7 @@ sam0 <- sam %>%
 ```
 
 ```{r}
-saveRDS(sam0, here("results", "a1", "a1-sample-data.Rds"))
+saveRDS(sam0, here("output", "a1", "a1-sample-data.Rds"))
 ```
 
 ## Phyloseq
@@ -123,15 +123,15 @@ taxonomy, and sample data.
 ```{r}
 library(phyloseq)
 
-seqtab <- here("results", "a1", "dada2", "seqtab-nochim.Rds") %>%
+seqtab <- here("output", "a1", "dada2", "seqtab-nochim.Rds") %>%
   readRDS %>%
   otu_table(taxa_are_rows = FALSE)
 sample_names(seqtab) <- sample_names(seqtab) %>%
   rename_samples
-tax <- here("results", "a1", "dada2", "taxonomy-silva-v138.Rds") %>%
+tax <- here("output", "a1", "dada2", "taxonomy-silva-v138.Rds") %>%
   readRDS %>%
   tax_table
-sam <- readRDS(here("results", "a1", "a1-sample-data.Rds")) %>%
+sam <- readRDS(here("output", "a1", "a1-sample-data.Rds")) %>%
   column_to_rownames("sample_id") %>%
   sample_data
 ps <- phyloseq(seqtab, sam, tax)
@@ -155,5 +155,5 @@ ps
 ```
 
 ```{r}
-saveRDS(ps, here("results", "a1", "a1-phyloseq-silva-v138.Rds"))
+saveRDS(ps, here("output", "a1", "a1-phyloseq-silva-v138.Rds"))
 ```

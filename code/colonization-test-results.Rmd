@@ -33,6 +33,6 @@ tb1 <- tb %>%
   separate(week_condition, into = c("week", "condition"), 
     sep = "(?<=\\d)\\s+") %>%
   glimpse
-write_csv(tb1, here("results/lab", "colonization-test-results.csv"))
+write_csv(tb1, here("output/lab", "colonization-test-results.csv"))
 ```
 

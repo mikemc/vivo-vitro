@@ -20,7 +20,7 @@ library(dada2); packageVersion("dada2")
 ```
 Path for saving dada2 results:
 ```{r}
-results_path <- here::here("results", "a1", "dada2")
+results_path <- here::here("output", "a1", "dada2")
 dir.create(results_path, recursive = TRUE)
 ```
 Path to the fastq files:
@@ -207,7 +207,7 @@ Note the patch version increment from above.
 
 ```{r}
 db_path <- file.path("~/data", "silva", "dada2_format")
-results_path <- here::here("results", "a1", "dada2")
+results_path <- here::here("output", "a1", "dada2")
 seqtab.nochim <- readRDS(file.path(results_path, "seqtab-nochim.Rds"))
 ```
 

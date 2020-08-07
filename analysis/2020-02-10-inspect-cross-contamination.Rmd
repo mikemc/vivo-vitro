@@ -56,7 +56,7 @@ as_tibble.XStringSet <- function(x) {
 
 Import into phyloseq.
 ```{r}
-ps <- readRDS(here("results/a1/a1-phyloseq-silva-v138.Rds")) %>%
+ps <- readRDS(here("output/a1/a1-phyloseq-silva-v138.Rds")) %>%
   print
 sample_data(ps) <- sample_data(ps) %>%
   transform(extraction_batch = as.factor(extraction_batch))
@@ -150,7 +150,7 @@ p2 <- tmob %>%
   geom_histogram()
 plot_grid(p1, p2)
 ggsave(
-  here("results/figures", "2020-02-10-t-mobilis-contam-histogram.pdf"),
+  here("output/figures", "2020-02-10-t-mobilis-contam-histogram.pdf"),
   width = 8,
   height = 4
 )
@@ -173,7 +173,7 @@ sam %>%
     legend.position = "bottom"
     )
 ggsave(
-  here("results/figures", "2020-02-10-plate-layout.pdf"),
+  here("output/figures", "2020-02-10-plate-layout.pdf"),
   width = 8,
   height = 6
 )
@@ -193,7 +193,7 @@ tmob %>%
     legend.position = "bottom"
     )
 ggsave(
-  here("results/figures", "2020-02-10-t-mobilis-contam-across-plate.pdf"),
+  here("output/figures", "2020-02-10-t-mobilis-contam-across-plate.pdf"),
   width = 8,
   height = 6
 )
@@ -258,7 +258,7 @@ zymo %>%
 
 ```{r}
 ggsave(
-  here("results/figures", "2020-02-10-zymo-contam-across-plate.pdf"),
+  here("output/figures", "2020-02-10-zymo-contam-across-plate.pdf"),
   width = 8,
   height = 6
 )

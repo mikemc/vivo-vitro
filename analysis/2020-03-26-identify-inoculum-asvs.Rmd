@@ -61,7 +61,7 @@ as_tibble.XStringSet <- function(x) {
 
 Phyloseq object w/ the A1 sequencing data,
 ```{r}
-ps <- readRDS(here("results", "a1", "a1-phyloseq-silva-v138.Rds"))
+ps <- readRDS(here("output", "a1", "a1-phyloseq-silva-v138.Rds"))
 tax <- tax_table(ps) %>% as_tibble
 sam <- sample_data(ps) %>% as_tibble
 sam %>%
@@ -500,5 +500,5 @@ Save along with the amplicon sequences,
 assignments_full %>%
   rename(feature_id = asv) %>%
   left_join(refseq(ps) %>% as_tibble, by = c(feature_id = "taxon")) %>%
-  write_csv(here("results", "a1", "a1-asv-strain-assignments.csv"))
+  write_csv(here("output", "a1", "a1-asv-strain-assignments.csv"))
 ```
