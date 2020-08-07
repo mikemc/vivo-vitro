@@ -36,8 +36,8 @@ Initial tests shows that running mash screen with the provided RefSeq genomes sk
 library(tidyverse)
 library(here)
 
-dna_sam <- readRDS(here("sample-data", "dna-sample-data.Rds"))
-ftb <- here("sample-data", "sequencing-read-files.csv") %>%
+dna_sam <- readRDS(here("output/sample-data", "dna-sample-data.Rds"))
+ftb <- here("output/sample-data", "sequencing-file-map.csv") %>%
   read_csv %>%
   left_join(dna_sam, by = "dna_sample_id")
 #+END_SRC
@@ -49,10 +49,12 @@ ftb %>%
   filter(center_id == "S2", specimen_type == "fecal", aliquot_number %in% 1:2) %>%
   group_by(extraction_batch) %>%
   slice_min(specimen_id, n = 1) %>%
-  pull(path) %>%
+  ungroup %>%
+  select(path_r1, path_r2) %>%
+  unlist %>%
+  unname %>%
   here() %>%
   str_c(collapse = " ")
-#   head(1)
 #+END_SRC
 
 Ideally, I could directly use the file names from the above R chunk into a shell chunk to construct the mash command, e.g.
