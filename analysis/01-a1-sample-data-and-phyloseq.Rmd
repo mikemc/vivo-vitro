@@ -9,7 +9,7 @@ library(here)
 ### Prepare the primary sample data
 
 ```{r}
-dna_sam <- readRDS(here("output", "sample-data", "dna-sample-data.Rds"))
+dna_sam <- readRDS(here("output", "sample-data", "pilot-dna-sample-data.Rds"))
 centers <- c("A1", "A2", "S1", "S2")
 ```
 

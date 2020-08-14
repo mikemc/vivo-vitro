@@ -45,5 +45,5 @@ dna_sam <- dna_sample_map %>%
   )
 
 # Save plain-text and Rds versions (to preserve types)
-write_csv(dna_sam, here("output/sample-data", "dna-sample-data.csv"))
-saveRDS(dna_sam, here("output/sample-data", "dna-sample-data.Rds"))
+write_csv(dna_sam, here("output/sample-data", "pilot-dna-sample-data.csv"))
+saveRDS(dna_sam, here("output/sample-data", "pilot-dna-sample-data.Rds"))
