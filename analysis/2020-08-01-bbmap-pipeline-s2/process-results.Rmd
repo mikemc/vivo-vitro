@@ -17,10 +17,26 @@ strains <- here("strain-info/strains-uniprot.csv") %>%
 ```
 DNA sample data (for the map from well to DNA sample id)
 ```{r}
-dna_sam <- here("sample-data", "dna-sample-data.Rds") %>% readRDS
+dna_sam <- here("output/sample-data", "dna-sample-data.Rds") %>% readRDS
 ```
 
 Note: The S2 results are labeled by well rather than DNA sample id.
+
+## Bacterial reads
+
+First, load the BBSplit refstats results,
+```{r}
+res <- tibble(fn = dir_ls(out_path, regexp = "[A-H][0-9]{2}-refstats.tsv")) %>%
+  mutate(
+    well = path_file(fn) %>% str_extract("[A-H][0-9]{2}(?=-refstats)"),
+    data = map(fn, read_tsv, col_types = "cddddiiii")
+  ) %>%
+  select(-fn) %>%
+  unnest(data) %>%
+  janitor::clean_names() %>%
+  rename(name = number_name) %>%
+  glimpse
+```
 
 ## Host reads
 
@@ -44,21 +60,8 @@ host %>% pull(unambiguous_reads) %>% summary
 host %>% pull(ambiguous_reads) %>% summary
 ```
 
-## Bacterial reads
+## Create count matrix
 
-First, load the BBSplit refstats results,
-```{r}
-res <- tibble(fn = dir_ls(out_path, regexp = "[A-H][0-9]{2}-refstats.tsv")) %>%
-  mutate(
-    well = path_file(fn) %>% str_extract("[A-H][0-9]{2}(?=-refstats)"),
-    data = map(fn, read_tsv, col_types = "cddddiiii")
-  ) %>%
-  select(-fn) %>%
-  unnest(data) %>%
-  janitor::clean_names() %>%
-  rename(name = number_name) %>%
-  glimpse
-```
 Join the strain info,
 ```{r}
 res0 <- res %>%
@@ -98,6 +101,27 @@ mat <- res2 %>%
 ```
 
 ```{r}
-saveRDS(mat, here("results", "s2", "count-matrix.Rds"))
+saveRDS(mat, here("output", "s2", "count-matrix.Rds"))
 ```
 
+## Unmapped reads
+
+Separately, save a table with the number of unmapped reads,
+
+```{r}
+unmapped <- path(out_path, "unmapped-stats.tsv") %>%
+  read_tsv(col_types = "cii") %>%
+  mutate(well = str_replace(well, "(?<=[A-H])0", "")) %>%
+  left_join(dna_sam %>% select(well, dna_sample_id), by = "well") %>%
+  transmute(
+    sample_id = str_c("S2_", dna_sample_id),
+    unmapped_reads, 
+    unmapped_pairs
+  ) %>%
+  arrange(sample_id) %>%
+  glimpse
+```
+
+```{r}
+write_csv(unmapped, here("output", "s2", "unmapped-reads.csv"))
+```

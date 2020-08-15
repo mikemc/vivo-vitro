@@ -77,127 +77,6 @@ sbatch --exclusive --job-name=$WELL-clean --output=slurm-out/slurm-%j-$WELL-clea
 done
 #+END_SRC
 
-#+RESULTS:
-#+begin_example
-
-DATA_PATH/s2/reads[?2004l
-mrmclare@node0:~/data/vivo-vitro/s2/reads% [?2004hfor SAMPLE in ${SAMPLES[*]}[?2004l
-[?2004hdo[?2004l
-[?2004hWELL=${SAMPLE:0:3}[?2004l
-[?2004hsbatch --exclusive --job-name=$WELL-clean --output=slurm-out/slurm-%j-$WELL-clean.out --wrap="[?2004l
-[?2004h    bbduk.sh -eoom \[?2004l
-[?2004h        in=raw/${SAMPLE}_R1_001.fastq.gz in2=raw/${SAMPLE}_R2_001.fastq.gz \[?2004l
-[?2004h        out=stdout.fq ref=adapters ktrim=r tpe tbo \[?2004l
-[?2004h        k=23 mink=11 hdist=1 stats=clean/$WELL-adapters-stats.tsv |[?2004l
-[?2004h    bbduk.sh -eoom in=stdin.fq out=stdout.fq interleaved=t ref=phix k=31 hdist=1 \[?2004l
-[?2004h        stats=clean/$WELL-phix-stats.tsv |[?2004l
-[?2004h    bbduk.sh -eoom in=stdin.fq out=stdout.fq interleaved=t ftr=99 qtrim=r \[?2004l
-[?2004h        trimq=5 stats=clean/$WELL-trim-stats.tsv |[?2004l
-[?2004h    bbsplit.sh -eoom path=$DATA_PATH/references/mouse \[?2004l
-[?2004h        in=stdin.fq interleaved=t outu=clean/$WELL.fastq.gz \[?2004l
-[?2004h        refstats=clean/$WELL-host-refstats.tsv \[?2004l
-[?2004h        minratio=0.9 maxindel=3 bwr=0.16 bw=12 fast minhits=2 qtrim=r trimq=10 \[?2004l
-[?2004h        untrim idtag printunmappedcount kfilter=25 maxsites=1 k=14 \[?2004l
-[?2004h        bloom pigz unpigz ziplevel=6[?2004l
-[?2004h    "[?2004l
-[?2004hdone[?2004l
-Submitted batch job 1519306
-echo 'org_babel_sh_eoe'
-Submitted batch job 1519307
-Submitted batch job 1519308
-Submitted batch job 1519309
-Submitted batch job 1519310
-Submitted batch job 1519311
-Submitted batch job 1519312
-Submitted batch job 1519313
-Submitted batch job 1519314
-Submitted batch job 1519315
-Submitted batch job 1519316
-Submitted batch job 1519317
-Submitted batch job 1519318
-Submitted batch job 1519319
-Submitted batch job 1519320
-Submitted batch job 1519321
-Submitted batch job 1519322
-Submitted batch job 1519323
-Submitted batch job 1519324
-Submitted batch job 1519325
-Submitted batch job 1519326
-Submitted batch job 1519327
-Submitted batch job 1519328
-Submitted batch job 1519329
-Submitted batch job 1519330
-Submitted batch job 1519331
-Submitted batch job 1519332
-Submitted batch job 1519333
-Submitted batch job 1519334
-Submitted batch job 1519335
-Submitted batch job 1519336
-Submitted batch job 1519337
-Submitted batch job 1519338
-Submitted batch job 1519339
-Submitted batch job 1519340
-Submitted batch job 1519341
-Submitted batch job 1519342
-Submitted batch job 1519343
-Submitted batch job 1519344
-Submitted batch job 1519345
-Submitted batch job 1519346
-Submitted batch job 1519347
-Submitted batch job 1519348
-Submitted batch job 1519349
-Submitted batch job 1519350
-Submitted batch job 1519351
-Submitted batch job 1519352
-Submitted batch job 1519353
-Submitted batch job 1519354
-Submitted batch job 1519355
-Submitted batch job 1519356
-Submitted batch job 1519357
-Submitted batch job 1519358
-Submitted batch job 1519359
-Submitted batch job 1519360
-Submitted batch job 1519361
-Submitted batch job 1519362
-Submitted batch job 1519363
-Submitted batch job 1519364
-Submitted batch job 1519365
-Submitted batch job 1519366
-Submitted batch job 1519367
-Submitted batch job 1519368
-Submitted batch job 1519369
-Submitted batch job 1519370
-Submitted batch job 1519371
-Submitted batch job 1519372
-Submitted batch job 1519373
-Submitted batch job 1519374
-Submitted batch job 1519375
-Submitted batch job 1519376
-Submitted batch job 1519377
-Submitted batch job 1519378
-Submitted batch job 1519379
-Submitted batch job 1519380
-Submitted batch job 1519381
-Submitted batch job 1519382
-Submitted batch job 1519383
-Submitted batch job 1519384
-Submitted batch job 1519385
-Submitted batch job 1519386
-Submitted batch job 1519387
-Submitted batch job 1519388
-Submitted batch job 1519389
-Submitted batch job 1519390
-Submitted batch job 1519391
-Submitted batch job 1519392
-Submitted batch job 1519393
-Submitted batch job 1519394
-Submitted batch job 1519395
-Submitted batch job 1519396
-Submitted batch job 1519397
-Submitted batch job 1519398
-Submitted batch job 1519399
-#+end_example
-
 The BBDuk params from the "Adapter trimming" example in the BBDuk Usage Guide. They are the same as for S1, expect for the addition of "tpe" and "tpo", which only apply to paired reads.
 
 The BBSplit params are based off the recommendation from the BBMap guide (below), and the removehuman.sh script included in BBMap.
@@ -212,7 +91,6 @@ bbmap.sh minratio=0.9 maxindel=3 bwr=0.16 bw=12 fast minhits=2 qtrim=r trimq=10 
 
 - minid=0.97
 - Reference and scaffold/contig mapping stats saved
-- Alignments to reference saved for inspection (BAM file)
 - Unmapped reads saved for later inspection and assembly
 
 #+BEGIN_SRC shell :session brc :results verbatim
@@ -347,6 +225,35 @@ mkdir output
 BRC_PATH=/home/mrmclare/data/vivo-vitro/s2/reads
 scp -r "brc:$BRC_PATH/clean/*.tsv" output
 scp -r "brc:$BRC_PATH/binned/*.tsv" output
+#+END_SRC
+
+#+RESULTS:
+** Tally number of unmapped reads
+Setup.
+#+BEGIN_SRC shell :session brc :results silent
+ssh brc
+#+END_SRC
+#+BEGIN_SRC shell :session brc :results silent
+DATA_PATH=/home/mrmclare/data/vivo-vitro
+cd $DATA_PATH/s2/reads/binned
+WELLS=($(ls | grep "fastq.gz" | sed 's/-unmapped.fastq.gz//g'))
+#+END_SRC
+
+Compute the number of unmapped reads by counting lines in the fastq files; save numbers for all samples in a single TSV file. Note, the number of unmapped reads is twice the number of unmapped read pairs.
+#+BEGIN_SRC shell :session brc :results silent
+echo "well\tunmapped_reads\tunmapped_pairs" >> unmapped-stats.tsv
+for well in ${WELLS[*]}
+do
+    num_reads=$(zcat $well-unmapped.fastq.gz | grep "^@" | wc -l)
+    let "num_pairs = num_reads / 2"
+    echo "$well\t$num_reads\t$num_pairs" >> unmapped-stats.tsv
+done
+#+END_SRC
+
+Download results to local output/ folder.
+#+BEGIN_SRC shell
+BRC_PATH=/home/mrmclare/data/vivo-vitro/s2/reads
+scp "brc:$BRC_PATH/binned/unmapped-stats.tsv" output
 #+END_SRC
 
 #+RESULTS:

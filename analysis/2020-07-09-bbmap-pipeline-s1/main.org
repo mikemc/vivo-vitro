@@ -218,7 +218,6 @@ bbmap.sh minratio=0.9 maxindel=3 bwr=0.16 bw=12 fast minhits=2 qtrim=r trimq=10 
 
 - minid=0.97
 - Reference and scaffold/contig mapping stats saved
-- Alignments to reference saved for inspection (BAM file)
 - Unmapped reads saved for later inspection and assembly
 
 #+BEGIN_SRC shell :session brc :results verbatim
@@ -343,6 +342,35 @@ mkdir output
 BRC_PATH=/home/mrmclare/data/vivo-vitro/s1/reads
 scp -r "brc:$BRC_PATH/clean/*.tsv" output
 scp -r "brc:$BRC_PATH/binned/*.tsv" output
+#+END_SRC
+
+#+RESULTS:
+
+** Tally number of unmapped reads
+Setup.
+#+BEGIN_SRC shell :session brc :results silent
+ssh brc
+#+END_SRC
+#+BEGIN_SRC shell :session brc :results silent
+DATA_PATH=/home/mrmclare/data/vivo-vitro
+cd $DATA_PATH/s1/reads/binned
+SAMPLES=($(ls $DATA_PATH/s1/reads/raw | sed 's/.fastq.gz//g'))
+#+END_SRC
+
+Compute the number of unmapped reads by counting lines in the fastq files; save numbers for all samples in a single TSV file.
+#+BEGIN_SRC shell :session brc :results silent
+echo "dna_sample_id\tunmapped_reads" >> unmapped-stats.tsv
+for sample in ${SAMPLES[*]}
+do
+    num_reads=$(zcat $sample-unmapped.fastq.gz | grep "^@" | wc -l)
+    echo "$sample\t$num_reads" >> unmapped-stats.tsv
+done
+#+END_SRC
+
+Download results to local output/ folder.
+#+BEGIN_SRC shell
+BRC_PATH=/home/mrmclare/data/vivo-vitro/s1/reads
+scp "brc:$BRC_PATH/binned/unmapped-stats.tsv" output
 #+END_SRC
 
 #+RESULTS:

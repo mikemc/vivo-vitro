@@ -16,6 +16,23 @@ strains <- here("strain-info/strains-uniprot.csv") %>%
     accession = uniprot_assembly_accession)
 ```
 
+## Bacterial reads
+
+Load the BBSplit refstats results from mapping against bacterial references,
+```{r}
+res <- tibble(fn = dir_ls(out_path, regexp = "[0-9]+_[1-4]-refstats.tsv")) %>%
+  mutate(
+    dna_sample_id = path_file(fn) %>% str_extract("[0-9]+_[1-4](?=-refstats)"),
+    sample_id = str_c("S1_", dna_sample_id),
+    data = map(fn, read_tsv, col_types = "cddddiiii")
+  ) %>%
+  select(-fn) %>%
+  unnest(data) %>%
+  janitor::clean_names() %>%
+  rename(name = number_name) %>%
+  glimpse
+```
+
 ## Host reads
 
 Load the BBSplit refstats results from mapping against the host,
@@ -40,22 +57,8 @@ host %>% pull(unambiguous_reads) %>% summary
 host %>% pull(ambiguous_reads) %>% summary
 ```
 
-## Bacterial reads
+## Create count matrix
 
-First, load the BBSplit refstats results,
-```{r}
-res <- tibble(fn = dir_ls(out_path, regexp = "[0-9]+_[1-4]-refstats.tsv")) %>%
-  mutate(
-    dna_sample_id = path_file(fn) %>% str_extract("[0-9]+_[1-4](?=-refstats)"),
-    sample_id = str_c("S1_", dna_sample_id),
-    data = map(fn, read_tsv, col_types = "cddddiiii")
-  ) %>%
-  select(-fn) %>%
-  unnest(data) %>%
-  janitor::clean_names() %>%
-  rename(name = number_name) %>%
-  glimpse
-```
 Join the strain info,
 ```{r}
 res0 <- res %>%
@@ -84,6 +87,25 @@ mat <- res1 %>%
 ```
 
 ```{r}
-saveRDS(mat, here("results", "s1", "count-matrix.Rds"))
+saveRDS(mat, here("output", "s1", "count-matrix.Rds"))
+```
+
+## Unmapped reads
+
+Separately, save a table with the number of unmapped reads,
+
+```{r}
+unmapped <- path(out_path, "unmapped-stats.tsv") %>%
+  read_tsv(col_types = "ci") %>%
+  transmute(
+    sample_id = str_c("S1_", dna_sample_id),
+    unmapped_reads
+  ) %>%
+  arrange(sample_id) %>%
+  glimpse
+```
+
+```{r}
+write_csv(unmapped, here("output", "s1", "unmapped-reads.csv"))
 ```
 
