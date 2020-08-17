@@ -252,3 +252,58 @@ tax_v138 %>%
   as_tibble(rownames = "sequence") %>%
   write_csv(file.path(results_path, "taxonomy-silva-v138.csv"))
 ```
+
+## Edit sample names (run afterwards in clean session)
+
+```{r}
+library(here)
+library(tidyverse)
+
+results_path <- here::here("output", "a1", "dada2")
+```
+
+Function for renaming samples from the sample names submitted and used by A1 to
+their sample names we'll use in our analysis,
+```{r}
+# Current format in the seqtab.nochim and track objects from the DADA2 workflow
+# is {specimen_id}-{aliquot_number} for submitted samples, and Water-NEGC and
+# Zymo-POSC for A1's control samples. Sample names used in the A1 sequencing
+# report are same except _'s instead of -'s Desired format is
+# {center_id}_{specimen_id}_{aliquot_number} for submitted samples and
+# A1_water_negc and A1_zymo_posc for A1 control samples.
+rename_samples <- function(x) {
+  x %>% 
+    str_to_lower %>%
+    str_replace("-", "_") %>%
+    str_c("A1_", .)
+}
+```
+
+```{r}
+seqtab.nochim <- file.path(results_path, "seqtab-nochim.Rds") %>%
+  readRDS
+rownames(seqtab.nochim) %>% tail
+#> [1] "9-1"        "9-2"        "9-3"        "9-4"        "Water-NEGC"
+#> [6] "Zymo-POSC" 
+rownames(seqtab.nochim) <- rownames(seqtab.nochim) %>% rename_samples
+rownames(seqtab.nochim) %>% tail
+#> [1] "A1_9_1"        "A1_9_2"        "A1_9_3"        "A1_9_4"       
+#> [5] "A1_water_negc" "A1_zymo_posc" 
+saveRDS(seqtab.nochim, file.path(results_path, "seqtab-nochim.Rds"))
+```
+
+```{r}
+track <- read_csv(
+  file.path(results_path, "track.csv"),
+  col_types = "ciiiiii"
+  )
+tail(track$sample)
+#> [1] "9-1"        "9-2"        "9-3"        "9-4"        "Water-NEGC"
+#> [6] "Zymo-POSC" 
+track <- track %>% mutate(across(sample, rename_samples))
+tail(track$sample)
+#> [1] "A1_9_1"        "A1_9_2"        "A1_9_3"        "A1_9_4"       
+#> [5] "A1_water_negc" "A1_zymo_posc" 
+write_csv(track, file.path(results_path, "track.csv"))
+```
+
