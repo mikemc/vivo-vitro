@@ -1,0 +1,433 @@
+
+
+Goals: Get information about our strains and our reference genomes.
+
+- Phenotype information from JGI IMG/M (Gram status, sporulation)
+
+- Info about reference genomes from the GTDB; also, use the GTDB to get
+  taxonomy and a phylogeny
+
+- Estimate 16S copy number using the rrnDB + GTDB
+
+## Setup
+
+```{r}
+library(tidyverse)
+library(here)
+library(fs)
+```
+
+Load table with strain taxid, group, and reference accession
+
+```{r}
+strains <- read_csv(here("strain-info", "strains-uniprot.csv"),
+  col_types = cols(uniprot_taxid = col_integer())
+) %>%
+  select(
+    strain_group = strain_type,
+    ncbi_taxid = uniprot_taxid, 
+    reference_genome = uniprot_assembly_accession,
+  ) %>%
+  mutate(across(strain_group, str_to_sentence))
+```
+
+### Download data from GTDB and rrnDB (run once)
+
+Download GTDB 95, https://gtdb.ecogenomic.org/downloads
+
+```{r, eval = FALSE}
+gtdb_path <- here("data", "gtdb")
+dir_create(gtdb_path)
+gtdb_url <-
+  "https://data.ace.uq.edu.au/public/gtdb/data/releases/release95/95.0/"
+str_glue("wget -r -l 1 -nd -P {gtdb_path} {gtdb_url}") %>% system
+
+# Extract the metadata file for faster repeat reading (not necessary if want to
+# save disk space, since read_tsv can read it as is)
+untar(
+  here("data", "gtdb", "bac120_metadata_r95.tar.gz"),
+  exdir = here("data", "gtdb")
+)
+```
+
+Download rrnDB 5.6 from https://rrndb.umms.med.umich.edu/static/download/
+```{r, eval = FALSE}
+rrndb_path <- here("data", "rrndb")
+dir_create(rrndb_path)
+
+base_url <- "https://rrndb.umms.med.umich.edu/static/download/"
+fns <- c("rrnDB-5.6_pantaxa_stats_RDP.tsv.zip",
+  "rrnDB-5.6_pantaxa_stats_NCBI.tsv.zip",
+  "rrnDB-5.6_16S_rRNA.fasta.zip",
+  "rrnDB-5.6.tsv.zip")
+tibble(
+  url = path(base_url, fns), 
+  destfile = path(rrndb_path, fns)
+) %>%
+  pwalk(download.file)
+```
+
+## GTDB
+
+Goal: Get the GTDB metadata for our reference genomes. Also, save a phylogeny
+for the GTDB representatives.
+
+We'll load the entire set of bacterial genomes for later.
+```{r}
+gtdb <- read_tsv(
+  here("data", "gtdb", "bac120_metadata_r95.tsv"),
+  na = c("", "NA", "na", "n/a", "none")
+)
+```
+Then subset to just our strains, by NCBI taxid
+```{r}
+gtdb0 <- gtdb %>%
+  filter(ncbi_taxid %in% strains$ncbi_taxid) %>%
+  arrange(ncbi_organism_name)
+```
+
+```{r}
+gtdb0 %>%
+  select(ncbi_organism_name, ncbi_taxid, ncbi_genbank_assembly_accession,
+    ncbi_refseq_category, gtdb_genome_representative) %>%
+  arrange(ncbi_organism_name) %>%
+  mutate(our_ref = ncbi_genbank_assembly_accession %in%
+    strains$reference_genome) %>%
+  rename_with(str_replace, .cols = everything(), "^ncbi_", "")
+```
+
+The additional genomes beyond our references appear to be lesser quality, and
+have the same GTDB rep as ours.
+
+Check genome quality stats - 
+
+```{r}
+gtdb0 %>% 
+  mutate(our_ref = ncbi_genbank_assembly_accession %in%
+    strains$reference_genome) %>%
+  select(our_ref, ncbi_organism_name, starts_with("checkm")) %>%
+  rename_with(str_replace, .cols = everything(), "^checkm_", "") %>%
+  relocate(strain_heterogeneity, .after = contamination) %>%
+  relocate(marker_lineage, .after = last_col())
+  # relocate(strain_heterogeneity, .after = contamination)
+```
+
+Note the high strain heterogeneity of the Collinsella assembly. Not sure what
+the cause our implications are yet. It may be that the assembly contains
+multiple copies of some genes that are from different strains. We may be able
+to check by visualizing coverage from our metagenomes on the reference.
+
+
+Filter to just our reference set
+```{r}
+gtdb1 <- gtdb0 %>%
+  filter(ncbi_genbank_assembly_accession %in% strains$reference_genome)
+```
+
+Get the phylogeny from the GTDB representatives of these 14 strains,
+```{r}
+tree <- here("data/gtdb", "bac120_r95.tree") %>%
+  ape::read.tree()
+tree0 <- tree %>%
+  ape::keep.tip(gtdb1$gtdb_genome_representative)
+```
+
+Note, in 6 cases the representative is a different genome.
+```{r}
+gtdb1 %>%
+  select(ncbi_organism_name, gtdb_representative) %>%
+  arrange(gtdb_representative)
+```
+
+Save the tree with the GTDB reprensentatives for our 14 strains and the GTDB
+metadata table for just our genomes, for faster loading later.
+```{r}
+here("output", "strain-data") %>% dir_create
+
+ape::write.tree(tree0, 
+  here("output", "strain-data", "gtdb-representatives.tree"))
+
+gtdb1 %>%
+  saveRDS(here("output", "strain-data", "gtdb-metadata.Rds"))
+```
+
+For use with phyloseq, etc, we can rename the tree leaves as follows -
+```{r}
+tree1 <- tree0
+tree1$tip.label <- gtdb0 %>%
+  {.$ncbi_organism_name[match(tree0$tip.label, .$gtdb_genome_representative)]}
+plot(tree1)
+```
+
+We can also parse taxononomy (either NCBI, or GTDB, or Silva) from the strings
+in the gtdb metadata. For example,
+```{r}
+rnks <- c("domain", "phylum", "class", "order", "family", "genus", "species")
+tax <- gtdb1 %>%
+  select(ncbi_organism_name, gtdb_taxonomy) %>%
+  separate(gtdb_taxonomy, into = rnks, sep = ";") %>%
+  mutate(across(all_of(rnks), str_replace, "^[a-z]__", "")) %>%
+  print
+```
+
+## Strain phenotype data from JGI's IMG/M website
+
+Goal is to get Gram stain and sporulation phenotypes for our strains.
+
+Can construct a search query in the IMG genome search by NCBI Taxon ID,
+```{r}
+strains %>% pull(ncbi_taxid) %>% str_c(collapse = ", ")
+#> [1] "411476, 411479, 226186, 411901, 742726, 536231, 657318, 411483, 478749, 742740, 411903, 331112, 349741, 765912"
+```
+I submitted this as a query as NCBI taxid to
+https://img.jgi.doe.gov/cgi-bin/m/main.cgi?section=GenomeSearch&page=searchForm,
+added some metadata columns, and saved the results in a tsv file,
+
+```{r}
+img <- here("output/jgi-img", "2020-09-01-genome-metadata.tsv") %>%
+  read_tsv %>%
+  janitor::clean_names() %>%
+  select(ncbi_taxid = ncbi_taxon_id, gram_stain = gram_staining,
+    sporulation, genome_name = genome_name_sample_name) %>%
+  print
+```
+
+Note, some strains have multiple entries,
+```{r}
+img %>%
+  group_by(genome_name, ncbi_taxid) %>%
+  count
+```
+
+Which strain(s) are missing?
+```{r}
+m <- setdiff(strains$ncbi_taxid, img$ncbi_taxid)
+gtdb1 %>%
+  filter(ncbi_taxid == m) %>%
+  select(ncbi_organism_name, ncbi_taxid, ncbi_species_taxid)
+```
+
+No match for the Marvinbryantia strain, but might be for the species; so re-ran
+a search with the species id,
+
+```{r}
+img.marv <- here("output/jgi-img", "2020-09-04-genome-metadata.tsv") %>%
+  read_tsv %>%
+  janitor::clean_names() %>%
+  select(
+    ncbi_species_taxid = ncbi_taxon_id, gram_stain = gram_staining,
+    sporulation, genome_name = genome_name_sample_name) %>%
+  print
+```
+Let's use these as the values for our Marvinbryantia strain.
+```{r}
+img.marv0 <- img.marv %>%
+  # Add the strain-level taxid
+  left_join(gtdb1 %>% select(contains("taxid")), by = "ncbi_species_taxid")
+img0 <- bind_rows(img, img.marv0)
+```
+
+Let's collapse these to unique values, making sure their is no disagreement
+among the duplicates,
+```{r}
+# Get all unqiue non-NA values, or return NA
+f <- function(x) {
+  x <- x[!is.na(x)]
+  if (identical(length(x), 0L))
+    NA_character_
+  else
+    unique(x)
+}
+
+phenotype <- img0 %>%
+  group_by(ncbi_taxid) %>%
+  summarize(across(c(gram_stain, sporulation), f), .groups = "drop")
+```
+
+NOTE: Should be able to get the gram stain of this missing taxon.
+
+Let's join this info to our strains table,
+```{r}
+strains0 <- strains %>%
+  left_join(phenotype, by = "ncbi_taxid") %>%
+  print
+```
+
+In future, may want to track down the sporulation info for the other taxa.
+
+## Estimate 16S copy number
+
+```{r}
+# "rrnDB-5.6_pantaxa_stats_RDP.tsv.zip",
+#   "rrnDB-5.6_pantaxa_stats_NCBI.tsv.zip",
+#   "rrnDB-5.6_16S_rRNA.fasta.zip",
+#   "rrnDB-5.6.tsv.zip")
+```
+
+rrnDB big table (currently not using)
+```{r}
+rrndb <- here("data", "rrndb", "rrnDB-5.6.tsv.zip") %>%
+  read_tsv %>%
+  janitor::clean_names()
+```
+The NCBI table contains summaries at species and higher-level ranks.
+```{r}
+rrndb_ncbi <- here("data", "rrndb", "rrnDB-5.6_pantaxa_stats_NCBI.tsv.zip") %>%
+  read_tsv %>%
+  janitor::clean_names()
+rrndb_ncbi$rank %>% unique
+```
+
+```{r}
+cn <- rrndb_ncbi %>%
+  filter(taxid %in% gtdb1$ncbi_species_taxid) %>%
+  rename(ncbi_species_taxid = taxid)
+cn %>%
+  arrange(-childcount) %>%
+  select(name, childcount:stddev)
+```
+
+Note, we also have independent validation from the pilot data of the CNs for
+Bacteroides ovatus (CN = 5) and Roseburia intestinalis (CN = 6).
+
+### Individual species
+
+Look into some of the species w/ only 1 (or 0) entry in the rrnDB.
+
+#### B. caccae
+
+```{r}
+gtdb %>%
+  filter(str_detect(gtdb_taxonomy, "s__Bacteroides caccae")) %>%
+  select(ncbi_organism_name, ncbi_ssu_count, ssu_count) %>%
+  print(n=Inf)
+```
+
+Based on these numbers, the rrnRB estimate of 5 is reasonable, and is also in
+line with two of the other Bacteroides species.
+
+#### E. rectale
+
+what is the GTDB tax?
+```{r}
+tax %>%
+  filter(str_detect(ncbi_organism_name, "rectale")) %>%
+  select(family, genus, species)
+```
+
+```{r}
+gtdb %>%
+  filter(str_detect(gtdb_taxonomy, "s__Agathobacter rectalis")) %>%
+  select(ncbi_organism_name, ncbi_ssu_count, ssu_count) %>%
+  print(n=Inf)
+```
+
+Hard to make a guess beyond 1-7. For now, use the rrnDB estimate of 5.
+
+
+#### Clostridium symbiosum
+
+what is the GTDB tax?
+```{r}
+tax %>%
+  filter(str_detect(ncbi_organism_name, "Clostridium")) %>%
+  select(family, genus, species)
+```
+
+```{r}
+gtdb %>%
+  filter(str_detect(gtdb_taxonomy, "s__Clostridium_Q symbiosum")) %>%
+  select(ncbi_organism_name, ncbi_ssu_count, ssu_count) %>%
+  print(n=Inf)
+```
+
+Based on this information, 5 seems like a good estimate.
+
+#### Barnesiella intestinalis
+
+```{r}
+gtdb %>%
+  filter(str_detect(ncbi_taxonomy, "Barnesiella")) %>%
+  select(ncbi_organism_name, ncbi_ssu_count, ssu_count) %>%
+  arrange(ncbi_organism_name) %>%
+  print(n=Inf)
+```
+
+The reference genome stats suggest 4; however, the ratio observed in the fecal
+pilot data suggests that the CN is 5, so I'll use that for now.
+
+#### Marvinbryantia formatexigens
+
+what is the GTDB tax?
+```{r}
+tax %>%
+  filter(str_detect(ncbi_organism_name, "Marvinbryantia")) %>%
+  select(family, genus, species)
+```
+
+```{r}
+gtdb %>%
+  filter(str_detect(gtdb_taxonomy, "s__Marvinbryantia formatexigens")) %>%
+  select(ncbi_organism_name, ncbi_ssu_count, ssu_count) %>%
+  print(n=Inf)
+```
+
+For now, use 4 as the estimate.
+
+
+
+### Estimates (for now)
+
+```{r}
+cn.manual <- tribble(
+  ~ncbi_organism_name,                      ~ssu_count_manual,
+  "[Clostridium] symbiosum WAL-14163",       5,
+  "Barnesiella intestinihominis YIT 11860",  5,
+  "Marvinbryantia formatexigens DSM 14469",  4,
+)
+
+cn.est <- gtdb1 %>%
+  select(ncbi_taxid, ncbi_species_taxid, ncbi_organism_name) %>%
+  left_join(cn %>% select(ncbi_species_taxid, ssu_count = mode), 
+    by = "ncbi_species_taxid") %>%
+  left_join(cn.manual, by = "ncbi_organism_name") %>%
+  mutate(
+    ssu_count = ifelse(!is.na(ssu_count), ssu_count, ssu_count_manual)
+  ) %>%
+  select(ncbi_taxid, ssu_count)
+```
+
+OK! Now time to make a strain data table (consider also adding genome sizes)
+and save.
+
+
+## Strain table
+
+
+```{r}
+gtdb2 <- gtdb1 %>%
+  select(contains("taxid"), accession, 
+    ncbi_genbank_assembly_accession, ncbi_organism_name,
+    contains("taxonomy"), genome_size, gtdb_genome_representative) %>%
+  select(-ncbi_taxonomy_unfiltered)
+```
+
+```{r}
+tb <- strains %>%
+  left_join(phenotype, by = "ncbi_taxid") %>%
+  left_join(cn.est, by = "ncbi_taxid") %>%
+  left_join(gtdb2, by = "ncbi_taxid")
+all.equal(tb$reference_genome, tb$ncbi_genbank_assembly_accession)
+tb0 <- tb %>%
+  select(strain_group, ncbi_organism_name, ncbi_taxid, ncbi_species_taxid,
+    gram_stain, sporulation, ssu_count, 
+    reference_genome, reference_genome_size = genome_size,
+    gtdb_genome_representative, contains("taxonomy")) %>%
+  mutate(across(c(contains("taxid"), ssu_count, reference_genome_size), 
+      as.integer))
+```
+
+```{r}
+saveRDS(tb0, here("output/strain-data", "strain-pheno-geno-tax.Rds"))
+```
+
