@@ -1,0 +1,160 @@
+
+
+ALSO: It may be necessary to divie the S2 counts by 2, to account for the
+mapping of read pairs.
+
+## Setup
+
+```{r}
+library(tidyverse)
+library(here)
+library(fs)
+```
+
+The S1 samples are already named by `dna_sample_id`, but the S2 samples are
+named by well and need to be converted. For this, we need the map from well id
+to DNA sample id,
+```{r}
+well_map <- here("output/sample-data", "dna-sample-data.Rds") %>% 
+  readRDS %>%
+  transmute(
+    dna_sample_id,
+    # Get well in "A01" format
+    well = str_glue('{row}{str_pad(column, 2, "left", "0")}')
+  ) %>%
+  glimpse
+```
+
+Location of bbmap refstats output for each sequencing center,
+```{r}
+tb0 <- tibble(center_id = c("S1", "S2")) %>%
+  mutate(
+    refstats_dir = here("analysis/2020-07-09-bbmap-pipeline",
+      str_to_lower(center_id), "output"),
+  )
+```
+
+## Load results
+
+Load the BBSplit refstats results from mapping against bacterial references,
+and from host read removal,
+```{r}
+import_results <- function(dir) {
+  tibble(fn = dir_ls(dir, regexp = "-refstats.tsv")) %>%
+    mutate(
+      mapped_sample_id = path_file(fn) %>% 
+        str_extract(".+(?=-refstats)") %>%
+        str_replace("-host", ""),
+      data = map(fn, read_tsv, col_types = "cddddiiii")
+    ) %>%
+    select(-fn) %>%
+    unnest(data) %>%
+    janitor::clean_names() %>%
+    rename(assembly_name = number_name)
+}
+tb <- tb0 %>%
+  mutate(data = map(refstats_dir, import_results)) %>%
+  unnest(data)
+```
+
+**Create the sample ids**, in the form
+`{center_id}_{dna_sample_id}_{aliquot_number}`. For S1, the `dna_sample_id` is
+just the `mapped_sample_id`, but for S2, it must be looked up using the
+`well_map`.
+
+```{r}
+tb <- tb %>%
+  left_join(well_map, by = c(mapped_sample_id = "well")) %>%
+  mutate(
+    dna_sample_id = ifelse(!is.na(dna_sample_id), dna_sample_id,
+      mapped_sample_id),
+    sample_id = str_glue("{center_id}_{dna_sample_id}")
+  )
+# Check
+x <- tb %>%
+  select(ends_with("id")) %>%
+  distinct
+head(x)
+tail(x)
+```
+
+**Normalize the read counts from S2.** Note that the read counts for S2 are always
+even - this is because the reads are mapped in pairs. 
+```{r}
+tb %>%
+  group_by(center_id) %>%
+  summarize(across(c(unambiguous_reads, ambiguous_reads, assigned_reads),
+      ~ all(. %% 2 == 0)), .groups = "drop")
+```
+For purposes of modeling random counting error, we really want insert counts,
+rather than read counts; therefore, we should divide the S2 counts by 2 in the
+final table. For this version of the pipeline, we will use only the
+unambiguously mapped reads.
+```{r}
+tb <- tb %>%
+  mutate(insert_count = ifelse(center_id == "S2", unambiguous_reads %/% 2L,
+      unambiguous_reads))
+```
+
+**Create feature names.** Will use the assembly accession, which can be
+extracted from the beginning of the assembly name,
+```{r}
+tb <- tb %>%
+  mutate(
+    feature_id = str_extract(assembly_name, "GC[AF]_[0-9]+.[0-9]+")
+  )
+# Check
+tb %>% pull(feature_id) %>% unique
+```
+
+## Unmapped reads
+
+The number of unmapped reads for each sample are saved in a file
+"unmapped-stats.tsv" in each output folder. For S1, the columns are
+`dna_sample_id` and `unmapped_reads`; for S2, they are `well`,
+`unmapped_reads`, and `unmapped_pairs`, which is just `unmapped_reads / 2`.
+
+```{r}
+unm <- tb0 %>%
+  mutate(
+    fn = path(refstats_dir, "unmapped-stats.tsv"),
+    data = map(fn, read_tsv)
+  ) %>%
+  unnest(data) %>%
+  left_join(well_map, by = c("well")) %>%
+  mutate(
+    dna_sample_id = ifelse(!is.na(dna_sample_id.x), dna_sample_id.x,
+      dna_sample_id.y),
+  ) %>%
+  transmute(
+    sample_id = str_glue("{center_id}_{dna_sample_id}"),
+    feature_id = "Unmapped",
+    insert_count = ifelse(center_id == "S1", 
+      unmapped_reads, unmapped_reads / 2) %>%
+      as.integer
+  ) %>%
+  glimpse
+```
+
+## Create count matrix
+
+```{r}
+mat <- bind_rows(tb, unm) %>%
+  # Sort samples by center, specimen, aliquot
+  separate(dna_sample_id, c("specimen_id", "aliquot_number"), sep = "_") %>%
+  mutate(across(c("specimen_id", "aliquot_number"), as.integer)) %>%
+  arrange(center_id, specimen_id, aliquot_number) %>%
+  # pivot into wide form, then convert to matrix
+  select(sample_id, feature_id, insert_count) %>%
+  pivot_wider(names_from = feature_id, values_from = insert_count,
+    names_sort = TRUE, values_fill = 0) %>%
+  column_to_rownames("sample_id") %>%
+  as("matrix")
+```
+
+Note, cases where references were not detected in a sample do not have rows in
+`tb` and so are filled with 0's.
+
+```{r}
+saveRDS(mat, here("output/shotgun", "2020-07-09-count-matrix.Rds"))
+```
