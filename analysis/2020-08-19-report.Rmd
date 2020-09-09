@@ -1,0 +1,480 @@
+---
+title: "Pairwise-bias figures for sequencing centers A1, S1, and S2"
+author: Michael McLaren
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: true
+geometry:
+  - paperwidth=16in
+  - paperheight=17in
+  - top=1in
+  - bottom=1in
+  - left=1in
+  - right=1in
+fontsize: 12pt
+header-includes:
+  - \usepackage{multicol}
+# for kableExtra
+  - \usepackage{booktabs}
+  - \usepackage{longtable}
+  - \usepackage{array}
+  - \usepackage{multirow}
+  - \usepackage{wrapfig}
+  - \usepackage{float}
+  - \usepackage{colortbl}
+  - \usepackage{pdflscape}
+  - \usepackage{tabu}
+  - \usepackage{threeparttable}
+  - \usepackage{threeparttablex}
+  - \usepackage[normalem]{ulem}
+  - \usepackage{makecell}
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(progress = TRUE, verbose = TRUE)
+# Global chunk options
+knitr::opts_chunk$set(
+  cache = TRUE, autodep = TRUE, cache.comments = FALSE,
+  include = FALSE, echo = FALSE,
+  warning = TRUE, message = FALSE, 
+  fig.width = 7, fig.height = 7,
+  fig.align = "center"
+)
+```
+
+<!-- Setup -->
+
+```{r}
+library(here)
+library(tidyverse)
+library(speedyseq)
+
+library(kableExtra)
+
+library(cowplot)
+library(patchwork)
+library(ggbeeswarm)
+devtools::load_all("~/research/r-packages/metacal")
+
+theme_set(theme_cowplot())
+```
+
+```{r}
+my_psmelt <- function(physeq) {
+  speedyseq::psmelt(physeq) %>%
+    as_tibble %>%
+    rename(taxon = OTU, sample = Sample, abundance = Abundance)
+}
+as_tibble.sample_data <- function(x) {
+  x %>% as("data.frame") %>% as_tibble(rownames = "sample")
+}
+as_tibble.taxonomyTable <- function(x) {
+  x %>% as("matrix") %>% as_tibble(rownames = "taxon")
+}
+```
+
+<!-- Map from features to strains -->
+
+```{r}
+strain_data <- here("output/strain-data", "strain-pheno-geno-tax.Rds") %>%
+  readRDS %>%
+  mutate(
+    organism_name = str_extract(ncbi_taxonomy, "(?<=s__).+") %>%
+      str_replace_all("[\\[\\]]", "")
+  )
+```
+
+```{r}
+# Strain identification information for A1 inoculum and T. mobilis ASVs; note,
+# excludes the secondary E. coli ASV
+a1_strains <- here("output", "a1", "a1-asv-strain-assignments.csv") %>%
+  read_csv %>%
+  filter(str_detect(source, "inoculum|mobilis")) %>%
+  transmute(
+    feature_id = sequence, 
+    organism_name = str_glue("{genus} {species}") %>% as.character
+  ) %>%
+  print
+# Shotgun strains
+shot_strains <- strain_data %>%
+  select(feature_id = reference_genome,
+    organism_name) %>%
+  print
+```
+
+```{r}
+# Amplicon data, subset to just the focal strains
+a1.otu <- here("output", "a1", "dada2", "seqtab-nochim.Rds") %>%
+  readRDS %>%
+  otu_table(taxa_are_rows = FALSE)
+a1.ps <- phyloseq(a1.otu, tax_table(a1_strains))
+# Shotgun data, subset to just the focal strains
+shot.otu <- here("output", "shotgun", "2020-07-09-count-matrix.Rds") %>%
+  readRDS %>%
+  otu_table(taxa_are_rows = FALSE)
+shot.ps <- phyloseq(shot.otu, tax_table(shot_strains))
+```
+
+```{r}
+# Merge by organism name; wil
+ps <- merge_phyloseq(a1.ps, shot.ps)
+grp <- tax_table(ps)[, "organism_name"] %>% c
+ps <- merge_taxa_vec(ps, grp)
+taxa_names(ps) <- tax_table(ps)[,"organism_name" %>% c]
+```
+
+<!-- Sample data -->
+
+```{r}
+# Sample data for all 4 sequencing centers.
+sam <- here("output", "sample-data", "sample-data.Rds") %>% readRDS
+```
+
+```{r}
+ps <- merge_phyloseq(ps, sample_data(sam))
+```
+
+```{r}
+# Further restrict taxa (drop F. praus, T. mob, E. coli) and samples
+ps0 <- ps %>%
+  subset_samples(specimen_type %in% c("Inoculum", "Fecal")) %>%
+  prune_taxa(
+    setdiff(taxa_names(.), 
+      c("Faecalibacterium prausnitzii", 
+        "Thioflavicoccus mobilis", "Escherichia coli")
+    ),
+    .
+  ) %>%
+  # Drop poorly-seq'd sample(s)
+  prune_samples(sample_sums(.) > 1e3, .)
+nsamples(ps) - nsamples(ps0)
+ntaxa(ps) - ntaxa(ps0)
+```
+
+<!-- Taxonomy and tree -->
+
+```{r}
+## GTDB tree + metadata
+tree <- ape::read.tree(here("output", "strain-data",
+    "gtdb-representatives.tree"))
+tree$tip.label <- strain_data %>%
+  {.$organism_name[match(tree$tip.label, .$gtdb_genome_representative)]}
+```
+
+```{r}
+# GTDB taxonomy
+rnks <- c("domain", "phylum", "class", "order", "family", "genus", "species")
+tax <- strain_data %>%
+  mutate(
+    # Taxa names that match those in the phyloseq object
+    taxon = str_extract(ncbi_taxonomy, "(?<=s__).+") %>% 
+      str_replace_all("\\[|\\]", "")
+  ) %>%
+  select(taxon, gtdb_taxonomy) %>%
+  separate(gtdb_taxonomy, into = rnks, sep = ";") %>%
+  mutate(across(all_of(rnks), str_replace, "^[a-z]__", ""))
+# tax  %>% filter(taxon == "Escherichia coli") %>% select(species)
+```
+
+```{r}
+# Add the tree and taxonomy
+ps0 <- merge_phyloseq(ps0, tax_table(tax), tree)
+```
+
+<!-- Compute ratios -->
+
+```{r}
+# Compute ratios
+ps0.pw <- ps0 %>%
+  transform_sample_counts(~. + 1) %>%
+  # transform_sample_counts(~close_elts(close_elts(.) + 1e-5)) %>%
+  pairwise_ratios(margin = "taxa", filter = FALSE) %>%
+  pairwise_ratios(margin = "samples", filter = FALSE) %>%
+  subset_samples(specimen_id.1 == specimen_id.2)
+pwtb <- ps0.pw %>%
+  my_psmelt %>%
+  rename(pair = taxon, bias = abundance) %>%
+  separate(pair, c("taxon.1", "taxon.2"), sep = ":", remove = FALSE)
+```
+
+```{r}
+#' Abbreviate taxon names from "Genus species" to "Gsp"
+tax_abbrev <- function (taxa) {
+    m <- str_match(taxa, "([A-Z])[a-z]+ ([a-z]{2})[a-z]*")
+    ifelse(is.na(m[,1]), taxa, paste0(m[,2], m[,3]))
+}
+
+# Data frame for plotting taxa names on the diagonal
+lbl <- pwtb %>%
+  select(taxon.1, taxon.2) %>%
+  distinct %>%
+  filter(taxon.1 == taxon.2) %>%
+  mutate(
+    label = str_replace(taxon.1, " ", "\n"),
+    across(c(taxon.1, taxon.2), factor, levels = tree$tip.label),
+    across(c(taxon.1, taxon.2), fct_relabel, tax_abbrev),
+  )
+
+pwtb0 <- pwtb %>%
+  filter(
+    taxon.1 != taxon.2,
+  ) %>%
+  mutate(
+    across(c(taxon.1, taxon.2), factor, levels = tree$tip.label),
+    across(c(taxon.1, taxon.2), fct_relabel, tax_abbrev),
+  )
+```
+
+## Genome information
+
+
+```{r}
+# copy numbers and genome sizes
+gs <- strain_data %>%
+  transmute(
+    taxon = organism_name, 
+    copy_number = ssu_count,
+    genome_size = reference_genome_size,
+    efficiency = copy_number / genome_size
+  )
+# get the bias for A1:S2
+gs_bias <- crossing(taxon.1 = taxa_names(ps0), taxon.2 = taxa_names(ps0)) %>%
+  filter(taxon.1 != taxon.2) %>%
+  left_join(gs, by = c("taxon.1" = "taxon")) %>%
+  left_join(gs, by = c("taxon.2" = "taxon"), suffix = c(".1", ".2")) %>%
+  mutate(
+    across(c(taxon.1, taxon.2), factor, levels = tree$tip.label),
+    across(c(taxon.1, taxon.2), fct_relabel, tax_abbrev),
+    gs_bias = efficiency.1 / efficiency.2
+  )
+# gs_bias %>% pull(gs_bias)
+```
+
+
+# Taxa information
+
+```{r, include = TRUE}
+tax %>%
+  # filter(taxon %in% taxa_names(ps0)) %>%
+  mutate(
+    across(taxon, factor, levels = tree$tip.label),
+  ) %>%
+  arrange(desc(taxon)) %>%
+  # knitr::kable() %>%
+  # kable_styling(bootstrap_options = "striped", full_width = FALSE)
+  kbl(booktabs = TRUE) %>%
+  kable_styling(latex_options = "striped")
+```
+
+\ 
+\ 
+
+```{r, include = TRUE, fig.dim = c(6, 6)}
+plot(tree)
+```
+
+\ 
+
+T. mobilis, F. prausnitzii, and E. coli are excluded from the bias calculations
+and figures.
+
+\newpage
+
+# About the figures
+
+\begin{multicols}{3}
+There are three "figures", each with 4 sub-figures.
+
+\begin{itemize}
+  \item Figure 1: Bias of (extraction) Protocol 1: Protocol 2
+  \item Figure 2: Bias of (sequencing) Center S1: Center S2
+  \item Figure 3: Bias of (sequencing) Center A1: Center S2
+\end{itemize}
+
+\begin{itemize}
+  \item A. Extraction Batch 1, data points
+  \item B. Extraction Batch 1, mean + bootstrap 95% CI
+  \item C. Extraction Batch 2, data points
+  \item D. Extraction Batch 2, mean + bootstrap 95% CI
+\end{itemize}
+
+Data points are ratios of ratios, representing the (differential) bias of a
+pair of taxa and a pair of extraction or sequencing protocol; i.e., the
+efficiency of one taxon relative to another, for one protocol relative to
+another. Exactly how the data points are generated depends on whether
+extraction or sequencing bias is being examined, and is described in the figure
+subtitles.
+\end{multicols}
+
+
+# Figure 1: Extraction bias
+
+```{r}
+extraction_bias_plot <- function(batch, fun.data = NULL, prefix = "") {
+  p <- pwtb0 %>%
+    filter(
+      center_id.1 == center_id.2,
+      extraction_protocol.1 == "1",
+      extraction_protocol.2 == "2",
+    ) %>%
+    ggplot(aes(
+        x = specimen_type.1:center_id.1,
+        y = bias, 
+        color = center_id.1:specimen_type.1)) +
+    geom_hline(yintercept = 1, color = "grey") +
+    scale_y_log10() +
+    scale_color_brewer(type = "qual", palette = "Paired", guide = "none") +
+    facet_grid(taxon.1 ~ taxon.2, scales = "free_y") +
+    labs(x = "{specimen type}:{extraction protocol}") +
+    theme(
+      axis.text.x = element_text(angle = 90)
+    ) +
+    plot_annotation(
+      title = str_glue(.sep = " ",
+        "{prefix}Bias of Protocol 1:Protocol 2 in Batch {batch}"),
+      subtitle = 
+        str_c(sep = " ",
+        "(row-taxon / col-taxon in aliquot extracted by P. 1)", "/",
+        "(row-taxon / col-taxon in aliquot extracted by P. 2),",
+        "for the same biological specimen")
+    )
+  if (is.null(fun.data)) {
+    lyr <- geom_quasirandom(size = 0.5)
+  } else {
+    lyr <- stat_summary(fun.data = fun.data, fatten = 1.8)
+  }
+  # Note, must add text layer after due to continuous scale
+  p + lyr + 
+    geom_text(data = lbl, aes(x = 3.5, y = 1, label = label), color = "black")
+}
+```
+
+
+```{r, include = TRUE, fig.dim = c(15, 15), out.dim = c(15, 15)}
+# Batch 1, points
+extraction_bias_plot("1", prefix = "Figure 1A. ")
+```
+
+```{r, include = TRUE, fig.dim = c(15, 15), out.dim = c(15, 15)}
+# Batch 1, mean est
+extraction_bias_plot("1", fun.data = mean_cl_boot, "Figure 1B. ")
+```
+
+```{r, include = TRUE, fig.dim = c(15, 15), out.dim = c(15, 15)}
+# Batch 2, points
+extraction_bias_plot("2", prefix = "Figure 1C. ")
+```
+
+```{r, include = TRUE, fig.dim = c(15, 15), out.dim = c(15, 15)}
+# Batch 2, mean est
+extraction_bias_plot("2", fun.data = mean_cl_boot, "Figure 1D. ")
+```
+
+
+# Figure 2: Sequencing bias, S1:S2
+
+```{r}
+sequencing_bias_plot <- function(center1, center2, batch, fun.data = NULL,
+  prefix = "") {
+  p <- pwtb %>%
+    filter(
+      extraction_batch.1 == batch,
+      extraction_protocol.1 == extraction_protocol.2,
+      aliquot_number.1 == aliquot_number.2,
+      center_id.1 == center1, 
+      center_id.2 == center2,
+      taxon.1 != taxon.2,
+    ) %>%
+    mutate(
+      across(c(taxon.1, taxon.2), factor, levels = tree$tip.label),
+      across(c(taxon.1, taxon.2), fct_relabel, tax_abbrev),
+      # across(starts_with("extraction_protocol"), fct_relabel, ~str_c("P", .)),
+    ) %>%
+    ggplot(aes(
+        x = specimen_type.1:extraction_protocol.1,
+        y = bias, 
+        color = extraction_protocol.1:specimen_type.1)) +
+    geom_hline(yintercept = 1, color = "grey") +
+    scale_y_log10() +
+    # scale_color_brewer(type = "qual", palette = palettes["specimen_type"]) +
+    scale_color_brewer(type = "qual", palette = "Paired", guide = "none",
+      drop = FALSE) +
+    facet_grid(taxon.1 ~ taxon.2, scales = "free_y") +
+    labs(x = "{specimen type}:{extraction protocol}") +
+    theme(
+      axis.text.x = element_text(angle = 90)
+    ) +
+    plot_annotation(
+      title = str_glue(.sep = " ",
+        "{prefix}Bias of Center {center1}:Center {center2}", 
+        "in Batch {batch}"),
+      subtitle = str_glue(.sep = " ",
+        "(row-taxon / col-taxon measured by {center1})", "/",
+        "(row-taxon / col-taxon measured by {center2}),",
+        "for the same DNA sample")
+    )
+  if (is.null(fun.data)) {
+    lyr <- geom_quasirandom(size = 0.5)
+  } else {
+    lyr <- stat_summary(fun.data = fun.data, fatten = 1.8)
+  }
+  # Note, must add text layer after due to continuous scale
+  p + lyr + 
+    geom_text(data = lbl, aes(x = 2.5, y = 1, label = label), color = "black")
+}
+
+```
+
+
+```{r, include = TRUE, fig.dim = c(15, 15), out.dim = c(15, 15)}
+# Batch 1, points
+sequencing_bias_plot("S1", "S2", "1", prefix = "Figure 2A. ")
+```
+
+```{r, include = TRUE, fig.dim = c(15, 15), out.dim = c(15, 15)}
+# Batch 1, mean est
+sequencing_bias_plot("S1", "S2", "1", fun.data = mean_cl_boot, "Figure 2B. ")
+```
+
+```{r, include = TRUE, fig.dim = c(15, 15), out.dim = c(15, 15)}
+# Batch 2, points
+sequencing_bias_plot("S1", "S2", "2", prefix = "Figure 2C. ")
+```
+
+```{r, include = TRUE, fig.dim = c(15, 15), out.dim = c(15, 15)}
+# Batch 2, mean est
+sequencing_bias_plot("S1", "S2", "2", fun.data = mean_cl_boot, "Figure 2D. ")
+```
+
+
+# Figure 3: Sequencing bias, A1:S2
+
+
+
+```{r, include = TRUE, fig.dim = c(15, 15), out.dim = c(15, 15)}
+# Batch 1, points
+sequencing_bias_plot("A1", "S2", "1", prefix = "Figure 3A. ") +
+  geom_hline(data = gs_bias, aes(yintercept = gs_bias, color = "darkred"), alpha = 0.5)
+```
+
+```{r, include = TRUE, fig.dim = c(15, 15), out.dim = c(15, 15)}
+# Batch 1, mean est
+sequencing_bias_plot("A1", "S2", "1", fun.data = mean_cl_boot, "Figure 3B. ") +
+  geom_hline(data = gs_bias, aes(yintercept = gs_bias, color = "darkred"), alpha = 0.5)
+```
+
+```{r, include = TRUE, fig.dim = c(15, 15), out.dim = c(15, 15)}
+# Batch 2, points
+sequencing_bias_plot("A1", "S2", "2", prefix = "Figure 3C. ") +
+  geom_hline(data = gs_bias, aes(yintercept = gs_bias, color = "darkred"), alpha = 0.5)
+```
+
+```{r, include = TRUE, fig.dim = c(15, 15), out.dim = c(15, 15)}
+# Batch 2, mean est
+sequencing_bias_plot("A1", "S2", "2", fun.data = mean_cl_boot, "Figure 3D. ") +
+  geom_hline(data = gs_bias, aes(yintercept = gs_bias, color = "darkred"), alpha = 0.5)
+```
+
+
