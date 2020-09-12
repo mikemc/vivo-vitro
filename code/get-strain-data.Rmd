@@ -20,7 +20,7 @@ library(fs)
 Load table with strain taxid, group, and reference accession
 
 ```{r}
-strains <- read_csv(here("strain-info", "strains-uniprot.csv"),
+strains <- read_csv(here("output/strain-data", "strains-uniprot.csv"),
   col_types = cols(uniprot_taxid = col_integer())
 ) %>%
   select(
@@ -397,18 +397,41 @@ cn.est <- gtdb1 %>%
   select(ncbi_taxid, ssu_count)
 ```
 
-OK! Now time to make a strain data table (consider also adding genome sizes)
-and save.
-
-
-## Strain table
+## Host (mouse)
 
 
 ```{r}
+host <- tibble(
+  strain_group = "Host",
+  ncbi_species_taxid = 10090L,
+  ncbi_species_name = "Mus musculus",
+  ncbi_species_display_name = "Mus musculus",
+  reference_genome = "GCF_000001635.26",
+  reference_genome_size = 2652767259
+)
+```
+
+Genome size set to the "Total ungapped length" value at
+https://www.ncbi.nlm.nih.gov/assembly/GCF_000001635.26
+
+## Strain table
+
+Get reduced set of information from the GTDB table to include with the
+phenotype and copy number data. Also, add alternate forms for the taxa names,
+which may be useful when combining tables and selecting names for display.
+```{r}
 gtdb2 <- gtdb1 %>%
+  mutate(
+    ncbi_organism_display_name = str_replace_all(ncbi_organism_name, "[\\[\\]]", ""),
+    ncbi_species_name = str_extract(ncbi_organism_name, "^[^ ]+ [^ ]+"),
+    ncbi_species_display_name = str_extract(ncbi_organism_display_name, "^[^ ]+ [^ ]+")
+  ) %>%
   select(contains("taxid"), accession, 
-    ncbi_genbank_assembly_accession, ncbi_organism_name,
-    contains("taxonomy"), genome_size, gtdb_genome_representative) %>%
+    ncbi_genbank_assembly_accession, 
+    starts_with("ncbi_organism"), starts_with("ncbi_species"),
+    contains("taxonomy"), 
+    reference_genome_size = genome_size, 
+    gtdb_genome_representative) %>%
   select(-ncbi_taxonomy_unfiltered)
 ```
 
@@ -417,14 +440,20 @@ tb <- strains %>%
   left_join(phenotype, by = "ncbi_taxid") %>%
   left_join(cn.est, by = "ncbi_taxid") %>%
   left_join(gtdb2, by = "ncbi_taxid")
-all.equal(tb$reference_genome, tb$ncbi_genbank_assembly_accession)
-tb0 <- tb %>%
-  select(strain_group, ncbi_organism_name, ncbi_taxid, ncbi_species_taxid,
+stopifnot(all.equal(tb$reference_genome, tb$ncbi_genbank_assembly_accession))
+tb0 <- bind_rows(tb, host) %>%
+  select(
+    ncbi_taxid,
+    starts_with("ncbi_organism"),
+    ncbi_species_taxid,
+    starts_with("ncbi_species"),
+    strain_group, 
     gram_stain, sporulation, ssu_count, 
-    reference_genome, reference_genome_size = genome_size,
+    reference_genome, reference_genome_size,
     gtdb_genome_representative, contains("taxonomy")) %>%
-  mutate(across(c(contains("taxid"), ssu_count, reference_genome_size), 
-      as.integer))
+  mutate(across(c(contains("taxid"), ssu_count), as.integer)) %>%
+  # Note: host genome size too large to convert to int
+  arrange(ncbi_organism_display_name)
 ```
 
 ```{r}

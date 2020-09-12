@@ -80,9 +80,9 @@ as_tibble.taxonomyTable <- function(x) {
 ```{r}
 strain_data <- here("output/strain-data", "strain-pheno-geno-tax.Rds") %>%
   readRDS %>%
+  filter(strain_group != "Host") %>%
   mutate(
-    organism_name = str_extract(ncbi_taxonomy, "(?<=s__).+") %>%
-      str_replace_all("[\\[\\]]", "")
+    organism_name = ncbi_species_display_name
   )
 ```
 
@@ -118,7 +118,7 @@ shot.ps <- phyloseq(shot.otu, tax_table(shot_strains))
 ```
 
 ```{r}
-# Merge by organism name; wil
+# Merge by organism name
 ps <- merge_phyloseq(a1.ps, shot.ps)
 grp <- tax_table(ps)[, "organism_name"] %>% c
 ps <- merge_taxa_vec(ps, grp)
