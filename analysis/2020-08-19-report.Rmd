@@ -75,112 +75,29 @@ as_tibble.taxonomyTable <- function(x) {
 }
 ```
 
-<!-- Map from features to strains -->
-
 ```{r}
-strain_data <- here("output/strain-data", "strain-pheno-geno-tax.Rds") %>%
-  readRDS %>%
-  filter(strain_group != "Host") %>%
-  mutate(
-    organism_name = ncbi_species_display_name
-  )
-```
-
-```{r}
-# Strain identification information for A1 inoculum and T. mobilis ASVs; note,
-# excludes the secondary E. coli ASV
-a1_strains <- here("output", "a1", "a1-asv-strain-assignments.csv") %>%
-  read_csv %>%
-  filter(str_detect(source, "inoculum|mobilis")) %>%
-  transmute(
-    feature_id = sequence, 
-    organism_name = str_glue("{genus} {species}") %>% as.character
-  ) %>%
-  print
-# Shotgun strains
-shot_strains <- strain_data %>%
-  select(feature_id = reference_genome,
-    organism_name) %>%
-  print
-```
-
-```{r}
-# Amplicon data, subset to just the focal strains
-a1.otu <- here("output", "a1", "dada2", "seqtab-nochim.Rds") %>%
-  readRDS %>%
-  otu_table(taxa_are_rows = FALSE)
-a1.ps <- phyloseq(a1.otu, tax_table(a1_strains))
-# Shotgun data, subset to just the focal strains
-shot.otu <- here("output", "shotgun", "2020-07-09-count-matrix.Rds") %>%
-  readRDS %>%
-  otu_table(taxa_are_rows = FALSE)
-shot.ps <- phyloseq(shot.otu, tax_table(shot_strains))
-```
-
-```{r}
-# Merge by organism name
-ps <- merge_phyloseq(a1.ps, shot.ps)
-grp <- tax_table(ps)[, "organism_name"] %>% c
-ps <- merge_taxa_vec(ps, grp)
-taxa_names(ps) <- tax_table(ps)[,"organism_name" %>% c]
-```
-
-<!-- Sample data -->
-
-```{r}
-# Sample data for all 4 sequencing centers.
-sam <- here("output", "sample-data", "sample-data.Rds") %>% readRDS
-```
-
-```{r}
-ps <- merge_phyloseq(ps, sample_data(sam))
+ps <- readRDS(here("output/phyloseq", "2020-09-12-phyloseq-focal-strains.Rds"))
+ps
+sam <- sample_data(ps) %>% as_tibble
+tax <- tax_table(ps) %>% as_tibble %>% select(-strain_group)
+tree <- phy_tree(ps)
 ```
 
 ```{r}
 # Further restrict taxa (drop F. praus, T. mob, E. coli) and samples
 ps0 <- ps %>%
-  subset_samples(specimen_type %in% c("Inoculum", "Fecal")) %>%
-  prune_taxa(
-    setdiff(taxa_names(.), 
-      c("Faecalibacterium prausnitzii", 
-        "Thioflavicoccus mobilis", "Escherichia coli")
-    ),
-    .
+  subset_taxa(
+    strain_group == "Inoculum" & 
+    genus != "Faecalibacterium" &
+    genus != "Escherichia" 
   ) %>%
-  # Drop poorly-seq'd sample(s)
+  # Drop controls
+  subset_samples(specimen_type %in% c("Fecal", "Inoculum")) %>%
+  # Drop any other poorly-seq'd sample(s)
   prune_samples(sample_sums(.) > 1e3, .)
-nsamples(ps) - nsamples(ps0)
 ntaxa(ps) - ntaxa(ps0)
-```
-
-<!-- Taxonomy and tree -->
-
-```{r}
-## GTDB tree + metadata
-tree <- ape::read.tree(here("output", "strain-data",
-    "gtdb-representatives.tree"))
-tree$tip.label <- strain_data %>%
-  {.$organism_name[match(tree$tip.label, .$gtdb_genome_representative)]}
-```
-
-```{r}
-# GTDB taxonomy
-rnks <- c("domain", "phylum", "class", "order", "family", "genus", "species")
-tax <- strain_data %>%
-  mutate(
-    # Taxa names that match those in the phyloseq object
-    taxon = str_extract(ncbi_taxonomy, "(?<=s__).+") %>% 
-      str_replace_all("\\[|\\]", "")
-  ) %>%
-  select(taxon, gtdb_taxonomy) %>%
-  separate(gtdb_taxonomy, into = rnks, sep = ";") %>%
-  mutate(across(all_of(rnks), str_replace, "^[a-z]__", ""))
-# tax  %>% filter(taxon == "Escherichia coli") %>% select(species)
-```
-
-```{r}
-# Add the tree and taxonomy
-ps0 <- merge_phyloseq(ps0, tax_table(tax), tree)
+sample_data(ps) %>% pull(specimen_type) %>% table
+sample_data(ps0) %>% pull(specimen_type) %>% table
 ```
 
 <!-- Compute ratios -->
@@ -227,14 +144,16 @@ pwtb0 <- pwtb %>%
   )
 ```
 
-## Genome information
-
+<!-- Genome information -->
 
 ```{r}
+strain_data <- here("output/strain-data", "strain-pheno-geno-tax.Rds") %>%
+  readRDS %>%
+  mutate(taxon = ncbi_species_display_name)
 # copy numbers and genome sizes
 gs <- strain_data %>%
   transmute(
-    taxon = organism_name, 
+    taxon,
     copy_number = ssu_count,
     genome_size = reference_genome_size,
     efficiency = copy_number / genome_size
