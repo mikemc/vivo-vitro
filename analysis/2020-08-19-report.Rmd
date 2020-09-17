@@ -234,6 +234,7 @@ subtitles.
 extraction_bias_plot <- function(batch, fun.data = NULL, prefix = "") {
   p <- pwtb0 %>%
     filter(
+      extraction_batch.1 == batch,
       center_id.1 == center_id.2,
       extraction_protocol.1 == "1",
       extraction_protocol.2 == "2",
