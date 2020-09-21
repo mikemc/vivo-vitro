@@ -1,0 +1,470 @@
+---
+title: Select and compare new set of reference genomes
+author: Michael McLaren
+date: "`r Sys.Date()`"
+description:
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    fig_width: 6
+    dev: "svg"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(progress = TRUE, verbose = TRUE)
+# Global chunk options
+knitr::opts_chunk$set(
+  include = TRUE, echo = TRUE,
+  warning = TRUE, message = FALSE, 
+  fig.width = 7, fig.height = 7
+)
+```
+
+Goals: Select a new set of reference genomes based on the results of Mash
+Screen and a few additional control genomes. Download these genomes. Compute
+pairwise ANI.
+
+```{r}
+library(tidyverse)
+library(here)
+library(fs)
+library(ggridges)
+```
+
+```{r}
+# Adjust accordingly to point to the folder for this analysis
+this_dir <- getwd()
+```
+
+Strain data
+```{r}
+strain_data <- here("output/strain-data", "strain-pheno-geno-tax.Rds") %>%
+  readRDS %>%
+  filter(strain_group != "Host") %>%
+  mutate(species_name = ncbi_species_display_name) %>%
+  separate(remove = FALSE, sep = "\\.", reference_genome,
+    c("genbank_accession", "genbank_version"))
+```
+
+Load results from Mash Screen
+```{r}
+cns <- c("identity", "shared-hashes", "median-multiplicity", "p-value",
+  "query-ID", "query-comment")
+mash <- tibble(specimen_type = c("Fecal", "Inoculum")) %>%
+  mutate(
+    fn = here(
+      "analysis/2020-07-16-mash/output", 
+      str_glue("s2-{str_to_lower(specimen_type)}-screen.tsv")
+    ),
+    data = map(fn, read_tsv, col_names = cns),
+  ) %>%
+  select(-fn) %>%
+  unnest(data) %>%
+  janitor::clean_names() %>%
+  arrange(desc(identity)) %>%
+  glimpse
+mash <- mash %>%
+  mutate(
+    assembly_accession = str_extract(query_id, "GCF_[0-9]+\\.[0-9]+")
+    # shared_hashes = str_extract(shared_hashes, "^[0-9]+(?=/1000)") %>% as.integer
+  ) %>%
+  separate(remove = FALSE, sep = "\\.", 
+    assembly_accession, c("accession", "version"))
+# mash %>% pull(assembly_accession)
+```
+
+Load the RefSeq summary table
+```{r}
+refseq <- read_tsv(
+  here("data/refseq", "assembly_summary_refseq.txt"),
+  skip = 1, quote = "",
+  col_types = "ccccciicccccccDccccccc") %>%
+  rename(assembly_accession = "# assembly_accession") %>%
+  glimpse
+refseq <- refseq %>%
+  separate(remove = FALSE, sep = "\\.", 
+    assembly_accession, c("accession", "version"))
+```
+
+Check that all the genomes are in the refseq table. Note, the versions may have
+increased.
+```{r}
+mash <- mash %>% 
+  mutate(in_refseq = mash$accession %in% refseq$accession) %>%
+  left_join(refseq, by = "accession", suffix = c(".mash", ".refseq"))
+stopifnot(all.equal(mash$in_refseq, !is.na(mash$ftp_path)))
+mash %>%
+  group_by(in_refseq) %>%
+  count
+mash.missing <- mash %>%
+  filter(!in_refseq)
+mash.missing %>%
+  select(specimen_type, identity, shared_hashes, query_comment)
+mash.missing %>% pull(assembly_accession.mash)
+#> [1] "GCF_000350185.1" "GCF_000350185.1" "GCF_000005395.1"
+#> [4] "GCF_001398275.1"
+```
+These genomes have apparently been excluded from Refseq due to issues with the
+assemblies, such as contamination or the sizes being too small. Given the low
+`shared_hashes` we can most likely ignore them.
+
+## Select subset of genomes
+
+```{r}
+mash %>%
+  ggplot(aes(y = specimen_type, identity)) +
+  geom_density_ridges()
+```
+
+Based on previous inspection of the mash results, it seems that an identity
+cutoff of identity 0.9 is reasonable - it captures genomes from the species
+known to be present, and genomes with lower identities are typically either
+viruses or bacteria of the same species as a genome with an identity above 90.
+
+```{r}
+mash %>%
+  filter(identity > 0.9) %>%
+  select(assembly_accession.refseq, organism_name) %>%
+  distinct %>%
+  arrange(organism_name) %>%
+  print(n=Inf)
+```
+
+This list includes all the inoculum strains as well as representatives from
+species identified as contaminants in the pilot (A1) data.
+
+We also need to add T. mobilis, which is in the RefSeq table but also in the
+Mash table (likely due to cross contamination),
+```{r}
+tmob_taxid <- strain_data %>%
+  filter(str_detect(ncbi_organism_name, "mobilis")) %>%
+  pull(ncbi_taxid)
+mash %>%
+  filter(taxid == tmob_taxid) %>%
+  select(specimen_type:shared_hashes, organism_name, accession)
+```
+
+Subset to the final download set and and make the FTP URLs to the assembly
+files as well as the destination file names
+```{r}
+mash.dl <- mash %>%
+  filter(taxid == tmob_taxid | identity > 0.9) %>%
+  # Remove duplicates from the same genome appearing in inoculum + fecal
+  # results
+  select(-specimen_type, -identity, -shared_hashes, -median_multiplicity,
+    -p_value) %>%
+  distinct
+```
+
+### Compare this set to our original reference set
+
+NOTE: This section is incomplete. I still need to reconcile the list of
+reference genomes in `strain_data` with the screen results.
+
+```{r}
+strain_data
+mash.dl
+```
+
+```{r}
+left_join(
+  strain_data %>% select(ncbi_taxid:ncbi_organism_name, reference_genome),
+  mash.dl %>% select(taxid, assembly_accession.refseq),
+  by = c(ncbi_taxid = "taxid")
+)
+```
+
+Which of our current strains are in RefSeq?
+```{r}
+strain_data %>%
+  group_by(ncbi_taxid %in% refseq$taxid) %>%
+  count
+strain_data %>%
+  filter(!ncbi_taxid %in% refseq$taxid) %>%
+  select(1:2)
+```
+
+For our E. rectale strain, let's continue to use the non-refseq genome that
+matches our strain, instead of the one found in the screen.
+```{r}
+mash.dl %>% filter(str_detect(organism_name, "rectale")) %>%
+  select(organism_name, taxid, accession)
+```
+
+## Choose additional genomes
+
+Load the GTDB to help choose additional bacterial genomes to serve as controls.
+```{r}
+gtdb <- read_tsv(
+  here("data", "gtdb", "bac120_metadata_r95.tsv"),
+  na = c("", "NA", "na", "n/a", "none")
+)
+tree <- here("data/gtdb", "bac120_r95.tree") %>%
+  ape::read.tree()
+```
+
+The GTDB includes RefSeq and Genbank genomes;
+```{r}
+gtdb$accession %>% str_extract("^.+_.+_") %>% table
+#> .
+#> GB_GCA_ RS_GCF_ 
+#>   30760  160767 
+gtdb <- gtdb %>%
+  # filter(str_detect(accession, "^RS")) %>%
+  mutate(refseq_assembly_accession = str_extract(accession, "(?<=RS_).+")) %>%
+  separate(remove = FALSE, sep = "\\.", refseq_assembly_accession,
+    c("refseq_accession", "refseq_version")) %>%
+  separate(remove = FALSE, sep = "\\.", ncbi_genbank_assembly_accession,
+    c("genbank_accession", "genbank_version"))
+```
+
+Which of the Mash genomes are missing from the GTDB
+
+```{r}
+mash.dl %>%
+  filter(! accession %in% gtdb$refseq_accession) %>%
+  select(organism_name, accession)
+```
+
+The viruses are expected to be absent; and these two Bacillus genomes are
+excluded from the GTDB due to failed quality checks; see
+https://gtdb.ecogenomic.org/genomes?gid=GCF_001657555.1 and
+https://gtdb.ecogenomic.org/genomes?gid=GCA_001750765.1.
+
+I will use these genomes in testing, but may exclude them from the final
+reference db. Note, we already have another B. subtilis subtilis genome.
+
+Note, all of our original strain references are in the GTDB.
+```{r}
+all(strain_data$genbank_accession %in% gtdb$genbank_accession)
+```
+
+Next: Pick another Bacteroides genome, and four genomes from different phyla,
+to use as computational controls.
+
+Let's pick based on GTDB taxonomy
+```{r}
+rnks <- c("domain", "phylum", "class", "order", "family", "genus", "species")
+gtdb <- gtdb %>%
+  separate(gtdb_taxonomy, into = rnks, sep = ";") %>%
+  mutate(across(all_of(rnks), str_replace, "^[a-z]__", "")) %>%
+  mutate(mash_hit = refseq_accession %in% mash.dl$accession)
+gtdb %>% filter(mash_hit) %>% select(phylum, genus, species)
+```
+The GTDB includes various RefSeq categories; let's restrict to reference and
+representative genomes when picking additional genomes.
+```{r}
+gtdb %>% group_by(ncbi_refseq_category) %>% count
+```
+
+Get another Bacteroides from a different GTDB species by choosing the first
+genome alphabetically by species,
+```{r}
+current_bacteroides_species <- gtdb %>%
+  filter(mash_hit, genus == "Bacteroides") %>%
+  pull(species)
+new_bacteroides_genome <- gtdb %>%
+  filter(
+    genus == "Bacteroides", 
+    !species %in% current_bacteroides_species,
+    !is.na(ncbi_refseq_category)
+  ) %>%
+  slice_min(order_by = species, n = 1)
+new_bacteroides_genome %>% pull(species)
+```
+
+Now, pick representative genomes from 4 other phyla.
+```{r}
+current_phyla <- gtdb %>%
+  filter(mash_hit) %>%
+  pull(phylum) %>%
+  unique
+candidate_phyla <- gtdb %>%
+  filter(
+    !phylum %in% current_phyla,
+    !is.na(ncbi_refseq_category)
+  ) %>%
+  pull(phylum) %>%
+  unique %>%
+  sort
+new_phyla <- c(candidate_phyla[c(1, 10)], "Firmicutes_B", "Verrucomicrobiota_A")
+new_phyla_genomes <- gtdb %>%
+  filter(
+    phylum %in% new_phyla,
+    !is.na(ncbi_refseq_category)
+  ) %>%
+  group_by(phylum) %>%
+  slice_min(order_by = species, n = 1)
+new_genomes <- bind_rows(new_bacteroides_genome, new_phyla_genomes)
+new_genomes %>%
+  select(phylum, genus, species)
+```
+
+```{r}
+gtdb <- gtdb %>%
+  mutate(added = accession %in% new_genomes$accession)
+```
+
+Visualize all genomes (that are in the GTDB) on the tree - 
+```{r}
+gtdb0 <- gtdb %>% filter(mash_hit | added)
+tree0 <- tree %>% ape::keep.tip(gtdb0$gtdb_genome_representative)
+tree0$tip.label <- gtdb0$ncbi_organism_name[
+  match(tree0$tip.label, gtdb0$gtdb_genome_representative)]
+plot(tree0)
+```
+
+## Download genomes
+
+Prep to download the genomes found in the Mash Screen and the added genomes
+from the GTDB,
+```{r}
+refseq_accessions <- union(gtdb0$refseq_accession, mash.dl$accession)
+refseq.dl <- refseq %>%
+  filter(accession %in% refseq_accessions) %>%
+  mutate(
+    base = path_file(ftp_path),
+    fn = str_c(base, "_genomic.fna.gz"),
+    # Note, fs::path() doesn't yet work with urls
+    url = file.path(ftp_path, fn),
+    destfile = path(dl_path,  fn)
+  )
+```
+
+```{r, eval = FALSE}
+dl_path <- path(this_dir, "genomes")
+dir_create(dl_path)
+
+refseq.dl %>%
+  select(url, destfile) %>%
+  pwalk(download.file)
+stopifnot(all(file_exists(refseq.dl$destfile)))
+```
+
+
+## Calculate pairwise ANIs
+
+```{r}
+system("fastANI -v") # version 1.31
+```
+
+Create a path for the FastANI results, and a list of genome files to pass as
+query and reference argument,
+```{r}
+ani_path <- path(this_dir, "ani")
+dir_create(ani_path)
+
+gl_fn <- path(ani_path, "genomes.txt")
+write_lines(refseq.dl$destfile %>% unique, gl_fn)
+```
+
+Run all-against-all and save in tsv file.
+```{r}
+ani_fn <- path(ani_path, "pairwise-ani.tsv") 
+cmd <- str_glue("fastANI --ql {gl_fn} --rl {gl_fn} -o {ani_fn} -t 3 --matrix")
+system(cmd)
+```
+
+From the [docs](https://github.com/ParBLiSS/FastANI), the output table columns
+are "query genome, reference genome, ANI value, count of bidirectional fragment
+mappings, and total query fragments. Alignment fraction (wrt. the query genome)
+is simply the ratio of mappings and total fragments."
+
+Import and clean up the results table,
+```{r}
+ani <- path(ani_path, "pairwise-ani.tsv") %>%
+  read_tsv(
+    col_names = c("query", "reference", "ani", "bidir_fragment_mappings",
+      "total_query_fragments"),
+    col_types = "ccdii"
+  ) %>%
+  glimpse %>%
+  mutate(
+    across(c(query, reference), path_file),
+    across(c(query, reference), str_extract, "GCF_[0-9]+\\.[0-9]+")
+  ) %>%
+  glimpse
+```
+
+Note the presence of duplicates from the all-to-all comparison; the results are
+apparently not necessarily identical even when the query and ref are unchanged.
+
+Next, combine with the organism info in the mash/refseq tables above, reduce to
+one row per pair by averaging, and use this to consider implications.
+```{r}
+tb <- refseq.dl %>%
+  select(acc = assembly_accession, ncbi_taxid = taxid,
+    ncbi_organism_name = organism_name) %>%
+  distinct
+ani0 <- ani %>%
+  left_join(tb, by = c(query = "acc")) %>%
+  left_join(tb, by = c(reference = "acc"), suffix = c(".1", ".2")) %>%
+  rename(acc.1 = query, acc.2 = reference) %>%
+  filter(acc.1 != acc.2)
+```
+
+Note, most genome pairs not estimated due to low ANI.
+
+Genome pairs appear in both directions. The ANI values should be approximately
+but not exactly identical, due to the heuristics of the algorithm
+(https://github.com/ParBLiSS/FastANI/issues/36), and so it makes sense to
+average them rather then treat them as truly distinct. To just get a quick sense of ANIs though we can just filter to one from each
+pair,
+```{r}
+ani0 %>%
+  filter(ncbi_organism_name.1 < ncbi_organism_name.2) %>%
+  select(starts_with("ncbi_organism_name"), ani) %>%
+  arrange(desc(ani))
+```
+
+### Visualize ANI between E. coli strains
+
+Get the fns for nissle and hs
+```{r}
+ecoli <- refseq.dl %>%
+  filter(str_detect(organism_name, "Escherichia")) %>%
+  filter(!str_detect(organism_name, "virus")) %>%
+  select(taxid, organism_name, destfile) %>%
+  distinct %>%
+  arrange(organism_name)
+```
+Run fastANI in 1-1 mode with the `--visualize` option,
+```{r}
+out_fn <- path(ani_path, "ecoli.tsv") 
+cmd <- str_glue("fastANI -q {ecoli$destfile[2]} -r {ecoli$destfile[1]} -o {out_fn} --visualize")
+system(cmd)
+```
+Visualize the results using the genoPlotR package. The below code is modified
+from the [visualize.R
+script](https://github.com/ParBLiSS/FastANI/blob/master/scripts/visualize.R) in
+the ParBLiSS/FastANI Github repository, Apache-2.0 License, Copyright 2017
+Georgia Institute of Technology.
+```{r}
+import::from(genoPlotR, read_comparison_from_blast, read_dna_seg_from_file,
+  plot_gene_map)
+
+query_fasta <- ecoli$destfile[2]
+ref_fasta <- ecoli$destfile[1]
+vis_fn <- str_c(out_fn, ".visual")
+
+# Read fastANI visualize output
+comparison <- read_comparison_from_blast(vis_fn)
+
+# Read sequences into genoPlotR objects
+query <- read_dna_seg_from_file(query_fasta)
+ref <- read_dna_seg_from_file(ref_fasta)
+
+# Create plot
+
+# plot_title <- paste(query_fasta, ref_fasta, sep=" v/s "),
+plot_title <- "E. coli Nissle vs. E. coli HS"
+
+pdf(paste(vis_fn, ".pdf", sep=""), height = 4)
+plot_gene_map(
+  dna_segs = list(query, ref), 
+  comparisons = list(comparison), 
+  main = plot_title,
+  scale=FALSE, scale_cex=1, n_scale_ticks=4)
+dev.off()
+```
