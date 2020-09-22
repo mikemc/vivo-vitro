@@ -1,0 +1,15 @@
+desai_organism_name,desai_source,desai_cat,cat_url,dsm_strain,dsm_other_collection,strain_group,ncbi_taxid,ncbi_organism_name,notes
+"Akkermansia muciniphila: DMS 22959, type strain",DSMZ,Cat#DSM 22959,https://www.dsmz.de/collection/catalogue/details/culture/DSM-22959,Muc,"ATCC BAA-835, CIP 107961, JCM 33894",Inoculum,349741,Akkermansia muciniphila ATCC BAA-835,
+"Bacteroides caccae: DSM 19024, type strain",DSMZ,Cat#DSM 19024,https://www.dsmz.de/collection/catalogue/details/culture/DSM-19024,"CIP 104201, ATCC 43185, CCUG 38735, JCM 9498, NCTC 13051, VPI 3452A","ATCC 43185, CCUG 38735, CIP 104201, JCM 9498, NCTC 13051, VPI 3452A",Inoculum,411901,Bacteroides caccae ATCC 43185,
+"Bacteroides ovatus: DSM 1896, type strain",DSMZ,Cat#DSM 1896,https://www.dsmz.de/collection/catalogue/details/culture/DSM-1896,"ATCC 8483, NCTC 11153","ATCC 8483, NCTC 11153",Inoculum,411476,Bacteroides ovatus ATCC 8483,
+"Bacteroides thetaiotaomicron: DSM 2079, type strain",DSMZ,Cat#DSM 2079,https://www.dsmz.de/collection/catalogue/details/culture/DSM-2079,"E50 (VPI 5482), VPI 5482, VPI-5482","ATCC 29148, NCTC 10582",Inoculum,226186,Bacteroides thetaiotaomicron VPI-5482,
+"Bacteroides uniformis: ATCC 8492, type strain",ATCC,Cat#ATCC 8492,https://www.atcc.org/products/all/8492.aspx,NA,NA,Inoculum,411479,Bacteroides uniformis ATCC 8492,
+Barnesiella intestinihominis: YIT11860,DSMZ,Cat#DSM 21032,https://www.dsmz.de/collection/catalogue/details/culture/DSM-21032,NA,"JCM 15079, YIT 11860",Inoculum,742726,Barnesiella intestinihominis YIT 11860,
+"Clostridium symbiosum: DSM 934, type strain, 2",DSMZ,Cat#DSM 934,https://www.dsmz.de/collection/catalogue/details/culture/DSM-934,2,"ATCC 14940, LSU (M. Sebald)",Inoculum,411472,[Clostridium] symbiosum ATCC 14940,AM016_V3 Uniprot ID UP000002970 instead refers to [Clostridium] symbiosum WAL-14163
+"Collinsella aerofaciens: DSM 3979, type strain",DSMZ,Cat#DSM 3979,https://www.dsmz.de/collection/catalogue/details/culture/DSM-3979,"ATCC 25986, VPI 1003",ATCC 25986,Inoculum,411903,Collinsella aerofaciens ATCC 25986,
+Escherichia coli HS,ATCC,NA,Unknown,NA,NA,Inoculum,331112,Escherichia coli HS,
+"Eubacterium rectale: DSM 17629, A1-86",DSMZ,Cat#DSM 17629,https://www.dsmz.de/collection/catalogue/details/culture/DSM-17629,A1-86,NCIMB 14373,Inoculum,657318,[Eubacterium] rectale DSM 17629,
+"Faecalibacterium prausnitzii: DSM 17677, A2-165",DSMZ,Cat#DSM 17677,https://www.dsmz.de/collection/catalogue/details/culture/DSM-17677,"A2-165, JCM 31915",JCM 31915,Inoculum,411483,Faecalibacterium prausnitzii A2-165,
+"Marvinbryantia formatexigens: DSM 14469, type strain, I-52",DSMZ,Cat#DSM 14469,https://www.dsmz.de/collection/catalogue/details/culture/DSM-14469,I-52,CCUG 46960,Inoculum,478749,Marvinbryantia formatexigens DSM 14469,
+"Roseburia intestinalis: DSM 14610 type strain, L1-82",DSMZ,Cat#DSM 14610,https://www.dsmz.de/collection/catalogue/details/culture/DSM-14610,L1-82,"CIP 107878, JCM 17583, NCIMB 13810",Inoculum,536231,Roseburia intestinalis L1-82,
+NA,NA,NA,Unknown,NA,NA,Positive control,765912,Thioflavicoccus mobilis 8321,
