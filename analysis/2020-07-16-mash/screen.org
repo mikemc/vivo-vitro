@@ -224,3 +224,35 @@ Follow ups:
 - Check if the E. coli V4 sequence that is unique to the fecal samples matches a Nissle 16S sequence. Simple thing to do is to load the Silva-dada2 species db into R and use Biostrings to pull all seq's that the ASV is an exact match to.
 - Use these results to selectively expand my reference genomes used for read mapping
   - Question: Use these results, or do a more comprehensive screen? (or screen on the "clean" reads, after performing QC?)
+* 2020-09-22 Screen against GTDB-v95
+Run on the cluster to have access to more memory.
+
+#+BEGIN_SRC shell :session brc :results silent
+ssh brc
+dir=/home/mrmclare/brc-analysis/2020-09-22-gtdb-mash-screen
+msh_file=/home/mrmclare/data/gtdb/gtdb-v95-k31s2000.msh
+fecal_samples="/home/mrmclare/data/vivo-vitro/s2/reads/raw/A01_S13_CIDNS200509-022_R1_001.fastq.gz /home/mrmclare/data/vivo-vitro/s2/reads/raw/A01_S13_CIDNS200509-022_R2_001.fastq.gz /home/mrmclare/data/vivo-vitro/s2/reads/raw/D01_S16_CIDNS200509-022_R1_001.fastq.gz /home/mrmclare/data/vivo-vitro/s2/reads/raw/D01_S16_CIDNS200509-022_R2_001.fastq.gz /home/mrmclare/data/vivo-vitro/s2/reads/raw/B05_S46_CIDNS200509-022_R1_001.fastq.gz /home/mrmclare/data/vivo-vitro/s2/reads/raw/B05_S46_CIDNS200509-022_R2_001.fastq.gz /home/mrmclare/data/vivo-vitro/s2/reads/raw/F08_S35_CIDNS200518-023_R1_001.fastq.gz /home/mrmclare/data/vivo-vitro/s2/reads/raw/F08_S35_CIDNS200518-023_R2_001.fastq.gz"
+inoc_samples="/home/mrmclare/data/vivo-vitro/s2/reads/raw/E05_S49_CIDNS200509-022_R1_001.fastq.gz /home/mrmclare/data/vivo-vitro/s2/reads/raw/E05_S49_CIDNS200509-022_R2_001.fastq.gz /home/mrmclare/data/vivo-vitro/s2/reads/raw/G07_S28_CIDNS200518-023_R1_001.fastq.gz /home/mrmclare/data/vivo-vitro/s2/reads/raw/G07_S28_CIDNS200518-023_R2_001.fastq.gz /home/mrmclare/data/vivo-vitro/s2/reads/raw/C06_S16_CIDNS200518-023_R1_001.fastq.gz /home/mrmclare/data/vivo-vitro/s2/reads/raw/C06_S16_CIDNS200518-023_R2_001.fastq.gz /home/mrmclare/data/vivo-vitro/s2/reads/raw/F01_S18_CIDNS200509-022_R1_001.fastq.gz /home/mrmclare/data/vivo-vitro/s2/reads/raw/F01_S18_CIDNS200509-022_R2_001.fastq.gz"
+cd $dir
+mkdir output
+#+END_SRC
+
+#+BEGIN_SRC shell :session brc :results silent
+sbatch --exclusive --job-name=screen-fecal --wrap="
+  mash screen -p 4 -v 0.00000001 -i 0.8 $msh_file $fecal_samples > output/s2-fecal-screen-gtdb.tsv
+"
+sbatch --exclusive --job-name=screen-inoc --wrap="
+  mash screen -p 4 -v 0.00000001 -i 0.8 $msh_file $inoc_samples > output/s2-inoculum-screen-gtdb.tsv
+"
+sbatch --exclusive --job-name=screen-fecal-w --wrap="
+  mash screen -w -p 4 -v 0.00000001 -i 0.8 $msh_file $fecal_samples > output/s2-fecal-screen-gtdb-w.tsv
+"
+sbatch --exclusive --job-name=screen-inoc-w --wrap="
+  mash screen -w -p 4 -v 0.00000001 -i 0.8 $msh_file $inoc_samples > output/s2-inoculum-screen-gtdb-w.tsv
+"
+#+END_SRC
+
+Download results to local machine
+#+BEGIN_SRC shell :results silent
+scp "brc:/home/mrmclare/brc-analysis/2020-09-22-gtdb-mash-screen/output/*" ./output
+#+END_SRC
