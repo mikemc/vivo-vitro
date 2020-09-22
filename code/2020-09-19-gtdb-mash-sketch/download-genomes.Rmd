@@ -1,0 +1,168 @@
+
+## Setup
+
+```{r}
+library(here)
+library(tidyverse)
+library(fs)
+```
+
+Download GTDB 95 metadata, https://gtdb.ecogenomic.org/downloads
+
+```{r}
+gtdb_path <- here("data", "gtdb")
+if (!dir_exists(gtdb_path)) {
+  dir_create(gtdb_path)
+  gtdb_url <- "https://data.ace.uq.edu.au/public/gtdb/data/releases/release95/95.0/"
+  str_glue("wget -r -l 1 -nd -P {gtdb_path} {gtdb_url}") %>% system
+  untar(
+    here("data", "gtdb", "bac120_metadata_r95.tar.gz"),
+    exdir = here("data", "gtdb")
+  )
+  untar(
+    here("data", "gtdb", "ar122_metadata_r95.tar.gz"),
+    exdir = here("data", "gtdb")
+  )
+}
+```
+
+```{r}
+gtdb <- list(
+  Bacteria = here("data", "gtdb", "bac120_metadata_r95.tsv"),
+  Archaea = here("data", "gtdb", "ar122_metadata_r95.tsv")
+) %>%
+  map_dfr(read_tsv, na = c("", "NA", "na", "n/a", "none"),
+    col_types = cols_only(
+      accession = col_character(), 
+      ncbi_assembly_name = col_character()
+    ),
+    .id = "domain"
+  )
+```
+
+## final
+
+Create the file list relative to the base url of 
+"rsync://ftp.ncbi.nlm.nih.gov/genomes/all".
+
+Note,
+
+- get the middle dir structure from the ncbi asssembly name minus version number;
+  `GCA_123456789` becomes `GCA/123/456/789/`
+- The final dir is `{ncbi_accession}_{ncbi_assembly_name}`, where spaces
+- In the assembly name, need to replace various characters with underscores:
+  spaces, #'s, quotes; pretty much all `[:punct:]` except for dashes and
+  periods. Note that e.g. `:(` becomes just one `_`.
+- For ~150 genomes, the gtdb metadata does not have the assembly name. In some
+  cases, the name is actually missing and NCBI treats it as "NA" in the FTP
+  paths, but in other cases it is defined, and we have to obtain the assembly
+  name through another means. We can get it from the FTP folders; see below.
+
+
+```{r}
+gtdb %>%
+  group_by(is.na(ncbi_assembly_name)) %>%
+  count
+```
+
+First, get a data frame with the folder structure and file name supposing the
+assembly name is defined. We'll just specify the paths relative to 
+"ftp.ncbi.nlm.nih.gov/genomes/all".
+
+and, where the assembly name exists,
+replaces the unallowed character sequences with underscores
+
+```{r}
+bad <- '[ #\\"\\(\\)\\:\\,_<>\\*/`]+'
+x <- seq(1, 9, by = 3)
+tb <- gtdb %>% 
+  transmute(
+    # GTDB accession
+    accession, 
+    # NCBI accession
+    ncbi_accession = accession %>% str_sub(4,), 
+    # NCBI assembly name
+    name = ncbi_assembly_name %>% str_replace_all(bad, "_")
+  ) %>%
+  separate(ncbi_accession, into = c("acc_prefix", "acc_main", "acc_ver"),
+    remove = FALSE, sep = "_|\\.") %>%
+  mutate(
+    # dir_mid: 123456789 -> 123/456/789
+    dir_mid = map_chr(acc_main,
+      ~str_sub(., x, 2 + x) %>% str_c(collapse = "/")),
+    dir_last = str_glue("{ncbi_accession}_{name}"),
+    dir = file.path(acc_prefix, dir_mid, dir_last),
+    fn = str_glue("{ncbi_accession}_{name}_genomic.fna.gz"),
+    full_path = file.path(dir, fn)
+  )
+```
+
+
+Now we need to get the names of the files for the remaining genomes. We'll do
+this by using rsync to list the files of each directory at the level of
+`GCA/123/456/789`, and grab the name of the Fasta assembly file.
+
+```{r}
+# Get list of directories for rsync
+tb0 <- tb %>%
+  filter(is.na(name)) %>%
+  mutate(
+    main_dir = file.path(acc_prefix, dir_mid)
+  ) %>%
+  arrange(main_dir)
+tb0 %>%
+  pull(main_dir) %>%
+  write_lines(here("dir-list.txt"))
+# Use an rsync dry run to get the contents of the ftp directories given by
+# `main_dir`, and from there, extract the genome files.
+out <- system2("rsync", stdout = TRUE,
+  args = c("-r", "--dry-run", "--itemize-changes", "--files-from=dir-list.txt",
+    "rsync://ftp.ncbi.nlm.nih.gov/genomes/all", "genomes")
+)
+fns <- out %>%
+  str_subset("(?<!from)_genomic.fna.gz") %>%
+  str_extract("GCA/.+")
+# Let's check that the correct accession is given.
+tb1 <- tibble(full_path = fns) %>%
+  mutate(
+    ncbi_accession = path_file(full_path) %>% str_extract("^GC[AF]_[^_]+"),
+    accession = str_c("GB_", ncbi_accession)
+  )
+tb2 <- tb1 %>%
+  filter(
+    ncbi_accession %in% tb0$ncbi_accession
+  )
+nrow(tb2) - nrow(tb1)
+```
+
+No rows are lost - it looks like there is only one version of these genomes.
+
+Now we can combine with `tb` to get the full file list.
+```{r}
+ctb <- bind_rows(tb %>% filter(!is.na(name)), tb2) %>%
+  select(accession, genome_path = full_path) %>%
+  arrange(accession)
+ctb %>%
+  write_csv(here("gtdb-v95-genome-paths.csv"))
+str_glue('gzip {here("gtdb-v95-genome-paths.csv")}') %>% system
+ctb %>%
+  pull(genome_path) %>%
+  write_lines(here("file-list.txt"))
+```
+
+Download with
+```
+rsync -u --progress --files-from=file-list.txt rsync://ftp.ncbi.nlm.nih.gov/genomes/all ~/data/gtdb/genomes
+```
+
+Check that all genomes are downloaded:
+
+```zsh
+# https://stackoverflow.com/questions/638975/how-do-i-tell-if-a-regular-file-does-not-exist-in-bash
+for file in $(cat file-list.txt)
+do
+  if [ ! -e "genomes/$file" ]
+    then echo "$file missing"; sleep 1; exit 1
+  fi
+done
+```
