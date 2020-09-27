@@ -1,0 +1,17 @@
+query,reference,ani,bidir_fragment_mappings,total_query_fragments,ncbi_taxid.query,ncbi_organism_name.query,ncbi_taxid.reference,ncbi_organism_name.reference
+GCF_003546975.1,GCF_000017765.1,96.838,1327,1689,316435,Escherichia coli Nissle 1917,331112,Escherichia coli HS
+GCF_000017765.1,GCF_003546975.1,96.7774,1324,1547,331112,Escherichia coli HS,316435,Escherichia coli Nissle 1917
+GCF_003970495.1,GCF_000211215.1,84.6364,557,777,33028,Staphylococcus saccharolyticus,904338,Staphylococcus warneri VCU121
+GCF_000211215.1,GCF_003970495.1,84.6133,554,729,904338,Staphylococcus warneri VCU121,33028,Staphylococcus saccharolyticus
+GCF_000169015.1,GCF_000154125.1,83.2724,870,1511,411901,Bacteroides caccae ATCC 43185,411476,Bacteroides ovatus ATCC 8483
+GCF_000154125.1,GCF_000169015.1,83.2198,859,2139,411476,Bacteroides ovatus ATCC 8483,411901,Bacteroides caccae ATCC 43185
+GCF_000169015.1,GCF_000011065.1,82.0762,807,1511,411901,Bacteroides caccae ATCC 43185,226186,Bacteroides thetaiotaomicron VPI-5482
+GCF_000154125.1,GCF_000011065.1,81.9991,933,2139,411476,Bacteroides ovatus ATCC 8483,226186,Bacteroides thetaiotaomicron VPI-5482
+GCF_000011065.1,GCF_000169015.1,81.9556,826,2097,226186,Bacteroides thetaiotaomicron VPI-5482,411901,Bacteroides caccae ATCC 43185
+GCF_000011065.1,GCF_000154125.1,81.9174,961,2097,226186,Bacteroides thetaiotaomicron VPI-5482,411476,Bacteroides ovatus ATCC 8483
+GCF_000154205.1,GCF_001318345.1,79.8435,531,1558,411479,Bacteroides uniformis ATCC 8492,246787,Bacteroides cellulosilyticus
+GCF_001318345.1,GCF_000154205.1,79.8207,529,2361,246787,Bacteroides cellulosilyticus,411479,Bacteroides uniformis ATCC 8492
+GCF_000154205.1,GCF_000011065.1,79.5213,332,1558,411479,Bacteroides uniformis ATCC 8492,226186,Bacteroides thetaiotaomicron VPI-5482
+GCF_000011065.1,GCF_000154205.1,79.3002,341,2097,226186,Bacteroides thetaiotaomicron VPI-5482,411479,Bacteroides uniformis ATCC 8492
+GCF_001318345.1,GCF_000169015.1,78.7366,328,2361,246787,Bacteroides cellulosilyticus,411901,Bacteroides caccae ATCC 43185
+GCF_000169015.1,GCF_001318345.1,78.6201,335,1511,411901,Bacteroides caccae ATCC 43185,246787,Bacteroides cellulosilyticus
