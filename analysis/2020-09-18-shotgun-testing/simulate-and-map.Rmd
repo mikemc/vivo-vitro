@@ -1,0 +1,398 @@
+
+Simulate two sets of reads from the new set of reference genomes: error-free
+reads and reads with standard error rates. Then map each set with BBSplit and
+BURST, and save summary tables of the mappings for later evaluation.
+
+## Setup
+
+```{r}
+library(here)
+library(tidyverse)
+library(fs)
+```
+
+```{r}
+# Adjust accordingly to point to the folder for this analysis
+this_dir <- getwd()
+```
+
+Load relevant strain data and file locations,
+```{r}
+# Load the reference genome metadata and tree,
+refs <- file.path(this_dir, "output", "reference-genomes-metadata.Rds") %>%
+  readRDS %>%
+  select(assembly_accession, domain:species, ncbi_organism_name, genome_group,
+    genome_size, file = ftp_genome_file) %>%
+  mutate(local_path = file.path(this_dir, "data/genomes", file))
+tree <- ape::read.tree(file.path(this_dir, "output", "reference-genomes.tree"))
+tree.names <- tree
+tree.names$tip.label <- refs$ncbi_organism_name[
+  match(tree$tip.label, refs$assembly_accession)]
+# Location and list of downloaded genomes
+genome_path <- path(this_dir, "data/genomes")
+genomes <- dir_ls(genome_path, glob = "*fna*") %>% unname
+stopifnot(setequal(path_file(genomes), refs$file))
+# Location to save reads
+reads_path <- path(this_dir, "output", "simulated-reads")
+dir_create(reads_path)
+```
+
+## Simulations
+
+Function to simulate reads:
+```{r}
+
+#' Simulate reads from a set of reference genomes
+#'
+#' If `refs` is named, the names are used for the output file names.
+#'
+#' @param refs List of paths to reference genomes, optionally named
+#' @param args Character vector of args for randomreads.sh
+#' @param out_dir Directory to save reads
+#' @param index_dir Location to write the index, passed to `path` option in
+#'   `randomreads.sh`
+simulate_reads <- function(refs, 
+                           args, 
+                           out_dir, 
+                           index_dir = getwd(), 
+                           compress = FALSE) {
+  if (is.null(names(refs))) 
+    names(refs) <- path_file(refs)
+  if (compress) 
+    ext <- "fastq.gz"
+  else
+    ext <- "fastq"
+  tb <- enframe(refs, "ref_name", "ref_path") %>%
+    mutate(
+      out_path = path(out_dir, str_glue("{ref_name}.{ext}")),
+      io_args = str_glue("ref={ref_path} out={out_path} path={index_dir}"),
+      full_args = map(io_args, c, args)
+    )
+  dir_create(out_dir)
+  tb %>%
+    transmute(command = "randomreads.sh", args = full_args) %>%
+    pwalk(system2)
+  # Return a simplified version of the table
+  tb %>%
+    transmute(ref_name, ref_path, out_path) %>%
+    mutate(across(everything(), as.character)) %>%
+    add_column(args = str_c(args, collapse = " "))
+}
+```
+
+Simulate two read sets: perfect and error-prone 1x100 reads at 20x coverage.
+Use the Ban-Ns option to simplify interpretation of mismappings.
+
+```{r}
+args1 <- c(
+  "length=100", "coverage=20", "adderrors=f q=40 qv=0", "banns=t",
+  str_glue("path={genome_path}"), "pigz=t", "-eoom"
+)
+args2 <- c(
+  "length=100", "coverage=20", "banns=t", 
+  str_glue("path={genome_path}"), "pigz=t", "-eoom"
+)
+args_list <- list("1" = args1, "2" = args2)
+out_dirs <- file.path(reads_path, str_c("simulation-", names(args_list)))
+ref_list <- refs %>% select(assembly_accession, local_path) %>% deframe
+stb <- map2_dfr(args_list, out_dirs,
+  ~simulate_reads(ref_list, .x, .y, compress = TRUE),
+  .id = "simulation"
+)
+write_csv(stb, file.path(reads_path, "simulations.csv"))
+# stb <- simulate_reads(refs$local_path[[1]], args1, out_dirs[[1]],
+#   compress = TRUE)
+```
+
+For BURST, we need uncompressed Fasta files. Can use seqtk:
+`seqtk seq -A {reads_fn} > {fasta_fn}`
+```{r}
+stb <- stb %>%
+  mutate(
+    fasta_file = path(
+      path_dir(out_path), 
+      str_glue("{ref_name}.fasta")
+    )
+  )
+walk2(stb$out_path, stb$fasta_file, 
+  ~system2("seqtk", args = c("seq", "-A", .x), stdout = .y)
+)
+```
+
+
+## BBSplit
+
+Create BBSplit index:
+```{r, eval = FALSE}
+bbsplit_path <- file.path(this_dir, "output", "bbsplit")
+dir_create(bbsplit_path)
+args <- c("-eoom", str_glue("ref={genome_path} path={bbsplit_path}"))
+system2("bbsplit.sh", args)
+```
+
+
+Function to map reads
+
+```{r}
+
+#' Map reads to a set of reference genomes with BBSplit
+#'
+#' If `reads` is named, the names are used for the output file names.
+#'
+#' @param reads List of paths to reads files, optionally named
+#' @param args Character vector of args for bbsplit.sh
+#' @param ref_dir Directory with reference genomes
+#' @param out_dir Directory to save refstats output
+#' @param index_dir Location with the index
+map_reads_bbsplit <- function(reads,
+                              args, 
+                              out_dir, 
+                              index_dir) {
+  if (is.null(names(reads))) 
+    names(reads) <- path_file(reads)
+  tb <- enframe(reads, "reads_name", "reads_path") %>%
+    mutate(
+      out_path = path(out_dir, str_glue("{reads_name}-refstats.tsv")),
+      io_args = str_glue("path={index_dir} in={reads_path} refstats={out_path}"),
+      full_args = map(io_args, c, args)
+    )
+  dir_create(out_dir)
+  tb %>%
+    transmute(command = "bbsplit.sh", args = full_args) %>%
+    pwalk(system2)
+  # Return a simplified version of the table
+  tb %>%
+    transmute(reads_name, reads_path, out_path) %>%
+    mutate(across(everything(), as.character)) %>%
+    add_column(args = str_c(args, collapse = " "))
+}
+```
+
+```{r}
+stb0 <- stb %>% 
+  group_by(simulation) %>% 
+  summarize(read_files = list(out_path)) %>%
+  mutate(out_dir = file.path(bbsplit_path, str_c("simulation-", simulation)))
+index_dir <- path(bbsplit_path)
+mtb <- stb0 %>%
+  transmute(
+    reads = read_files, args = c("minid=0.97"), out_dir, index_dir = index_dir
+  ) %>%
+  pmap_dfr(map_reads_bbsplit, .id = "simulation")
+# This doesn't quite name the files how I wanted. Fix:
+mtb %>%
+  transmute(
+    path = out_path,
+    new_path = str_replace(path, "\\.fastq\\.gz", "")
+  ) %>%
+  pwalk(file_move)
+mtb <- mtb %>%
+  mutate(across(out_path, str_replace, "\\.fastq\\.gz", ""))
+```
+
+Note, we might also want to try adjusting how reference N's are handled during
+mapping.
+
+Functions to read, clean, and combine refstats results,
+```{r}
+
+#' Load BBSplit refstats results
+#'
+#' @param reads List of paths to reads files, optionally named
+read_refstats <- function(fns) {
+  if (is.null(names(fns))) 
+    names(fns) <- path_file(fns)
+  fns %>%
+    map_dfr(read_tsv, col_types = "cddddiiid", .id = "source") %>%
+    rename(target = "#name") %>%
+    janitor::clean_names() %>%
+    select(source, target, 
+      unambiguous_reads, ambiguous_reads, assigned_reads) %>%
+    mutate(
+      across(c(source, target), str_extract, "GC[AF]_[0-9]+\\.[0-9]+")
+    )
+}
+
+combine_refstats <- function(dir, save = FALSE) {
+  fns <- dir_ls(dir, glob = "*refstats.tsv")
+  res <- read_refstats(fns)
+  if (save)
+    saveRDS(res, path(dir, "combined-refstats.Rds"))
+  res
+}
+```
+
+Combine the results for a given simulation into a single table and save as Rds,
+```{r}
+out_dirs <- file.path(bbsplit_path, str_c("simulation-", 1:2))
+map(out_dirs, combine_refstats, save = TRUE)
+```
+
+
+## BURST
+
+```{r}
+burst_path <- path(this_dir, "output", "burst")
+dir_create(burst_path)
+```
+
+Create BURST index. Note, starting point for BURST needs to be a single
+uncompressed linearized Fasta file.
+```{r, eval = FALSE}
+# Combine genomes with zcat and linearize with `seqtk seq`
+str_glue(.sep = " ",
+  "zcat {genome_path}/*.fna.gz |",
+  "seqtk seq - > {burst_path}/all-genomes.fasta") %>%
+  system
+args <- str_glue(.sep = " ", 
+  "-r {burst_path}/all-genomes.fasta",
+  "-a {burst_path}/db.acx",
+  "-o {burst_path}/db.edx",
+  "-d DNA -s"
+)
+system2("burst_linux_DB12", args)
+```
+
+Map with BURST. Use the ALLPATHs option so that we can identify and discard
+ties.
+```{r}
+stb <- read_csv(file.path(reads_path, "simulations.csv")) %>%
+  mutate(
+    fasta_file = path(
+      path_dir(out_path), 
+      str_glue("{ref_name}.fasta")
+    )
+  )
+btb <- stb %>%
+  mutate(
+    burst_out = path(burst_path, str_glue("simulation-{simulation}"),
+      str_glue("{ref_name}-burst.tsv")),
+    burst_args = str_glue(.sep = " ",
+      "-r {burst_path}/db.edx", 
+      "-a {burst_path}/db.acx",
+      "-q {fasta_file}", 
+      "-o {burst_out}",
+      "--mode ALLPATHS",
+      "--threads 3",
+      "--id 0.97",
+      "--forwardreverse"
+    )
+  )
+out_dirs <- btb$burst_out %>% path_dir %>% unique
+dir_create(out_dirs)
+btb %>%
+  transmute(command = "burst_linux_DB12", args = burst_args) %>%
+  pwalk(system2)
+```
+
+Load and process BURST results. Test with one file:
+```{r}
+# http://www.metagenomics.wiki/tools/blast/blastn-output-format-6
+cns <- c("qseqid", "sseqid", "pident", "length", "mismatch", "gapopen",
+  "qstart", "qend", "sstart", "send", "evalue", "bitscore")
+res <- read_tsv(btb$burst_out[[1]],
+  col_names = cns,
+  col_types = "ccniiiiiiidd"
+)
+res %>% pull(pident) %>% summary
+```
+
+Goal: Simplify to the number of unique best hits and tied best hits for each
+reference sequence. First, however, we need to use the sseqid to add the
+reference accession.
+```{r}
+# Get a table with the sequence names of the reference contigs/scaffolds
+seq_map <- refs %>%
+  transmute(assembly_accession, 
+    seq_name = map(local_path, ~names(Biostrings::readDNAStringSet(.x)))
+  ) %>%
+  unnest(seq_name)
+res <- res %>% left_join(seq_map, by = c("sseqid" = "seq_name"))
+```
+
+Note, ties w/in a reference should still count as unique mappings.
+
+```{r}
+res0 <- res %>%
+  # Remove duplicate mappings w/in the same reference
+  select(qseqid, target = assembly_accession) %>%
+  distinct %>%
+  # Count number of best hits for each query read to identify unique best hits
+  group_by(qseqid) %>%
+  mutate(n_best = n()) %>%
+  # Count number of best hits for each query read
+  group_by(target = assembly_accession) %>%
+  summarize(
+    unambiguous_reads = sum(n_best == 1),
+    ambiguous_reads = sum(n_best > 1),
+    .groups = "drop"
+  )
+```
+
+Next, encapsulate this in a function. Then, when have all burst output, process
+all BURST results in this way, and save the output table.
+
+```{r}
+# pident param allows restricting to very close alignments.
+process_burst_table <- function(fn, pident = 0) {
+  # http://www.metagenomics.wiki/tools/blast/blastn-output-format-6
+  cns <- c("qseqid", "sseqid", "pident", "length", "mismatch", "gapopen",
+    "qstart", "qend", "sstart", "send", "evalue", "bitscore")
+  tb <- read_tsv(fn, col_names = cns, 
+    col_types = cols_only(
+      qseqid = col_character(), sseqid = col_character(),
+      pident = col_double()
+    )
+  )
+  if (pident > 0)
+    tb <- tb %>% filter(pident >= !!pident)
+  tb %>%
+    left_join(seq_map, by = c("sseqid" = "seq_name")) %>%
+    # Remove duplicate mappings w/in the same reference
+    select(qseqid, target = assembly_accession) %>%
+    distinct %>%
+    # Count number of best hits for each query read to identify unique best hits
+    group_by(qseqid) %>%
+    mutate(n_best = n()) %>%
+    # Count number of best hits for each query read
+    group_by(target) %>%
+    summarize(
+      unambiguous_reads = sum(n_best == 1),
+      ambiguous_reads = sum(n_best > 1),
+      .groups = "drop"
+    )
+}
+
+combine_burst_tables <- function(dir, pident = 0, save = FALSE) {
+  fns <- dir_ls(dir, glob = "*burst.tsv")
+  names(fns) <- str_extract(path_file(fns), "GC[AF]_[0-9]+\\.[0-9]+")
+  res <- furrr::future_map_dfr(fns, process_burst_table, pident = pident, 
+    .id = "source")
+  if (save)
+    saveRDS(res, path(dir, "combined-burst-results.Rds"))
+  res
+}
+```
+
+```{r}
+library(furrr)
+
+plan(multiprocess, workers = 3)
+
+out_dirs <- file.path(burst_path, str_c("simulation-", 1:2))
+
+res1 <- combine_burst_tables(out_dirs[[1]], save = TRUE)
+res2 <- combine_burst_tables(out_dirs[[2]], save = TRUE)
+```
+
+Also save a version of the simulation-2 results where we filter to exact
+matches.
+```{r}
+res3 <- combine_burst_tables(out_dirs[[2]], pident = 100, save = FALSE)
+saveRDS(res3, path(out_dirs[[2]], "combined-burst-results-pident100.Rds"))
+```
+
+
+
+TODO: Do some more careful evaluation of the above code for processing burst
+results.
