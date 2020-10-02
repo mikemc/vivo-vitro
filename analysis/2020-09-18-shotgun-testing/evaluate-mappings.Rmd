@@ -1,0 +1,585 @@
+---
+title: Evaluate mapping performance on simulated reads
+author: Michael McLaren
+date: "`r Sys.Date()`"
+description:
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    dev: "svg"
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(progress = TRUE, verbose = TRUE)
+# Global chunk options
+knitr::opts_chunk$set(
+  cache = TRUE, autodep = TRUE,
+  include = TRUE, echo = TRUE,
+  warning = TRUE, message = FALSE, 
+  collapse = TRUE,
+  fig.width = 7, fig.height = 7
+)
+```
+
+## Setup
+
+```{r}
+library(here)
+library(tidyverse)
+library(fs)
+
+import::from(metacal, close_elts, mutate_by)
+
+library(cowplot)
+library(patchwork)
+theme_set(theme_cowplot())
+```
+
+```{r}
+# Adjust accordingly to point to the folder for this analysis
+this_dir <- getwd()
+```
+
+Load relevant strain data and file locations,
+```{r}
+# Load the reference genome metadata and tree,
+refs <- file.path(this_dir, "output", "reference-genomes-metadata.Rds") %>%
+  readRDS %>%
+  select(assembly_accession, domain:species, ncbi_organism_name, genome_group,
+    genome_size) %>%
+  mutate(
+    display_name = case_when(
+      str_detect(ncbi_organism_name, "Escherichia") ~ 
+        str_extract(ncbi_organism_name, "^(\\S+\\s+){2}\\S+"),
+      TRUE ~ str_extract(ncbi_organism_name, "^\\S+\\s+\\S+")
+    ),
+    strain_group = case_when(
+      genus == "Thioflavicoccus" ~ "Experimental control",
+      genome_group == "Experiment" & genus != "Thioflavicoccus" ~ "Inoculum",
+      genome_group == "Control" ~ "Computational control",
+      genome_group == "Contaminant" & genus != "Escherichia" ~
+        "Inoculum contaminant",
+      genome_group == "Contaminant" & genus == "Escherichia" ~
+        "Mouse contaminant",
+    ),
+  )
+tree <- ape::read.tree(file.path(this_dir, "output", "reference-genomes.tree"))
+tree.names <- tree
+tree.names$tip.label <- refs$display_name[
+  match(tree$tip.label, refs$assembly_accession)]
+```
+
+Load BBSplit and BURST mapping results,
+```{r}
+res <- crossing(
+  simulation = c("1", "2"),
+  nesting(
+    method = c("bbsplit", "burst"),
+    fn = c("combined-refstats.Rds", "combined-burst-results.Rds")
+  )
+) %>%
+  mutate(
+    path = path(this_dir, "output", method, str_c("simulation-", simulation),
+      fn),
+    data = map(path, readRDS) 
+  ) %>%
+  select(-path, -fn) %>%
+  unnest(data)
+```
+
+Check that we have similar mappings by each method,
+```{r}
+res %>%
+  group_by(simulation, method, source) %>%
+  summarize(across(unambiguous_reads, sum)) %>%
+  summarize(across(unambiguous_reads, list(min = min, median = median, 
+        mean = mean, max = max), .names = "{.fn}")
+  )
+res %>%
+  filter(source == target) %>%
+  group_by(simulation, method) %>%
+  summarize(across(ends_with("reads"), sum))
+```
+
+
+## Eval/vis BBSplit
+
+
+```{r, eval = FALSE}
+# Fill in 0s 
+all_pairs <- res %>% expand(source, target)
+res0 <- res %>%
+  right_join(all_pairs, by = c("source","target")) %>%
+  replace_na(
+    list(unambiguous_reads = 0, ambiguous_reads = 0, assigned_reads = 0)
+  )
+```
+
+
+```{r, fig.dim = c(9, 8)* 1.2}
+ptb <- res %>%
+  mutate_by(c(simulation, method, source), 
+    across(unambiguous_reads, close_elts)) %>%
+  mutate(across(c(source, target), factor, 
+      levels = tree$tip.label,
+      labels = tree.names$tip.label
+    )) %>%
+  filter(unambiguous_reads > 0)
+p <- ptb %>%
+  ggplot(aes(y = source, x = target, fill = unambiguous_reads)) +
+  geom_tile() +
+  # scale_fill_viridis_c(limits = c(1, 1e4), trans = "log10") +
+  scale_fill_viridis_c(limits = c(1e-7, 1e-2), trans = "log10") +
+  theme_minimal_grid() +
+  labs(fill = "fraction of\nunamb. reads") +
+  facet_grid(method~simulation) +
+  coord_fixed() +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)
+  )
+p
+```
+
+Note, the only contaminant or control genomes that yield unambiguous mappings
+to our experimental strains are E. coli Nissle and the Bacteroidetes control.
+
+```{r, fig.dim = c(9, 8) * 1}
+focal_refs <- refs %>%
+  filter(
+    genome_group == "Experiment" | 
+    genus %in% "Bacteroides" | 
+    str_detect(ncbi_organism_name, "Nissle")
+  )
+p1 <- p
+p1$data <- p1$data %>% 
+  filter(
+    source %in% focal_refs$display_name, 
+    target %in% focal_refs$display_name
+  )
+p1
+```
+
+Try showing a single facet with the tree:
+```{r}
+p2 <- ptb %>%
+  filter(
+    unambiguous_reads > 0, method == "bbsplit", simulation == "2",
+    source %in% focal_refs$display_name, 
+    target %in% focal_refs$display_name
+  ) %>%
+  ggplot(aes(y = source, x = target, fill = unambiguous_reads)) +
+  geom_tile() +
+  scale_fill_viridis_c(limits = c(1e-7, 1e-2), trans = "log10") +
+  theme_minimal_grid() +
+  labs(fill = "fraction of\nunambiguous\nread maps") +
+  coord_fixed() +
+  theme(
+    # axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank()
+  )
+```
+
+```{r, fig.dim = c(9.2, 6) * 1.3}
+focal_tree <- tree.names %>% ape::keep.tip(focal_refs$display_name)
+gt <- ggtree::ggtree(focal_tree, ladderize = FALSE) +
+  theme(plot.margin = margin(r = -30))
+gt + (p2 + coord_fixed() + theme(plot.margin = margin(l = 0))) +
+  plot_layout(widths = c(0.5, 1)) +
+  plot_annotation(
+    # title = "Rates of mismapping of simulated reads",
+    title = "Simulated reads show low but positive rates of mismapping within phyla",
+    subtitle = str_c(
+      "1x100bp reads simulated with errors and mapped with BBSplit. ",
+      "Row = source genome, column = target genome."
+    )
+  )
+```
+
+```{r, eval = FALSE}
+ggsave(here("output", "figures", "2020-09-28-mapping-eval-sim2-bbsplit.pdf"),
+  units = "in", width = 9.2, height = 6, scale = 1.3)
+```
+
+Questions are: Is the mismapping enough to be a practical problem? Can we
+eliminate it in a straightforward way? E.g. by requiring perfect hits, or
+masking regions w/in 97% similarity between two refs?
+
+How bad are these numbers, really?
+```{r, fig.dim = c(8, 5)}
+ptb %>%
+  filter(source != target, target %in% focal_refs$display_name) %>%
+  ggplot(aes(unambiguous_reads, fill = target)) +
+  geom_histogram() +
+  scale_x_log10() +
+  # scale_fill_brewer(type = "seq", palette = 2) +
+  scale_fill_viridis_d() +
+  facet_grid(method~simulation)
+```
+
+```{r, fig.dim = c(8, 5)}
+ptb %>%
+  filter(source != target, target %in% focal_refs$display_name) %>%
+  left_join(refs, by = c(target = "display_name")) %>%
+  ggplot(aes(unambiguous_reads, fill = genus)) +
+  geom_histogram() +
+  scale_x_log10() +
+  scale_fill_brewer(type = "qual", palette = 3) +
+  # scale_fill_viridis_d() +
+  facet_grid(method~simulation)
+```
+
+How much better is BURST over default BBSplit?
+```{r}
+ptb %>%
+  filter(simulation == 2, target == "[Eubacterium] rectale", source != target) %>%
+  select(method, source, unambiguous_reads) %>%
+  pivot_wider(names_from = method, values_from = unambiguous_reads,
+    values_fill = 0)
+
+ptb %>%
+  filter(simulation == 2, str_detect(target, "coli"), source != target) %>%
+  select(method, target, source, unambiguous_reads) %>%
+  pivot_wider(names_from = method, values_from = unambiguous_reads,
+    values_fill = 0) %>%
+  arrange(target, source)
+```
+
+It seems like significant gains can be made simply by switching to BURST or
+increasing the specificity of BBSplit.
+
+## Does requiring perfect maps solve the issue?
+
+Load BURST perfect-mapping results,
+```{r}
+res.perf <- tibble(
+  simulation = "2",
+  method = "burst",
+  pident = c(97, 100),
+  fn = c("combined-burst-results.Rds", "combined-burst-results-pident100.Rds")
+) %>%
+  mutate(
+    path = path(this_dir, "output", method, str_c("simulation-", simulation),
+      fn),
+    data = map(path, readRDS) 
+  ) %>%
+  select(-path, -fn) %>%
+  unnest(data)
+```
+
+```{r, fig.dim = c(8, 5)* 1.3}
+ptb.perf <- res.perf %>%
+  mutate_by(c(simulation, method, pident, source), 
+    across(unambiguous_reads, close_elts)) %>%
+  mutate(across(c(source, target), factor, 
+      levels = tree$tip.label,
+      labels = tree.names$tip.label
+    )) %>%
+  filter(unambiguous_reads > 0)
+p.perf <- ptb.perf %>%
+  ggplot(aes(y = source, x = target, fill = unambiguous_reads)) +
+  geom_tile() +
+  scale_fill_viridis_c(limits = c(1e-7, 1e-2), trans = "log10") +
+  theme_minimal_grid() +
+  labs(fill = "fraction of\nunamb. reads") +
+  facet_grid(.~pident) +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)
+  )
+p.perf
+```
+
+Very little difference.
+
+
+## Contextualize with V1 rel. abun. estimates 
+
+### BBSplit
+
+```{r}
+library(speedyseq)
+import::from(metacal, close_elts, mutate_by, build_matrix)
+
+my_psmelt <- function(physeq) {
+  speedyseq::psmelt(physeq) %>%
+    as_tibble %>%
+    rename(taxon = OTU, sample = Sample, abundance = Abundance)
+}
+as_tibble.sample_data <- function(x) {
+  x %>% as("data.frame") %>% as_tibble(rownames = "sample")
+}
+as_tibble.taxonomyTable <- function(x) {
+  x %>% as("matrix") %>% as_tibble(rownames = "taxon")
+}
+
+ps <- readRDS(here("output/phyloseq", "2020-09-12-phyloseq-focal-strains.Rds"))
+ps
+sam <- sample_data(ps) %>% as_tibble
+tax <- tax_table(ps) %>% as_tibble
+```
+
+Question: Are the mismaps between B's, and to E. rectale, sufficient to
+significantly bias our relative abundance estimates?  Consider E. rectale. Use
+the observed rates of mismapping, and the observed compositions, to get the
+predicted fraction of reads incorrectly mapped to E.  rectale, and compare this
+to the actual number. Caveats - the reference genomes are different for E.
+rectale and Clostridium.
+
+
+Prep: Need to match up the taxa names in ps with the new references. Let's
+also exclude E. coli to avoid complications from the fact that only HS was used
+in `ps`.
+```{r}
+ps0 <- ps %>% 
+  subset_taxa(genus != "Escherichia") %>%
+  subset_samples(center_id == "S1")
+taxa_names(ps0)
+refs0 <- refs %>% 
+  transmute(
+    acc = assembly_accession, 
+    name = str_replace_all(display_name, "[\\[\\]]", "")
+  ) %>%
+  filter(name %in% taxa_names(ps0))
+```
+
+The mathematical logic is as follows. Let T be the number of taxa and S the
+number of samples. Let M be the T by T matrix of mapping rates, such that
+$M_ij$ is the probability that a (unambiguously) mapped read from genome i is
+mapped to genome j. Let A be the (unobserved) S by T matrix of "actual" read
+maps - the mapped reads correctly assigned to their source genome in each
+sample - and O be the S by T matrix of observed mapped counts. Then
+$O = A M$ and $A = O M^{-1}$. Therefore we can estimate A by right-multiplying
+O by M-inverse.
+
+Create the mapping-rate matrix and its inverse, for the BBSplit + Sim 2
+condition.
+```{r}
+M <- res %>%
+  filter(
+    unambiguous_reads > 0, method == "bbsplit", simulation == "2",
+  ) %>%
+#  mutate_by(source, across(unambiguous_reads, close_elts)) %>%
+  filter(source %in% refs0$acc, target %in% refs0$acc) %>%
+  left_join(refs0, by = c(source = "acc")) %>%
+  left_join(refs0, by = c(target = "acc"), suffix = c(".s", ".t")) %>%
+  build_matrix(name.s, name.t, unambiguous_reads, fill = 0) %>%
+  sweep(., 1, rowSums(.), `/`)
+stopifnot(identical(rownames(M), colnames(M)))
+M_inv <- solve(M)
+```
+
+Estimate the actual abundances by multiplying the observed counts by M-inverse.
+```{r}
+obs <- otu_table(ps0) %>% speedyseq:::select_taxa(rownames(M))
+stopifnot(identical(taxa_names(obs), colnames(M)))
+act_hat <- obs %*% M_inv
+# Or use solve() directly on the transposes
+# act_hat2 <- solve(t(M), t(obs)) %>% t
+# all.equal(act_hat, act_hat2)
+summary(act_hat %>% c)
+act_hat[act_hat < 0] %>% round(3)
+act_hat <- pmax(act_hat, 0)
+
+ps0_hat <- ps0
+otu_table(ps0_hat) <- otu_table(act_hat, taxa_are_rows = FALSE)
+```
+
+Not sure what is causing the small negative values; perhaps rounding error, or
+some approximation I'm implicitly making.
+
+Let's get a tibble with the observed and estimated actual abundances,
+```{r}
+tb <- left_join(
+  my_psmelt(ps0_hat) %>% rename(actual = abundance),
+  my_psmelt(obs) %>% rename(observed = abundance), 
+  by = c("sample", "taxon")
+) %>%
+  mutate(fold_error = observed / actual)
+```
+and check the cases where there is signficant estimated error,
+```{r}
+tb %>%
+  filter(!is.nan(fold_error), abs(log10(fold_error)) > 0.15)  %>%
+  select(taxon, fold_error, specimen_type, sample) %>%
+  arrange(fold_error) %>%
+  print(n=Inf)
+```
+
+Let's confirm this makes sense in a couple samples.
+```{r}
+pstb <- my_psmelt(ps0)
+pstb %>% filter(sample == "S1_10_2") %>% select(taxon, abundance)
+pstb %>% filter(sample == "S1_11_2") %>% select(taxon, abundance)
+```
+In these cases, there are so few E. rectale reads that they could indeed be
+mismaps from other FirmicutesA species.
+
+
+What about the C. symbiosum examples?
+```{r, eval = FALSE}
+pstb %>% filter(sample == "S1_1_1") %>% select(taxon, abundance)
+pstb %>% filter(sample == "S1_13_1") %>% select(taxon, abundance)
+M[, "Clostridium symbiosum"]
+obs[c("S1_1_1", "S1_13_1"),] %>% as("matrix")
+act_hat[c("S1_1_1", "S1_13_1"),]
+```
+These ones look like rounding errors.
+
+
+Let's inspect the E. rectale error more generally,
+```{r, fig.dim = c(7.5, 8) * 1.1}
+squish <- function(x) x %>% pmax(0.1) %>% pmin(10)
+p1 <- tb %>%
+  filter(taxon == "Eubacterium rectale") %>%
+  filter(!is.nan(fold_error)) %>%
+  mutate(across(fold_error, squish)) %>%
+  ggplot(aes(fold_error, fill = specimen_type)) +
+  geom_histogram() +
+  scale_x_log10() +
+  scale_fill_brewer(type = "qual", palette = 3) +
+  labs(x = "observed / actual", y = "number of samples")
+p2 <- tb %>%
+  filter(taxon == "Eubacterium rectale") %>%
+  mutate(across(c(observed, actual), pmax, 0.5)) %>%
+  ggplot(aes(actual, observed, color = specimen_type)) +
+  geom_abline(color = "grey") +
+  geom_point() +
+  scale_x_log10() +
+  scale_y_log10() +
+  expand_limits(y = 1) +
+  scale_color_brewer(type = "qual", palette = 3) +
+  coord_fixed()
+p2 / p1 +
+  plot_annotation(
+    title = "Estimated error in Eubacterium rectale read counts due to mismapping",
+    subtitle = "The 'actual' counts are estimated from 'observed' and the estimated mismap rates"
+  ) +
+  plot_layout(heights = c(1, 0.8))
+```
+
+```{r, echo = FALSE, eval = FALSE}
+ggsave(here("output", "figures", "2020-09-29-eubacterium-estimated-error.pdf"),
+  units = "in", width = 7.5, height = 8, scale = 1.1)
+```
+
+The samples filtered as NaNs are
+```{r}
+tb %>%
+  filter(taxon == "Eubacterium rectale") %>%
+  filter(is.nan(fold_error)) %>%
+  select(taxon:actual, specimen_type)
+```
+
+### BURST
+
+Since the BURST mismapping rate is much lower, there may be essentially no
+effect:
+
+```{r}
+M <- res %>%
+  filter(
+    unambiguous_reads > 0, method == "burst", simulation == "2",
+  ) %>%
+#  mutate_by(source, across(unambiguous_reads, close_elts)) %>%
+  filter(source %in% refs0$acc, target %in% refs0$acc) %>%
+  left_join(refs0, by = c(source = "acc")) %>%
+  left_join(refs0, by = c(target = "acc"), suffix = c(".s", ".t")) %>%
+  build_matrix(name.s, name.t, unambiguous_reads, fill = 0) %>%
+  sweep(., 1, rowSums(.), `/`)
+stopifnot(identical(rownames(M), colnames(M)))
+M_inv <- solve(M)
+```
+
+Estimate the actual abundances by multiplying the observed counts by M-inverse.
+```{r}
+obs <- otu_table(ps0) %>% speedyseq:::select_taxa(rownames(M))
+stopifnot(identical(taxa_names(obs), colnames(M)))
+act_hat <- obs %*% M_inv
+# Or use solve() directly on the transposes
+# act_hat2 <- solve(t(M), t(obs)) %>% t
+# all.equal(act_hat, act_hat2)
+summary(act_hat %>% c)
+act_hat[act_hat < 0] %>% round(3)
+act_hat <- pmax(act_hat, 0)
+
+ps0_hat <- ps0
+otu_table(ps0_hat) <- otu_table(act_hat, taxa_are_rows = FALSE)
+```
+
+```{r}
+tb <- left_join(
+  my_psmelt(ps0_hat) %>% rename(actual = abundance),
+  my_psmelt(obs) %>% rename(observed = abundance), 
+  by = c("sample", "taxon")
+) %>%
+  mutate(fold_error = observed / actual)
+```
+
+Check for the largest fold errors:
+```{r}
+tb %>%
+  filter(!is.nan(fold_error))  %>%
+  select(taxon, fold_error, specimen_type, sample) %>%
+  arrange(-abs(log10(fold_error))) %>%
+  head(10)
+```
+
+The errors in this case are negligible. (Note, E. coli isn't included and there
+may be larger error there, though it may also be negligible)
+
+## Tree figure
+
+```{r}
+import::from(ggtree, ggtree, geom_tiplab, geom_tippoint, `%<+%`)
+```
+
+```{r, fig.dim = c(9, 8)}
+gt <- ggtree(tree, ladderize = FALSE) %<+% refs +
+  geom_tiplab(aes(label = display_name, 
+      alpha = display_name %in% focal_refs$display_name), 
+    align=FALSE, offset = 0.02) +
+  geom_tippoint(aes(color = strain_group), size = 2) +
+  xlim(0, 2.5) +
+  scale_color_brewer(type = "qual", palette = 2) +
+  scale_alpha_manual(values = c(0.5, 1), guide = "none") +
+  labs(color = "Strain group")
+gt
+```
+
+```{r, echo = FALSE, eval = FALSE}
+ggsave(here("output", "figures", "2020-09-29-reference-tree.pdf"),
+  units = "in", width = 9, height = 8)
+```
+
+Here I've faded out the names of the genomes that aren't of primary interested
+w.r.t. the mismapping discussion.
+
+## Prevalence of rarity
+
+How many samples have taxa in very low rel. abun. or read counts, for which we
+might worry that low rates of mismaps would matter?
+
+```{r}
+tb <- ps %>% 
+  subset_taxa(genus != "Thioflavicoccus") %>%
+  subset_samples(center_id == "S1" & specimen_type != "T. mobilis") %>%
+  my_psmelt %>%
+  mutate_by(sample, proportion = close_elts(abundance))
+```
+
+```{r, fig.dim = c(8, 6)}
+p1 <- ggplot(tb, aes(abundance, fill = genus)) +
+  geom_histogram() +
+  scale_x_log10() +
+  scale_fill_brewer(type = "qual", palette = 3) +
+  facet_wrap(~specimen_type)
+p2 <- ggplot(tb, aes(proportion, fill = genus)) +
+  geom_histogram() +
+  scale_x_log10() +
+  scale_fill_brewer(type = "qual", palette = 3) +
+  facet_wrap(~specimen_type)
+p1 / p2
+```
