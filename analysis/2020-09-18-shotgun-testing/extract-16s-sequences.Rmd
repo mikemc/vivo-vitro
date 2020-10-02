@@ -1,0 +1,128 @@
+## Setup
+
+```{r}
+library(tidyverse)
+library(here)
+library(fs)
+```
+
+```{r}
+this_dir <- getwd()
+dl_path <- path(this_dir, "data", "genomes")
+final_refs <- readRDS(file.path(this_dir, "output", "reference-genomes-metadata.Rds"))
+```
+
+## Get the reference annotations to go with the Fastas
+
+We already have the fasta files; let's get the annotations in Generic Feature
+Format Version 3 (GFF3) files that go with them.
+
+```{r}
+ftp_tb <- final_refs %>%
+  transmute(assembly_accession, ncbi_organism_name, ncbi_taxid, 
+    ftp_path, ftp_genome_file,
+    ftp_gff_file = str_replace(ftp_genome_file, "\\.fna", ".gff"),
+  )
+ftp_tb %>%
+  transmute(
+    url = file.path(ftp_path, ftp_gff_file),
+    destfile = path(dl_path, ftp_gff_file)
+  ) %>%
+  pwalk(download.file)
+```
+
+While we're at it, let's grab the MD5's,
+```{r}
+ftp_tb %>%
+  transmute(
+    url = file.path(ftp_path, "md5checksums.txt"),
+    destfile = path(dl_path, str_glue("{assembly_accession}-md5checksums.txt"))
+  ) %>%
+  pwalk(download.file)
+```
+
+Tibble with the local files,
+```{r}
+ftb <- ftp_tb %>%
+  transmute(assembly_accession, ncbi_organism_name, ncbi_taxid,
+    fasta_path = path(dl_path, ftp_genome_file),
+    gff_path = path(dl_path, ftp_gff_file),
+    md5_path = path(dl_path, str_glue("{assembly_accession}-md5checksums.txt"))
+  )
+```
+
+MD5's checked with
+
+``` zsh
+cat *-md5checksums.txt | grep "[^from]_genomic.fna.gz" > fasta-md5checksums.txt
+cat *-md5checksums.txt | grep "_genomic.gff.gz" > gff-md5checksums.txt
+md5sum -c fasta-md5checksums.txt
+md5sum -c gff-md5checksums.txt
+```
+
+## Extraction the 16S genes from the genomes
+
+Use packages: Biostrings, rtracklayer, Rsamtools.
+
+Note, we need to index the fasta files, which requires unzipping them (and
+optionally recompressing them with bgzip in place of gzip)
+
+```{r}
+system2("gunzip", path(dl_path, "*.gz"))
+```
+
+
+```{r}
+ftb0 <- ftb %>%
+  mutate(
+    # adjust extensions
+    across(c(fasta_path, gff_path), str_replace, "\\.gz", ""),
+    # load the fasta and gff files
+    fasta = map(fasta_path, Rsamtools::FaFile),
+    track = map(gff_path, rtracklayer::import, format = "GFF3")
+  )
+# Build samtools indices
+ftb0 %>% pull(fasta) %>% walk(Rsamtools::indexFa)
+```
+
+Get the 16S sequences
+```{r}
+ftb0 <- ftb0 %>%
+  mutate(
+    sequences = map2(fasta, track, 
+      ~Biostrings::getSeq(
+        .x,
+        subset(.y, type == "rRNA" & product == "16S ribosomal RNA")
+      )))
+```
+
+Split the sequences out, create new names, and rejoin them into a single
+DNAStringSet that we can write to Fasta.
+```{r}
+ftb1 <- ftb0 %>%
+  select(assembly_accession, ncbi_organism_name, sequences) %>%
+  mutate(
+    across(sequences, map, as.character),
+    across(sequences, map, enframe, value = "sequence"),
+  ) %>%
+  unnest(sequences) %>%
+  group_by(assembly_accession) %>%
+  mutate(
+    copy = row_number(),
+    name = str_glue("{assembly_accession}_16S_{copy}"),
+    description = str_glue("{ncbi_organism_name}, 16S ribosomal RNA gene Copy {copy}"),
+    full_name = str_c(sep = " ", name, description)
+  ) %>%
+  ungroup
+dna <- ftb1 %>% select(full_name, sequence) %>% deframe %>% 
+  Biostrings::DNAStringSet()
+```
+
+```{r}
+Biostrings::writeXStringSet(dna,
+  path(this_dir, "output", "reference-16s-genes.fasta")
+)
+```
+
+Notably, this set includes all 7 expected copies for E. coli HS and Nissle.
+
