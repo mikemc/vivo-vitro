@@ -1,0 +1,609 @@
+The purpose of this notebook is to develop a correct and fast method for
+processing the BURST output into a count matrix, where each row is a sample and
+each column is a reference genome, and counts denote the number of unambiguous
+insert maps to the reference. The focus will be on the slower, more complex
+paired-read algorithm.
+
+## Setup
+
+```{r}
+library(here)
+library(fs)
+
+library(data.table)
+library(dplyr, warn.conflicts = FALSE)
+
+library(tidyverse)
+```
+
+The S1 samples are already named by `dna_sample_id`, but the S2 samples are
+named by well and need to be converted. For this, we need the map from well id
+to DNA sample id,
+```{r}
+well_map <- here("output/sample-data", "dna-sample-data.Rds") %>% 
+  readRDS %>%
+  transmute(
+    dna_sample_id,
+    # Get well in "A01" format
+    well = str_glue('{row}{str_pad(column, 2, "left", "0")}')
+  ) %>%
+  glimpse
+```
+
+```{r}
+ref_dir <- here("data", "references", "bacteria", "v2")
+refs <- here("output", "strain-data", "reference-genome-metadata.Rds") %>%
+  readRDS %>%
+  mutate(local_file = file.path(ref_dir, ftp_genome_file))
+```
+
+Download the references,
+```{r, eval = FALSE}
+refs %>%
+  transmute(
+    url = file.path(ftp_path, ftp_genome_file),
+    destfile = local_file
+    ) %>%
+  pwalk(download.file)
+```
+
+Map from sequence names to assembly accessions for the reference genomes,
+```{r}
+seq_map <- refs %>%
+  transmute(
+    sseqid = map(local_file, ~names(Biostrings::readDNAStringSet(.x))),
+    target = assembly_accession
+  ) %>%
+  unnest(sseqid)
+```
+
+Files with Burst results, to use for testing,
+```{r}
+btb <- tibble(center_id = c("s1", "s2")) %>%
+  mutate(
+    dir = path(here("analysis", "2020-10-07-burst-pipeline", "output"),
+      center_id),
+    file = map(dir, dir_ls, glob = "*-burst.Rds")
+  ) %>%
+  select(-dir) %>%
+  unnest(file)
+```
+
+```{r}
+# The A07 file has a size of 56M; the B10 file is 114M
+# the largest file is around 270M.
+# fn <- btb %>% filter(str_detect(file, "A07")) %>% pull(file)
+fn <- btb %>% filter(str_detect(file, "B10")) %>% pull(file)
+tb <- readRDS(fn)
+# dt <- as.data.table(tb)
+# Use setDT in actual use case
+# dt <- setDT(tb)
+```
+
+
+## Profiling
+
+### Step 1: Join "target" info
+
+```{r}
+system.time(
+  tb1 <- tb %>% left_join(seq_map, by = "sseqid")
+)
+system.time(
+  dt1 <- seq_map.dt[dt, on = "sseqid"]
+)
+```
+This is actually ~2X faster with tibble, though not sure how this will hold
+with larger datasets, or if using "keys" in data table would speed up.
+
+
+### Step 2: Drop extra columns and duplicate hits to same ref
+
+```{r}
+system.time(
+  tb2 <- tb1 %>% select(qseqid, target) %>% distinct
+)
+system.time(
+  tb2.1 <- tb1 %>% distinct(qseqid, target)
+)
+system.time(
+  dt2 <- dt1[, .(qseqid, target)] %>% unique
+)
+system.time(
+  dt2.1 <- dt1 %>% unique(by = c("qseqid", "target"))
+)
+```
+This is again ~2X faster with tibble
+
+### Step 3: Split qseqid into insert and mate ids
+
+```{r}
+system.time(
+  tb3 <- tb2 %>% 
+    separate(qseqid, into = c("qseqid_insert", "qseqid_mate"), sep = "_")
+)
+system.time(
+  tb3 <- tb2 %>% 
+    mutate(
+      qseqid = str_split_fixed(qseqid, "_", 2),
+      qseqid_insert = qseqid[,1],
+      qseqid_mate = qseqid[,2]
+    ) %>%
+    select(-qseqid)
+)
+system.time(
+  dt3 <- dt2[, c("qseqid_insert", "qseqid_mate") := tstrsplit(qseqid, "_",
+    fixed = FALSE)]
+)
+system.time(
+  dt3 <- dt2[, c("qseqid_insert", "qseqid_mate") := tstrsplit(qseqid, "_", fixed = TRUE)]
+)
+```
+Times are: 6s, 0.41s, 2s, 0.33s. So the main thing is to not use separate, and
+to use "fixed" matching
+
+It may be useful to have the R1/R2 identifier, without the index:
+```{r}
+tb3 <- tb3 %>%
+  mutate(qseqid_mate = str_sub(qseqid_mate, 1, 1))
+dt3 <- dt3[, qseqid_mate := str_sub(qseqid_mate, 1, 1)]
+```
+
+
+
+### Step 4: 
+
+Probably the slow part
+
+```{r}
+tb3.subset <- tb3 %>% head(5e4)
+system.time(
+  tb4 <- tb3.subset %>%
+    group_by(qseqid_insert, qseqid_mate) %>%
+    summarize(across(target, list), .groups = "drop_last") %>%
+    summarize(
+      across(target, reduce, intersect), 
+      paired = identical(n(), 2L),
+      .groups = "drop"
+    )
+)
+# Use a list col for target to avoid creating new rows
+system.time(
+  tb4.1 <- tb3.subset %>%
+    group_by(qseqid_insert, qseqid_mate) %>%
+    summarize(across(target, list), .groups = "drop_last") %>%
+    summarize(
+      target = map(target, reduce, intersect), 
+      paired = identical(n(), 2L),
+      .groups = "drop"
+    )
+)
+```
+The second way is ~25-50% faster
+
+Note, we probably don't have R1 and R2 in the data subset, and hence why
+`paired` is always false.
+
+```{r}
+dt3.subset <- dt3 %>% head(5e4)
+system.time(
+  dt4 <- dt3.subset[, keyby = .(qseqid_insert, qseqid_mate), .(target = list(target))] %>%
+    .[, by = qseqid_insert, .(target = map(target, reduce, intersect))] %>%
+    summarize(across(target, list), .groups = "drop_last") %>%
+    summarize(
+      across(target, reduce, intersect), 
+      paired = identical(n(), 2L),
+      .groups = "drop"
+    )
+)
+```
+
+The first call to summarize is very fast with data.table, much faster than
+dplyr. The second call is much much slower, however. And in general, this is
+too slow.
+
+
+#### second way
+
+Instead, we can try splitting the R1 and R1 maps into separate data frames, and
+joining them.
+
+```{r}
+# Tibble, summarize then split
+system.time(
+y <- tb3 %>%
+  group_by(qseqid_mate, qseqid_insert) %>%
+  summarize(target = list(target), .groups = "drop_last") %>%
+  nest %>%
+  deframe %>%
+  {inner_join(.[[1]], .[[2]], by = "qseqid_insert")} %>%
+  mutate(target.both = map2(target.x, target.y, intersect))
+)
+# tibble, split then summarize
+system.time(
+x <- tb3 %>%
+  group_by(qseqid_mate) %>%
+  nest %>%
+  deframe %>%
+  map(~ group_by(.x, qseqid_insert) %>% 
+    summarize(target = list(target), .groups = "drop")
+  ) %>%
+  {inner_join(.[[1]], .[[2]], by = "qseqid_insert")} %>%
+  mutate(target.both = map2(target.x, target.y, intersect))
+)
+tb4 = x
+
+all_equal(x, y)
+# NOTE: they don't seem to be equal
+
+# data.table
+
+system.time(
+
+dt4 <- dt3[, keyby = .(qseqid_insert, qseqid_mate), .(target = list(target))] %>%
+  split(by = "qseqid_mate") %>%
+  {stopifnot(identical(length(.), 2L)); .} %>%
+  {merge(.[[1]], .[[2]], by = "qseqid_insert")} %>%
+  .[, target.both := map2(target.x, target.y, intersect)]
+
+)
+```
+
+The times are ~13s, 10s, and 3s.
+
+It could be worth having a checkpoint after the split where we ensure
+
+
+HERE. Finally, we just need to filter to unambiguous maps and count them up.
+
+AND: We need to check that the actual correct answer is given on some fake
+data.
+
+```{r}
+tb4 %>%
+  filter(map_lgl(target.both, ~identical(length(.), 1L))) %>%
+  mutate(across(target.both, unlist)) %>%
+  group_by(target.both) %>%
+  count
+```
+
+
+```{r}
+dt4[, n_best := map_int(target.both, length)] 
+# dt4[, target.both := unlist(target.both)] 
+dt4[n_best == 1, by = target.both, sum(1)]
+```
+
+
+## Fake data
+
+```{r}
+fake <- tibble(
+  qseqid_insert = str_c("i", c(1,1,1,1, 2,2,2, 3,3, 4,4, 5,5, 6)),
+  qseqid_mate =              c(1,1,2,2, 1,1,2, 1,2, 1,2, 2,2, 1),
+  target =        str_c("t", c(1,2,1,2, 1,2,2, 1,1, 1,2, 1,2, 1))
+) %>% 
+  # Add extra insert-specific stuff to mate to resemble Illumina data
+  mutate(qseqid_mate = str_c(qseqid_mate, ":", qseqid_insert)) %>%
+  unite(qseqid, qseqid_insert, qseqid_mate) %>%
+  print
+```
+
+Note, this fake data doesn't have duplicate maps to the same target, and
+already has the target column so the first join is not needed.
+
+### DT
+
+```{r}
+x <- fake
+setDT(x)
+x <- unique(x, by = c("qseqid", "target"))
+x[, c("qseqid_insert", "qseqid_mate") := tstrsplit(qseqid, "_", fixed = TRUE)
+  ][, qseqid_mate := str_sub(qseqid_mate, 1, 1)]
+setkey(x, qseqid_insert, qseqid_mate)
+y <- x[, .(target = list(target)), by = .(qseqid_insert, qseqid_mate)]
+key(y) # still has key
+y1 <- y[.(unique(qseqid_insert), "1")]
+y2 <- y[.(unique(qseqid_insert), "2")]
+key(y1) # key is lost by subset
+z <- merge(y1, y2, by = "qseqid_insert") %>%
+  .[, target.both := map2(target.x, target.y, intersect)]
+# All proper-pair maps
+z[map_int(target.both, length) >= 1] 
+# unambiguous maps
+a <- z[map_int(target.both, length) == 1] 
+```
+
+If we switch the key-var order, we can preserve the insert key, which might
+speed the join.
+
+```{r}
+x <- fake
+setDT(x)
+x <- unique(x, by = c("qseqid", "target"))
+x[, c("qseqid_insert", "qseqid_mate") := tstrsplit(qseqid, "_", fixed = TRUE)
+  ][, qseqid_mate := str_sub(qseqid_mate, 1, 1)]
+setkey(x, qseqid_mate, qseqid_insert)
+y <- x[, .(target = list(target)), by = .(qseqid_mate, qseqid_insert)]
+key(y)
+y1 <- y[.("1")]
+y2 <- y[.("2")]
+key(y1) # key is kept
+z <- merge(y1, y2, by = "qseqid_insert") # only keeps inserts with both mates
+z[, target.both := map2(target.x, target.y, intersect)]
+key(z)
+```
+
+```{r}
+count_dt <- function(x) {
+  setDT(x)
+  x <- unique(x, by = c("qseqid", "target"))
+  x[, c("qseqid_insert", "qseqid_mate") := tstrsplit(qseqid, "_", fixed = TRUE)
+    ][, qseqid_mate := str_sub(qseqid_mate, 1, 1)]
+  setkey(x, qseqid_mate, qseqid_insert)
+  x <- x[, .(target = list(target)), by = .(qseqid_mate, qseqid_insert)]
+  x1 <- x[.("1")]
+  x2 <- x[.("2")]
+  z <- merge(x1, x2, by = "qseqid_insert") # only keeps inserts with both mates
+  z[, target.both := map2(target.x, target.y, intersect)]
+  # return unambiguous maps
+  z[map_int(target.both, length) == 1
+    ][, target.both := unlist(target.both)
+    ][, .N, by = target.both]
+}
+
+count_dt(fake)
+```
+
+### Tibble
+
+```{r}
+x <- fake %>% as_tibble
+x <- distinct(x, qseqid, target)
+x <- x %>% 
+  mutate(
+    qseqid = str_split_fixed(qseqid, "_", 2),
+    qseqid_insert = qseqid[,1],
+    qseqid_mate = str_sub(qseqid[,2], 1, 1),
+  ) %>%
+  select(-qseqid)
+y <- x %>%
+  group_by(qseqid_mate) %>%
+  nest %>%
+  deframe %>%
+  map(~ group_by(.x, qseqid_insert) %>% 
+    summarize(target = list(target), .groups = "drop")
+  )
+z <- inner_join(y[[1]], y[[2]], by = "qseqid_insert") %>%
+  mutate(target.both = map2(target.x, target.y, intersect))
+# return unambiguous maps
+z %>%
+  filter(map_int(target.both, length) == 1) %>%
+  mutate(across(target.both, unlist)) %>%
+  group_by(target.both) %>%
+  count
+```
+
+```{r}
+count_tb <- function(x) {
+  x <- x %>% 
+    distinct(qseqid, target) %>%
+    mutate(
+      qseqid = str_split_fixed(qseqid, "_", 2),
+      qseqid_insert = qseqid[,1],
+      qseqid_mate = str_sub(qseqid[,2], 1, 1),
+    ) %>%
+    select(-qseqid) %>%
+    group_by(qseqid_mate) %>%
+    nest %>%
+    deframe %>%
+    map(~ group_by(.x, qseqid_insert) %>% 
+      summarize(target = list(target), .groups = "drop")
+    )
+  inner_join(x[[1]], x[[2]], by = "qseqid_insert") %>%
+    mutate(target.both = map2(target.x, target.y, intersect)) %>%
+    filter(map_int(target.both, length) == 1) %>%
+    mutate(across(target.both, unlist)) %>%
+    group_by(target.both) %>%
+    count
+}
+
+count_tb(as_tibble(fake))
+```
+
+
+## Compare dt and tb methods on real data
+
+For the real data we also need the first join:
+```{r}
+count_dt <- function(x) {
+  setDT(x)
+  x <- seq_map.dt[x, on = "sseqid"]
+  x <- unique(x, by = c("qseqid", "target"))
+  x[, c("qseqid_insert", "qseqid_mate") := tstrsplit(qseqid, "_", fixed = TRUE)
+    ][, qseqid_mate := str_sub(qseqid_mate, 1, 1)]
+  setkey(x, qseqid_mate, qseqid_insert)
+  x <- x[, .(target = list(target)), by = .(qseqid_mate, qseqid_insert)]
+  x1 <- x[.("1")]
+  x2 <- x[.("2")]
+  z <- merge(x1, x2, by = "qseqid_insert") # only keeps inserts with both mates
+  z[, target.both := map2(target.x, target.y, intersect)]
+  # return unambiguous maps
+  z[map_int(target.both, length) == 1
+    ][, target.both := unlist(target.both)
+    ][, .N, by = target.both]
+}
+
+count_tb <- function(x) {
+  x <- x %>% 
+    left_join(seq_map, by = "sseqid") %>%
+    distinct(qseqid, target) %>%
+    mutate(
+      qseqid = str_split_fixed(qseqid, "_", 2),
+      qseqid_insert = qseqid[,1],
+      qseqid_mate = str_sub(qseqid[,2], 1, 1),
+    ) %>%
+    select(-qseqid) %>%
+    group_by(qseqid_mate) %>%
+    nest %>%
+    deframe %>%
+    map(~ group_by(.x, qseqid_insert) %>% 
+      summarize(target = list(target), .groups = "drop")
+    )
+  inner_join(x[[1]], x[[2]], by = "qseqid_insert") %>%
+    mutate(target.both = map2(target.x, target.y, intersect)) %>%
+    filter(map_int(target.both, length) == 1) %>%
+    mutate(across(target.both, unlist)) %>%
+    group_by(target.both) %>%
+    count
+}
+
+x <- tb %>% head(2e6)
+system.time(
+  y1 <- count_dt(x)
+)
+x <- tb %>% head(2e6)
+system.time(
+  y2 <- count_tb(x)
+)
+all_equal(as_tibble(y1) %>% rename(n = N), y2)
+```
+
+Data.table: 5s for 5e5 rows, 13s for 1e6 rows, 34s (50s) for 2e6 rows, 111s for
+4e6 rows, and 213s for the full 6.6e6 rows, suggesting around a 3X increase
+every doubling of rows. (Note, this scaling is likely not reliable because of
+how I'm subsetting by rows, instead of inserts.)
+
+
+tibble: 11s for 5e5, 28s for 1e6 rows, 74s for 2e6 rows, indicating that the
+tibble implementation is consistently about 2.2X slower than the data.table
+implementation.
+
+Since the results are identical, we can go with the data.table implementation.
+
+
+NEXT: create a data.table function for single-end reads.
+
+```{r}
+system.time(
+  z <- count_dt(tb)
+)
+```
+
+~6m per sample -> 10 samples / hour -> 10 hours running single-threaded.
+
+## Final functions
+
+```{r}
+count_unambig_single <- function(x) {
+  if (is.character(x)) 
+    x <- readRDS(x)
+  setDT(x)
+# NOTE: Uncomment for real run
+#  x <- seq_map[x, on = "sseqid"]
+  setkey(x, qseqid, target)
+  x <- unique(x, by = c("qseqid", "target"))
+  x[, n := .N, by = qseqid]
+  # return unambiguous maps
+  x[n == 1][, .(unambiguous_maps = .N), by = target]
+}
+
+count_unambig_paired <- function(x) {
+  if (is.character(x)) 
+    x <- readRDS(x)
+  setDT(x)
+# NOTE: Uncomment for real run
+#  x <- seq_map[x, on = "sseqid"]
+  x <- unique(x, by = c("qseqid", "target"))
+  x[, c("qseqid_insert", "qseqid_mate") := tstrsplit(qseqid, "_", fixed = TRUE)
+    ][, qseqid_mate := str_sub(qseqid_mate, 1, 1)]
+  setkey(x, qseqid_mate, qseqid_insert)
+  x <- x[, .(target = list(target)), by = .(qseqid_mate, qseqid_insert)]
+  x1 <- x[.("1")]
+  x2 <- x[.("2")]
+  x <- merge(x1, x2, by = "qseqid_insert") # only keeps inserts with both mates
+  x[, target.both := map2(target.x, target.y, intersect)]
+  # return unambiguous maps
+  x[map_int(target.both, length) == 1
+    ][, target := unlist(target.both)
+    ][, .(unambiguous_maps = .N), by = target]
+}
+```
+
+```{r}
+fake <- tibble(
+  qseqid_insert = str_c("i", c(1,1,1,1, 2,2,2, 3,3, 4,4, 5,5, 6)),
+  qseqid_mate =              c(1,1,2,2, 1,1,2, 1,2, 1,2, 2,2, 1),
+  target =        str_c("t", c(1,2,1,2, 1,2,2, 1,1, 1,2, 1,2, 3))
+) %>% 
+  # Add extra insert-specific stuff to mate to resemble Illumina data
+  mutate(qseqid_mate = str_c(qseqid_mate, ":", qseqid_insert)) %>%
+  unite(qseqid, qseqid_insert, qseqid_mate) %>%
+  print
+```
+
+Note, the fake data already has the `target` column and so the join with the
+`seq_map` is commented out in the functions, but must be run on the real data.
+
+In the fake data,
+
+- i1 is ambiguous between t1 and t2
+- i2 is ambiguous with R1 only, but unambiguous for t2 with R1 and R2
+  - -> count for t2
+- i3 is unambiguous for R1 and R2 individually and together
+  - -> count for t1
+- i4 is unambig for R1 and R2 individually, but they disagree
+- i5 only has R2 maps, and they are ambig
+- i6 only has R1 map and it is unambig
+
+The correct paired-end result is therefore 1 count for each of t1 and t2. 
+
+```{r}
+count_unambig_paired(fake)
+#>    target unambiguous_maps
+#> 1:     t2                1
+#> 2:     t1                1
+```
+
+When treating `fake` as single-end reads, the reads with unambiguous maps are
+```
+qseqid      target
+i2_2:i2     t2
+i3_1:i3     t1
+i3_2:i3     t1
+i4_1:i4     t1
+i4_2:i4     t2
+i6_1:i6     t3
+```
+so that the expected output is 3 maps for t1, 2 maps for t2, and 1 map for t3.
+
+```{r}
+count_unambig_single(fake_paired)
+#>    target unambiguous_maps
+#> 1:     t2                2
+#> 2:     t1                3
+#> 3:     t3                1
+```
+
+Alternate single-end method that follows more directly from the paired-end
+method, as a sanity check:
+```{r}
+single_alt <- function(x) {
+  setDT(x)
+#   x <- seq_map[x, on = "sseqid"]
+  setkey(x, qseqid)
+  x <- unique(x, by = c("qseqid", "target"))
+  x <- x[, .(target = list(target)), by = qseqid]
+  # return unambiguous maps
+  x[map_int(target, length) == 1
+    ][, target := unlist(target)
+    ][, .(unambiguous_maps = .N), by = target]
+}
+single_alt(fake)
+#>    target unambiguous_maps
+#> 1:     t2                2
+#> 2:     t1                3
+#> 3:     t3                1
+```
+
+

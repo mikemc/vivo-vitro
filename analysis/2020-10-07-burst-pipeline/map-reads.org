@@ -1,0 +1,159 @@
+#+TITLE:BURST shotgun analysis pipeline
+* Emacs setup
+** Interative display
+Get text and images to display nicely in emacs,
+#+BEGIN_SRC elisp :results silent
+;; Increase text width
+(setq visual-fill-column-width 100)
+;; Default inline image width
+(setq org-image-actual-width (list 800))
+#+END_SRC
+** Org-babel and remote shell setup
+#+PROPERTY: header-args:shell :eval never-export
+
+#+PROPERTY: header-args:R :results value :colnames yes :exports both :eval never-export
+
+The `brc` shell session will be logged into the BRC computer cluster.
+#+BEGIN_SRC shell :session brc :results silent
+ssh brc
+#+END_SRC
+
+Path for the clone of the main project repo on the BRC,
+#+BEGIN_SRC shell :session brc :results silent
+main_path=/home/mrmclare/research/vivo-vitro/main
+#+END_SRC
+* Download references and prepare BURST database
+#+BEGIN_SRC R :session rlocal :results output verbatim
+library(here)
+library(tidyverse)
+
+refs <- here("output", "strain-data", "reference-genome-metadata.Rds") %>% readRDS
+#+END_SRC
+
+#+RESULTS: (deleted)
+
+Get a list of ftp paths to download onto the BRC cluster
+#+BEGIN_SRC R :session rlocal :results output verbatim
+urls <- refs %>%
+  transmute(url = file.path(ftp_path, ftp_genome_file)) %>%
+  pull(url)
+head(urls, 2)
+#+END_SRC
+
+#+RESULTS:
+: [1] "ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/011/065/GCF_000011065.1_ASM1106v1/GCF_000011065.1_ASM1106v1_genomic.fna.gz"
+: [2] "ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/017/765/GCF_000017765.1_ASM1776v1/GCF_000017765.1_ASM1776v1_genomic.fna.gz"
+
+Set up a place to download these files,
+
+#+BEGIN_SRC shell :session brc :results output verbatim
+cd $main_path/data/references/bacteria
+ls
+mkdir v2
+cd v2
+#+END_SRC
+
+#+RESULTS: (deleted)
+
+And download with a wget command that we create w/in R but run on the BRC,
+
+#+NAME: wget_cmd
+#+BEGIN_SRC R :session rlocal :results value verbatim
+cmd <- str_c(urls, collapse = " ") %>% str_c("wget", ., sep = " ")
+cmd
+#+END_SRC
+
+#+BEGIN_SRC shell :session brc :results output verbatim :var cmd=wget_cmd
+eval $cmd
+#+END_SRC
+
+#+RESULTS: (deleted)
+
+Combine and linearize the genomes, then create a BURST database for up to 150bp and 0.97 identity.
+
+#+BEGIN_SRC shell :session brc :results output verbatim
+mkdir burst
+# Combine and linearize genomes
+zcat *.fna.gz | seqtk seq - > burst/all-genomes.fasta
+#+END_SRC
+
+#+RESULTS: (deleted)
+
+#+BEGIN_SRC shell :session brc :results output verbatim
+burst_linux_DB12 -r burst/all-genomes.fasta \
+  -a burst/db.acx -o burst/db.edx \
+  -d DNA -s 1500 -i 0.97 -t 8
+#+END_SRC
+
+#+RESULTS:
+: burst_linux_DB12 -r burst/all-genomes.fasta \[?2004l
+: [?2004h  -a burst/db.acx -o burst/db.edx \[?2004l
+: [?2004h  -d DNA -s 1500 -i 0.97 -t 8[?2004l
+: This is BURST [v1.0 DB 12]
+: Using accelerator file burst/db.acx
+: Creating DNA database (assuming max query length 500)
+: Shearing references longer than 1500
+: Setting identity threshold to 0.970000
+* Map samples
+Get arrays with the cleaned Fastq files for S1 and S2,
+#+BEGIN_SRC shell :session brc :results output verbatim
+s1_fastq_files=($(ls -d $main_path/data/s1/reads/clean/* | grep "\\.fastq\\.gz"))
+s2_fastq_files=($(ls -d $main_path/data/s2/reads/clean/* | grep "\\.fastq\\.gz"))
+echo ${s1_fastq_files[1]}
+echo ${s2_fastq_files[1]}
+echo ${#s1_fastq_files[@]}
+echo ${#s2_fastq_files[@]}
+#+END_SRC
+
+#+RESULTS: (deleted)
+
+#+BEGIN_SRC shell :session brc :results output verbatim
+out_dir=$main_path/analysis/2020-10-07-burst-pipeline/output
+mkdir $out_dir
+cd $out_dir
+mkdir s1
+mkdir s2
+map_script=$main_path/analysis/2020-10-07-burst-pipeline/map-sample.sh
+compress_script=$main_path/code/utils/blast6-to-tibble.R
+burst_dir=$main_path/data/references/bacteria/v2/burst
+nproc=8
+#+END_SRC
+
+#+RESULTS: (deleted)
+
+Submit S1 jobs
+#+BEGIN_SRC shell :session brc :results verbatim
+for fastq_file in ${s1_fastq_files[@]}; do
+sbatch --job-name=map-$(basename $fastq_file) -c $nproc \
+    $map_script $burst_dir $fastq_file $out_dir/s1 $compress_script $nproc
+done
+#+END_SRC
+
+#+RESULTS: (deleted)
+
+The compression step failed (readr library was missing) and so need to run that separately after:
+#+BEGIN_SRC shell :session brc :results verbatim
+burst_out_files=($(ls -d $out_dir/s1/* | grep "burst\\.tsv"))
+for burst_out in ${burst_out_files[@]}; do
+  sbatch -c 1 --wrap="Rscript --no-init-file $compress_script $burst_out"
+done
+#+END_SRC
+
+#+RESULTS: (deleted)
+
+Submit S2 jobs
+#+BEGIN_SRC shell :session brc :results verbatim
+for fastq_file in ${s2_fastq_files[@]}; do
+sbatch --job-name=map-$(basename $fastq_file) -c $nproc \
+    $map_script $burst_dir $fastq_file $out_dir/s2 $compress_script $nproc
+done
+#+END_SRC
+
+#+RESULTS: (deleted)
+* Download results
+
+#+BEGIN_SRC shell
+out_dir=research/vivo-vitro/main/analysis/2020-10-07-burst-pipeline/output
+mkdir ~/$out_dir
+scp -r "brc:~/$out_dir/s1" ~/$out_dir
+#+END_SRC
