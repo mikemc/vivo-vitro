@@ -1,0 +1,136 @@
+---
+title: "Assign taxonomy to v2 ASVs"
+author: "Michael McLaren"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+---
+
+
+Load the libraries
+```{r}
+library(here)
+library(tidyverse)
+library(fs)
+# library(dada2); packageVersion("dada2")
+
+import::from(Biostrings, DNAStringSet)
+```
+
+Load the seqtabs and ASVs post chimera filtering.
+```{r}
+st <- c(
+  A1 = here("output", "a1", "dada2", "seqtab-nochim-1.Rds"),
+  A2 = here("output", "a2", "dada2", "seqtab-nochim-1.Rds")
+) %>%
+  map(readRDS)
+asvs <- st %>% 
+  map(colnames) %>%
+  map(DNAStringSet) %>%
+  {c(.[[1]], .[[2]])}
+```
+
+## IDTAXA
+
+### GTDB 95 using IDTAXA
+
+Database downloaded from http://www2.decipher.codes/Downloads.html on
+2020-11-19.
+
+```{r}
+packageVersion("DECIPHER")
+#> [1] ‘2.18.1’
+import::from(DECIPHER, IdTaxa)
+
+# Load GTDB training set into var `trainingSet`
+load(here("data/16s-taxonomy-databases/idtaxa/GTDB_r95-mod_August2020.RData"))
+```
+
+```{r}
+dna <- st %>% 
+  map(colnames) %>%
+  map(DNAStringSet) %>%
+  {c(.[[1]], .[[2]])}
+```
+
+Assign with the IDTaxa algorithm,
+```{r}
+ids <- IdTaxa(dna, trainingSet, threshold = 50, 
+  strand = "top", processors = 3, verbose = TRUE)
+saveRDS(ids, here("output/amplicon", "taxonomy", "idtaxa-gtdb-v95.Rds"))
+```
+
+```{r}
+ids
+ids[[1]]
+ids[[2]]
+```
+
+Strange that the second ASV failed to be assigned below domain.
+```{r}
+dna[[1]]
+dna[[2]]
+```
+
+### Silva 138 using IDTAXA
+
+Database downloaded from http://www2.decipher.codes/Downloads.html on
+2020-02-19.
+
+```{r}
+# Load Silva training set into var `trainingSet`
+load(here("data/16s-taxonomy-databases/idtaxa/SILVA_SSU_r138_2019.RData"))
+```
+
+Assign with the IDTaxa algorithm,
+```{r}
+ids.silva <- IdTaxa(dna, trainingSet, threshold = 50, 
+  strand = "top", processors = 3, verbose = TRUE)
+saveRDS(ids.silva, here("output/amplicon", "taxonomy", "idtaxa-silva-v138.Rds"))
+```
+
+```{r}
+ids.silva
+ids.silva[[1]]
+ids.silva[[2]]
+```
+
+This is E. coli! Not a great sign that IdTaxa+GTDB can't classify E. coli below
+domain.
+
+## DADA2
+
+### Silva 138 using the DADA2-RDP algorithm
+
+Databases downloaded from https://zenodo.org/record/3986799. Note, this is an
+updated version from what was used in the pilot.
+
+```{r silva138}
+tax.dada2.silva <- dada2::assignTaxonomy(dna,
+  here("data/16s-taxonomy-databases/dada2/silva-138/silva_nr99_v138_train_set.fa.gz"),
+  multithread = TRUE, 
+  minBoot = 50, outputBootstraps = TRUE,
+  taxLevels = c("domain", "phylum", "class", "order", "family", "genus", "species")
+)
+saveRDS(tax.dada2.silva, here("output/amplicon", "dada2-silva-v138.Rds"))
+tax.dada2.silva.with_species <- dada2::addSpecies(tax.dada2.silva$tax,
+  here("data/16s-taxonomy-databases/dada2/silva-138",
+    "silva_species_assignment_v138.fa.gz"),
+  allowMultiple = TRUE
+)
+colnames(tax.dada2.silva.with_species) <- str_to_lower(
+  colnames(tax.dada2.silva.with_species)
+)
+saveRDS(tax.dada2.silva.with_species, here("output/amplicon", "taxonomy",
+    "dada2-silva-v138-with-species.Rds"))
+```
+Note, the version w/o species is a list with a tax matrix and a
+bootstrap-support matrix.
+
+```{r}
+tax.dada2.silva.with_species %>%
+  head(20) %>%
+  as_tibble
+```
+
