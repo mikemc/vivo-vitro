@@ -1,0 +1,541 @@
+---
+title: ""
+author: "Michael McLaren"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(progress = TRUE, verbose = TRUE)
+# Global chunk options
+knitr::opts_chunk$set(
+  include = TRUE, echo = TRUE,
+  warning = TRUE, message = TRUE, 
+  fig.width = 7, fig.height = 7
+)
+```
+
+```{r}
+library(here)
+library(tidyverse)
+library(fs)
+
+library(cowplot)
+library(patchwork)
+library(ggdist)
+library(ggbeeswarm)
+theme_set(theme_cowplot())
+```
+
+```{r}
+import::from(Biostrings, complement, reverseComplement, width, DNAString,
+  DNAStringSet, readDNAStringSet)
+import::from(DECIPHER, TrimDNA)
+```
+
+```{r}
+sam <- here("output", "sample-data", "sample-data.Rds") %>% readRDS 
+```
+
+```{r}
+results_paths <- here("output", c("a1", "a2"), "dada2") %>%
+  set_names(c("A1", "A2"))
+```
+
+Silva 138 Taxonomy for the chimera-filtered ASVs
+```{r}
+tax <- here("output/amplicon/taxonomy/", 
+  "dada2-silva-v138-with-species.Rds") %>%
+  readRDS %>%
+  as_tibble(rownames = "sequence")
+```
+
+## Track tables
+
+View the track tables for A1 and A2.
+
+```{r}
+track <- results_paths %>%
+  enframe("center_id", "results_path") %>%
+  expand(nesting(center_id, results_path), 
+    param_set = c(1, 2)
+  ) %>%
+  mutate(
+    file = str_glue("track-{param_set}.csv"),
+    path = path(results_path, file),
+    track = map(path, read_csv, col_types = "ciiiiii")
+  ) %>%
+  mutate(across(c(center_id, param_set), as.factor)) %>%
+  select(center_id, param_set, track) %>%
+  unnest(track) %>%
+  left_join(sam, by = c("center_id", "sample_id")) %>%
+  glimpse
+```
+
+How do the total and the fraction of kept reads vary across samples?
+```{r}
+p1 <- track %>%
+  ggplot(aes(y = center_id:param_set, x = input, fill = specimen_type)) +
+  scale_x_log10() +
+  labs(title = "Input read count")
+# p2 <- track %>%
+#   ggplot(aes(y = center_id:param_set, x = nochim, fill = specimen_type)) +
+#   scale_x_log10() +
+#   labs(title = "Final read count")
+p3 <- track %>%
+  mutate(frac_kept = nochim / input) %>%
+  ggplot(aes(y = center_id:param_set, x = frac_kept, fill = specimen_type)) +
+  labs(title = "Fraction reads kept")
+(p1 / p3 &
+  stat_dots(stackratio = 0.9) &
+  # stat_pointinterval(aes(group = center_id:param_set)) &
+  scale_fill_brewer(type = "qual", palette = 3)
+) +
+  plot_layout(guides = "collect")
+```
+
+- The fraction of kept reads is lower in A2 than A1 in both param sets, which
+  is expected given its lower sequencing quality.
+- The fraction of kept reads is substantially lower with parameter set 2. This
+  makes sense, since this method removes reads that are inferred to have
+  sequencing errors, rather than error-correcting them. We should also expect
+  this difference to be larger in A2, since the untrimmed reads are longer and
+  also because a higher max-EE was used. 
+- The distribution of input read depths is nice and tight in A1, but is bimodal
+  in A2, and also more spread in the high-count mode. The low-count mode
+  suggests something went wrong in the processing of these samples
+- The same pattern occurs is true for fraction of reads kept. 
+
+Let's check if the low-fraction mode in the A2 input and `frac_kept` are the
+same samples:
+
+```{r, fig.dim = c(7, 4)}
+track %>%
+  mutate(frac_kept = nochim / input) %>%
+  filter(center_id == "A2") %>%
+  ggplot(aes(x = input, y = frac_kept, color = specimen_type, 
+      shape = nochim > 1e3)) +
+  geom_point() +
+  scale_x_log10() +
+  # scale_y_continuous(trans = scales::pseudo_log_trans(sigma = 0.05)) +
+  scale_color_brewer(type = "qual", palette = 3) +
+  scale_shape_manual(values = c(1, 16)) +
+  facet_grid(~ param_set)
+```
+
+With only 1-3 exceptions, we see that yes, the samples with low read counts are
+the same as the samples with low kept fractions. This further supports the idea
+that something went wrong with these samples and that they should either not be
+used or should be treated very cautiously in downstream analyses.
+Filtering out samples with total counts < 1e3 would get rid of the clearly
+questionable samples.
+
+```{r, fig.dim = c(7, 4)}
+track %>%
+  mutate(frac_kept = nochim / input) %>%
+  filter(center_id == "A2") %>%
+  ggplot(aes(x = input, y = frac_kept, color = specimen_type)) +
+  geom_point() +
+  scale_x_log10() +
+  # scale_y_continuous(trans = scales::pseudo_log_trans(sigma = 0.05)) +
+  scale_color_brewer(type = "qual", palette = 3) +
+  facet_grid(~ param_set)
+```
+
+
+Where were the reads lost from these questionable samples?
+```{r}
+track %>%
+  filter(center_id == 'A2', nochim < 1e3, param_set == 1) %>%
+  mutate(frac_kept = nochim / input) %>%
+  select(input:nochim, frac_kept) %>%
+  arrange(frac_kept)
+```
+
+Ok, typically the biggest drop is at the filtering stage. This makes sense with
+the observation from the DADA2 pipeline that the quality profile of the sample
+with a low read count also had terrible quality. The fact that these samples
+have such different quality scores suggest they might even have different error
+profiles than the other samples, which would make the dada inference less
+trustworthy. In any case, the final read-counts are to low to be very useful
+for our purposes and so it is reasonable and simplest to just filter these
+samples.
+
+TODO: 
+
+- check that these failures seem to be "random" - or could they be explained by
+  some experimental covariate?
+- might also want to check the quality profiles of the two samples with decent
+  read depth but lower-than-typical quality
+
+
+Hypothesis: they are related to the batches that the samples were processed in.
+Ask Kristen which are the samples that were preped first, and which are the
+samples that the UD was tried on - perhaps the input material was reduced to
+unuseable levels?
+
+Let's get a list of the sample ids:
+```{r}
+track %>%
+  filter(center_id == 'A2', input < 1e4, param_set == 1) %>%
+  arrange(row, column) %>%
+  select(well, dna_sample_id)
+```
+
+Ahhh - so it is clearly non-random. These must be the samples that Kristen
+tried the UD on. Note, A10 isn't in this list, but should be considered suspect
+for now.
+
+what are the other two samples?
+
+```{r}
+track %>%
+  mutate(frac_kept = nochim / input) %>%
+  filter(center_id == 'A2', param_set == 1, input > 1e4) %>%
+  slice_min(frac_kept, n = 2) %>%
+  arrange(row, column) %>%
+  select(well, dna_sample_id)
+```
+
+```{r}
+track %>%
+  filter(center_id == 'A2', param_set == 1, row %in% c("A", "B")) %>%
+  arrange(row, column) %>%
+  mutate(frac_kept = nochim / input) %>%
+  select(well, input:nochim, frac_kept) %>%
+  print(n = Inf)
+```
+
+## Sequence tables
+
+```{r}
+stb <- results_paths %>%
+  enframe("center_id", "results_path") %>%
+  expand(nesting(center_id, results_path), 
+    file = c("seqtab-1.Rds", "seqtab-nochim-1.Rds",
+      "seqtab-2.Rds", "seqtab-nochim-2.Rds")
+  ) %>%
+  mutate(
+    path = path(results_path, file),
+    seqtab = map(path, readRDS)
+  ) %>%
+  glimpse
+```
+
+```{r}
+stb[[1, "seqtab"]][[1]] %>% glimpse
+stb[[5, "seqtab"]][[1]] %>% glimpse
+```
+
+Unless otherwise stated, I will only look at the tables with the default
+`OMEGA_C` parameter value (the "-1.Rds" tables)
+
+### ASV lengths
+
+Get the ASVs withs before and after chimera filtering.
+```{r}
+wtb <- stb %>%
+  filter(str_detect(file, "-1.Rds")) %>%
+  transmute(center_id, file, width = map(seqtab, ~colnames(.) %>% nchar)) %>%
+  unnest(width)
+```
+
+```{r}
+wtb %>%
+  ggplot(aes(width)) +
+  geom_histogram() +
+  facet_grid(file~center_id, scales = "free") +
+  scale_y_continuous(trans = scales::pseudo_log_trans(sigma = 1),
+    breaks = c(0, 10, 100, 1e3, 1e4, 1e5))
+```
+
+Chimera filtering greatly reduced the number of ASVs, but didn't change the
+length distribution. In particular, there remains a set of ASVs that are much
+smaller than the rest.
+
+There are two dominant modes in the A2 ASVs that are around 25bp apart, which
+maps onto the bimodal distribution length of the V3 region observed by
+Vargas-Albores2017. Update: Vargas-Albores2017 only look at bacterial
+16S sequences, so the distributions they report may not reflect archaeal
+sequences.
+
+Vargas-Albores2017 report a range for V3 of 152.33 – 197.84 and for V4 of
+281.48 – 284.61 (mean of 283.04). Together, these give us a clue as to the
+variation we expect for A1 and A2 ASVs. For the V3, the reported modes are 161
+and 186. In our data, the modes are
+```{r}
+wtb %>%
+  filter(center_id == "A2", str_detect(file, "nochim")) %>%
+  count(width) %>%
+  slice_max(n, n = 5)
+```
+suggesting that the ASV widths corresponding to the two modes are 402 and 427.
+Vargas-Albores2017 observe the V4 range drops to 1.56 below its mean, and
+the V3 range drops to 8.67 below the lower mode. Based on this, we should
+expect the smallest ASVs to be no smaller than 402 - 11 = 391bp long.
+
+### Inspect the short ASVs in A2
+
+Post chimera filtering, w/ the default Omega-C.
+
+```{r}
+st <- stb %>%
+  filter(center_id == "A2", file == "seqtab-nochim-1.Rds") %>%
+  pull(seqtab) %>%
+  .[[1]]
+tb <- tibble(
+  name = str_c("v2_A2_ASV", seq(ncol(st))),
+  sequence = colnames(st), 
+  abundance = apply(st, 2, sum),
+  prevalence = apply(st, 2, function(x) sum(x>0))
+  ) %>%
+  mutate(width = nchar(sequence)
+  )
+```
+
+```{r}
+p1 <- ggplot(tb, aes(width, abundance)) +
+  geom_point() +
+  scale_y_continuous(trans = scales::pseudo_log_trans(sigma = 100),
+    breaks = c(0, 100, 1e3, 1e4, 1e5))
+p2 <- ggplot(tb, aes(width, prevalence)) +
+  geom_point()
+p1 / p2 &
+  geom_vline(xintercept = 391, color = "grey")
+```
+
+Can see that the short ASVs are never highly abundant.
+
+Are the short ASVs often contained within larger ASVs?
+
+Get a pairwise distance matrix between all ASVs,
+```{r}
+dna <- colnames(st) %>%
+  set_names(., str_c("v2_A2_ASV", seq(.))) %>%
+  DNAStringSet
+nproc <- 4
+aln <- DECIPHER::AlignSeqs(dna, processors = nproc, verbose = FALSE)
+d <- DECIPHER::DistanceMatrix(aln, processors = nproc, verbose = FALSE)
+dtb <- d %>%
+  as.dist(diag = FALSE, upper = TRUE) %>%
+  broom::tidy() %>%
+  left_join(tb, by = c(item1 = "name")) %>%
+  left_join(tb, by = c(item2 = "name"), suffix = c(".1", ".2"))
+```
+
+check for contained ASVs (distance = 0)
+```{r}
+dtb0 <- dtb %>%
+  filter(distance == 0, width.1 <= width.2) %>%
+  arrange(width.1)
+dtb0 %>% pull(width.1)
+```
+
+Can see that yes, most of these are from the short mode in the distribution.
+
+But ~10 are larger and on the order of the expected size. I guess that these
+cases are the result if indels in the primer region resulting in shorter or
+longer ASVs after trimming. Let's check their abundance:
+```{r}
+dtb0 %>%
+  filter(width.1 > 300) %>%
+  select(width.1, width.2, abundance.1, abundance.2, starts_with("prevalence"))
+```
+This table is consistent with the above hypothesis. It seems that insertions
+were more common (the longer ASV is spurious). In three cases where the total
+abundance of both the shorter and longer ASV is on the order of 100 or less, we
+can filter both the shorter and longer ASVS. In the other case, we can keep the
+shorter, more abundant ASV and filter the longer, low-prevalence, low-abundance
+ASV.
+
+Let's do a similar check on the very short ASVs - these should be lower
+abundance and lower prevalence than their longer containing ASVs.
+```{r}
+dtb0 %>%
+  filter(width.1 < 300) %>%
+  group_by(abundance.1 + abundance.2 < 100) %>%
+  count
+```
+First, note that most cases have low total abundance. But of the more abundant
+ones,
+```{r}
+dtb0 %>%
+  filter(width.1 < 300, abundance.1 + abundance.2 > 100) %>%
+  arrange(abundance.1 + abundance.2) %>%
+  select(width.1, width.2, abundance.1, abundance.2, starts_with("prevalence"))
+```
+all except one is the less abundant, and that one case is still a fairly low
+abundance.
+
+What fraction of ASVs shorter than 300 bp are contained in a longer ASV?
+```{r}
+x <- dtb %>%
+  filter(width.1 < 300, width.1 < width.2) %>%
+  group_by(item1) %>%
+  slice_min(distance, n = 1, with_ties = FALSE)
+x %>%
+  group_by(distance == 0) %>%
+  count
+```
+Only 13/28 are.
+
+Remaining questions: What about the ASVs with lengths spanning 300 to 400? Are
+these similar to other ASVs?
+```{r}
+dtb1 <- dtb %>%
+  filter(between(width.1, 300, 400)) %>%
+  arrange(width.1) %>%
+  group_by(item1) %>%
+  slice_min(distance, n = 1)
+dtb1 %>% pull(distance) %>% sort
+```
+The 5 with distance of 0 must be containing shorter ASVs. Then there are a
+bunch that looks like are 1 bp from another ASV. And there is another set that
+is highly diverged from everything else. 
+
+From the previous plot, there are 3 ASVs shorter than 391 bp and total
+abundances above 1e3 reads (and a few more in the ~385bp range with abudnances
+in the 100-1000 range. What are these?
+
+```{r}
+x <- tb %>%
+  filter(between(width, 350, 391), abundance > 1e2)
+y <- dtb %>%
+  filter(item1 %in% x$name) %>%
+  group_by(item1) %>%
+  slice_min(distance, n = 1)
+y %>% select(item1:distance, width.1, width.2, abundance.1, abundance.2)
+x %>%
+  left_join(tax, by = "sequence") %>%
+  select(name, abundance:class)
+```
+Ahh, these are Archaea, which could explain why they have different lengths.
+```{r}
+a2_archaea <- tax %>%
+  filter(domain != "Bacteria") %>%
+  left_join(tb, by = "sequence") %>%
+  # filter to just the A2 ASVs
+  filter(!is.na(name))
+a2_archaea %>% pull(width) %>% table
+a2_archaea %>%
+  filter(abundance > 50) %>%
+  select(domain:class, abundance:width) %>%
+  print(n=Inf)
+```
+Can see that the A2 archaea ASVs do generally have widths of ~386. 
+
+Possible A2 filtering: A light filtering could be to require a total abundance
+of at least 100, and a length of at least 380.
+
+## Determine target lengths from Silva sequences
+
+Extract the target region from the Silva 138 training set to check the
+biological length distribution of the target regions.
+
+Silva 138 ref set,
+
+```{r}
+silva <- here(
+  "data/16s-taxonomy-databases/dada2", 
+  "silva-138/silva_nr99_v138_train_set.fa.gz"
+  ) %>%
+readDNAStringSet
+silva %>% width %>% summary
+```
+
+```{r}
+rnks <- c("domain", "phylum", "class", "order", "family", "genus", "species")
+silva.tax <- tibble(name = silva %>% names) %>%
+  separate(name, into = rnks, sep = ";", fill = "right") %>%
+  mutate(across(where(is.character), ~replace(., . == "", NA_character_)))
+```
+
+
+```{r}
+primers <- list(
+  A1 = c(
+    R1 = "GTGCCAGCMGCCGCGGTAA" %>% DNAString, 
+    R2 = "TAATCTWTGGGVHCATCAGG" %>% DNAString %>% complement
+  ),
+  A2 = c(
+    R1 = "CCTACGGGNGGCWGCAG" %>% DNAString, 
+    R2 = "GACTACHVGGGTATCTAATCC" %>% DNAString %>% reverseComplement
+  )
+)
+```
+
+
+```{r}
+silva.trimmed <- map(primers,
+  ~TrimDNA(silva, .$R1, .$R2, maxDistance = 0.1, minWidth = 200))
+```
+
+```{r}
+silva.tax <- silva.tax %>%
+  add_column(
+    width_Silva = silva %>% width,
+    width_A1 = silva.trimmed$A1 %>% width,
+    width_A2 = silva.trimmed$A2 %>% width,
+  )
+silva.tax %>% head
+silva.tax %>% tail
+```
+
+```{r}
+silva.tax %>% 
+  filter(domain == "Bacteria") %>%
+  select(starts_with("width")) %>%
+  as.list %>%
+  map(summary)
+```
+
+```{r}
+x <- silva.tax %>% 
+  # filter(domain == "Bacteria") %>%
+  pivot_longer(starts_with("width"), names_to = "center_id", 
+    names_prefix = "width_", values_to = "width") %>%
+  filter(width > 200, width < 500)
+```
+
+```{r}
+x %>%
+  ggplot(aes(width)) +
+  # stat_slab() +
+  geom_histogram() +
+  facet_wrap(domain~center_id, scales = "free")
+# +
+#   scale_y_continuous(trans = scales::pseudo_log_trans(sigma = 10),
+#     breaks = c(0, 10, 100, 1e3, 1e4, 1e5))
+```
+
+We see a wide range of widths (though with very small odds outside the primary
+width), which makes it hard to determine what the biological range is. See
+Vargas-Albores2017 for some reasons why this might not be working super well?
+Could also try using stricter params in TrimDNA. Note that we get many more
+A1 archaea ASVs - perhaps these primers are a better match to archaea?
+
+```{r}
+silva.tax0 <- silva.tax %>%
+  filter(
+    # width_Silva > 1000, 
+    width_A1 > 200, width_A2 > 200, 
+    width_A1 < 300, width_A2 < 500
+  )
+```
+
+```{r}
+silva.tax0 %>% 
+  filter(domain == "Bacteria") %>%
+  select(starts_with("width")) %>%
+  as.list %>%
+  map(summary)
+```
+It seems like we will get sequences across the full range of widths. I'd guess
+these are spurious. 
+
+
+Perhaps the simplest way to figure out what values are real
+reasonable is to require sufficient density.
+
