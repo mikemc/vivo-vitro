@@ -1,0 +1,156 @@
+---
+title: "Prep Zymo reference sequences"
+author: "Michael McLaren"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(progress = TRUE, verbose = TRUE)
+# Global chunk options
+knitr::opts_chunk$set(
+  include = TRUE, echo = TRUE,
+  warning = TRUE, message = TRUE, 
+  fig.width = 7, fig.height = 7
+)
+```
+
+The purpose of this file is to download and format the reference 16S sequences
+for the Zymo DNA mock control that is included in the A1 data. Center A1
+included a positive control sample that is a dilution of ZymoBIOMICS Microbial
+Community DNA Standard (cat# D6306). I don't know which lot number their
+standard is from, and hence whether the new or old strain set is included. The
+species-level composition is the same either way, though I do not know if the
+16S sequences may possibly have changed.  Therefore, I will compare the set of
+reference sequences provided by A1, which does not include all 16S sequences in
+cases where there are multiple 16S variants per genome, and the new references
+currently available from Zymo.
+
+## Setup
+
+```{r}
+library(tidyverse)
+library(here)
+library(fs)
+
+import::from(Biostrings, DNAString, DNAStringSet, readDNAStringSet, width,
+  complement, reverseComplement)
+import::from(DECIPHER, TrimDNA)
+```
+
+Set up folder to download the instruction manual and reference sequences from
+Zymo,
+```{r}
+zymo_path <- here("data", "zymo")
+dir_create(zymo_path)
+```
+
+Download the manual and the Zymo v2 reference sequences,
+```{r}
+if (!file_exists(path(zymo_path, "instruction-manual.pdf"))) {
+  download.file(
+    "https://files.zymoresearch.com/protocols/_d6305_d6306_zymobiomics_microbial_community_dna_standard.pdf",
+    path(zymo_path, "instruction-manual.pdf")
+  )
+}
+if (!file_exists(path(zymo_path, "ZymoBIOMICS.STD.refseq.v2.zip"))) {
+  download.file(
+    "https://s3.amazonaws.com/zymo-files/BioPool/ZymoBIOMICS.STD.refseq.v2.zip",
+    path(zymo_path, "ZymoBIOMICS.STD.refseq.v2.zip")
+  )
+  unzip(path(zymo_path, "ZymoBIOMICS.STD.refseq.v2.zip"), exdir = zymo_path)
+}
+```
+
+## Prepare reference sequences
+
+Load the v2 reference sequences, as well as the sequences provided by A1,
+```{r}
+fasta_fns <- dir_ls(path(zymo_path, "ZymoBIOMICS.STD.refseq.v2", "ssrRNAs"),
+  glob = "*_16S_*.fasta"
+)
+zymo_refs <- fasta_fns %>%
+  map(Biostrings::readDNAStringSet) %>%
+  reduce(append)
+a1_zymo_refs <- here("data/references/bacteria/pilot/zymo-mock-16s.fasta") %>%
+  Biostrings::readDNAStringSet()
+length(zymo_refs)
+length(a1_zymo_refs)
+```
+
+I'd prefer to use Zymo-v2 set, since it is more complete. Let's see if the 10
+A1 seq's can be found in the v2 set:
+```{r}
+as.character(a1_zymo_refs) %in% as.character(zymo_refs)
+```
+Most of them differ in at least one base. What about in the target region?
+```{r}
+primers = c(
+  R1 = "GTGCCAGCMGCCGCGGTAA" %>% DNAString, 
+  R2 = "TAATCTWTGGGVHCATCAGG" %>% DNAString %>% complement
+)
+x <- list(a1_zymo_refs, zymo_refs) %>%
+  map(TrimDNA, primers[["R1"]], primers[["R2"]], type = "sequences")
+y <- x %>% map(as.character)
+all(y[[1]] %in% y[[2]])
+```
+The A1 reference set agrees with the Zymo v2 set in the target region, so let's
+proceed with the v2 set.
+
+Note that there are two (identical) sequences named `Salmonella_enterica_16S_5`. 
+```{r}
+zymo_refs %>% names %>% str_subset("Salmonella_enterica")
+zymo_refs[names(zymo_refs) == "Salmonella_enterica_16S_5"] %>%
+  as.character %>%
+  unique %>%
+  length
+```
+There should be 7 copies for *Salmonella enterica*, so perhaps these do each
+correspond to a single 16S copy. Let's give them unique names,
+```{r}
+names(zymo_refs) <- names(zymo_refs) %>% make.unique
+```
+
+To distinguish these sequences downstream, change the names to the form
+"Zymo_Escherichia_coli_16S_1 Escherichia coli Zymo"; the prefix "Zymo_" gives
+the sequence a distinct name, and the "Zymo" at the end marks the strain.
+```{r}
+name_tb <- tibble(seqid = names(zymo_refs)) %>%
+  separate(remove = FALSE, seqid, c("genus", "species", "gene", "copy"),
+      sep = "_") %>%
+  mutate(
+    seqid = str_c("Zymo_", seqid),
+    description = str_glue("{genus} {species} Zymo, 16S ribosomal RNA gene Copy {copy}"),
+    name = str_c(sep = " ", seqid, description) 
+  )
+name_tb %>% pull(name) %>% head(1)
+names(zymo_refs) <- name_tb %>% pull(name)
+```
+
+Note, many of the 16S sequences are identical.
+```{r}
+zymo_refs %>% length
+zymo_refs %>% as.character %>% unique %>% length
+```
+
+Save the reference sequences in a fasta file in `output/zymo/`,
+```{r}
+dir_create(here("output", "zymo"))
+Biostrings::writeXStringSet(zymo_refs,
+  here("output", "zymo", "zymobiomics-reference-16s.fasta"))
+```
+Also save a version with duplicates removed,
+```{r}
+zymo_refs_deduped <- zymo_refs %>% .[!duplicated(.)]
+Biostrings::writeXStringSet(zymo_refs_deduped,
+  here("output", "zymo", "zymobiomics-reference-16s-deduped.fasta"))
+```
+and another deduplicated version with just the target (V4) sequences,
+```{r}
+zymo_refs_deduped %>%
+  TrimDNA(primers[["R1"]], primers[["R2"]], type = "sequences") %>%
+  Biostrings::writeXStringSet(here("output", "zymo",
+      "zymobiomics-reference-16s-deduped-v4.fasta"))
+```

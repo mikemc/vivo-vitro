@@ -1,0 +1,11 @@
+Species, NRRL Accession NO., Genome Size (Mb), Ploidy, GC Content (%), 16/18S Copy Number, Gram Stain, NCBI Phylogeny Database
+Pseudomonas aeruginosa, B-3509, 6.792, 1, 66.2, 4, -, Bacteria; Proteobacteria; Gammaproteobacteria; Pseudomonadales; Pseudomonadaceae; Pseudomonas; Pseudomonas aeruginosa group
+Escherichia coli, B-1109, 4.875, 1, 46.7, 7, -, Bacteria; Proteobacteria; Gammaproteobacteria; Enterobacteriales; Enterobacteriaceae; Escherichia
+Salmonella enterica, B-4212, 4.760, 1, 52.2, 7, -, Bacteria; Proteobacteria; Gammaproteobacteria; Enterobacteriales; Enterobacteriaceae; Salmonella
+Lactobacillus fermentum, B-1840, 1.905, 1, 52.4, 5, +, Bacteria; Firmicutes; Bacilli; Lactobacillales; Lactobacillaceae; Lactobacillus
+Enterococcus faecalis, B-537, 2.845, 1, 37.5, 4, +, Bacteria; Firmicutes; Bacilli; Lactobacillales; Enterococcaceae; Enterococcus
+Staphylococcus aureus, B-41012, 2.730, 1, 32.9, 6, +, Bacteria; Firmicutes; Bacilli; Bacillales; Staphylococcaceae; Staphylococcus
+Listeria monocytogenes, B-33116, 2.992, 1, 38.0, 6, +, Bacteria; Firmicutes; Bacilli; Bacillales; Listeriaceae; Listeria
+Bacillus subtilis, B-354, 4.045, 1, 43.9, 10, +, Bacteria; Firmicutes; Bacilli; Bacillales; Bacillaceae; Bacillus; Bacillus subtilis group
+Saccharomyces cerevisiae, Y-567, 12.1, 2, 38.3, 109, Yeast, Eukaryota; Opisthokonta; Fungi; Dikarya; Ascomycota; saccharomyceta; Saccharomycotina; Saccharomycetes; Saccharomycetales; Saccharomycetaceae; Saccharomyces
+Cryptococcus neoformans, Y-2534, 18.9, 2, 48.3, 60, Yeast, Eukaryota; Opisthokonta; Fungi; Dikarya; Basidiomycota; Agaricomycotina; Tremellomycetes; Tremellales; Tremellaceae; Filobasidiella; Filobasidiella/Cryptococcus neoformans species complex
