@@ -1,0 +1,899 @@
+
+```{r}
+library(tidyverse)
+library(speedyseq)
+library(metacal)
+```
+
+## Simulate diff'l bias data
+
+For now, keep it simple and just have multiple protocols but not multiple
+conditions.
+
+```{r}
+n_taxa <- 10
+n_specimens <- 5
+n_reps <- 2
+n_protocols <- 3
+specimens <- str_c("S", seq(n_specimens))
+protocols <- str_c("P", seq(n_protocols))
+taxa <- str_c("T", seq(n_taxa))
+
+sam <- crossing(
+  specimen = specimens,
+  rep = seq(n_reps),
+  protocol = protocols,
+) %>%
+  # mutate(across(everything(), as.factor)) %>%
+  mutate(
+    sample = str_glue("{specimen}_{protocol}_{rep}")
+  )
+```
+
+Draw random bias vectors for the protocols,
+```{r}
+set.seed(42)
+bias <- rnorm(n_taxa * n_protocols, sd = 1) %>% exp %>%
+  matrix(ncol = n_protocols)
+colnames(bias) <- protocols
+rownames(bias) <- taxa
+bias <- bias %>% apply(2, center_elts)
+```
+
+Draw abundances for each specimen,
+```{r}
+specimen_abun <- rnorm(n_taxa * n_specimens, sd = 1) %>% exp %>%
+  matrix(ncol = n_specimens)
+rownames(specimen_abun) <- taxa
+colnames(specimen_abun) <- specimens
+specimen_abun <- specimen_abun %>% apply(2, center_elts)
+```
+
+Observed abundances via elementwise mult of actual and bias,
+```{r}
+observed <- specimen_abun[, sam$specimen] * bias[, sam$protocol]
+colnames(observed) <- sam$sample
+noise <- rnorm(observed, sd = 0.3) %>% exp %>% 
+  matrix(nrow = nrow(observed)) %>%
+  apply(2, center_elts)
+observed_noise <- observed * noise
+obs <- t(log(observed_noise))
+```
+
+## Try estimating with lm
+
+```{r}
+fit <- lm(t(log(observed_noise)) ~ 0 + specimen + protocol, data = sam)
+class(fit)
+coef(fit)
+```
+
+Next, figure out how to get an array of bootreps of the coef matrix, with dim 1
+as taxa, dim 2 as coef, and dim 3 as bootrep, like fido output.
+
+What function to use for the weights? Try basic dirichlet for now
+
+```{r}
+draw_weights <- function(data, times) {
+  rexp(nrow(data) * times) %>%
+    split(rep(seq(times), each = nrow(data))) %>%
+    unname
+}
+draw_weights(sam, 2)
+```
+
+
+```{r}
+wts <- draw_weights(sam, 5)
+fits <- wts %>%
+  map(~lm(obs ~ 0 + specimen + protocol, data = sam, weights = .x)) %>%
+  map(coef) %>%
+  # Combine into 3-d array
+  # abind::abind(along = 3) %>%
+  sapply(identity, simplify = "array") %>%
+  # Move taxa from cols to rows
+  aperm(c(2,1,3))
+```
+
+Question: are the coef vectors already centered?
+```{r}
+fits %>% apply(c(2,3), mean)
+```
+Apparently yes. This might only be because `obs` is already centered.
+
+
+Later, might consider if it makes sense to ALR transform and drop a taxon
+first; but seems uneeded.
+
+
+Let's wrap in a function
+```{r}
+lm_boot <- function(formula, data, times = 1000) {
+  wts <- draw_weights(data, times)
+  wts %>%
+    map(~lm(formula, data = data, weights = .x, model = FALSE, qr = FALSE)) %>%
+    map(coef) %>%
+    # Combine into 3-d array
+    sapply(identity, simplify = "array") %>%
+    # Move taxa from cols to rows
+    aperm(c(2,1,3))
+}
+fit <- lm_boot(obs ~ 0 + specimen + protocol, data = sam, times = 100)
+```
+
+This doesn't work; apparently, lm is looking in `data` for a column named `.x`.
+Adding the weights to `data` seems to work:
+
+```{r}
+lm_boot <- function(formula, data, times = 1000) {
+  wts <- draw_weights(data, times)
+  fit <- wts %>%
+    map(~add_column(data, wt = .x)) %>%
+    map(~lm(formula, data = .x, weights = wt, model = FALSE, qr = FALSE)) %>%
+    map(coef) %>%
+    # Combine into 3-d array
+    sapply(identity, simplify = "array") %>%
+    # Move taxa from cols to rows
+    aperm(c(2,1,3))
+  dimnames(fit) <- dimnames(fit) %>%
+    rlang::set_names(c("taxon", "coefficient", ".draw"))
+  fit
+}
+fit <- lm_boot(obs ~ 0 + specimen + protocol, data = sam, times = 100)
+```
+
+```{r}
+expect_identical(dimnames(fit) %>% names, c("taxon", "coefficient", ".draw"))
+```
+
+
+### More efficient bootstrapping
+
+lm() provides the QR decomposition as a "qr"-class object, which can be applied
+to different observation matrixes. 
+```{r}
+fit <- lm(obs ~ 0 + specimen + protocol, data = sam)
+all.equal(qr.solve(fit$qr, obs), fit %>% coef)
+```
+I don't think this fact is helpful, since each resampled observation matrix
+(classic bootstraping) or each weight vector needs a new QR decomposition.
+
+More useful: We can use the more barebones function `lm.wfit()`, which should
+give us the estimated coefficient matrix more quickly than `lm()`.
+```{r}
+mm <- model.matrix(~0 + specimen + protocol, data = sam)
+wts <- draw_weights(sam, 10)
+fit0 <- lm.wfit(mm, obs, wts[[1]])
+coef(fit0)
+```
+
+Let's benchmark,
+```{r}
+bm <- bench::mark(
+  lm(obs ~ 0 + specimen + protocol, data = sam, weights = wts[[1]]) %>% coef,
+  lm.wfit(mm, obs, wts[[1]]) %>% coef
+)
+bm %>% select(min:total_time)
+```
+Indeed, using `lm.wfit()` is over 10X faster on this smallish dataset. This
+speed advantage might decrease in larger datasets, but there is no reason to
+not use it for what we're doing here.
+
+```{r}
+lm_boot2 <- function(formula, data, times = 1000) {
+  mf <- model.frame(formula, data)
+  mt <- terms(mf)
+  X <- model.matrix(mt, mf)
+  obs <- model.response(mf)
+  ref <- model.offset(mf)
+
+  wts <- draw_weights(data, times)
+
+  fit <- wts %>%
+    map(~lm.wfit(X, obs, .x, offset = ref)) %>%
+    map(coef) %>%
+    # Combine into 3-d array
+    sapply(identity, simplify = "array") %>%
+    # Move taxa from cols to rows
+    aperm(c(2,1,3))
+  dimnames(fit) <- dimnames(fit) %>%
+    rlang::set_names(c("taxon", "coefficient", ".draw"))
+  fit
+}
+fit <- lm_boot2(obs ~ 0 + specimen + protocol, data = sam, times = 100)
+```
+
+```{r}
+bench::mark(
+  lm_boot(obs ~ 0 + specimen + protocol, data = sam, times = 10)
+) %>%
+  glimpse
+bench::mark(
+  lm_boot2(obs ~ 0 + specimen + protocol, data = sam, times = 10)
+) %>%
+  glimpse
+```
+
+The new version is almost 10X faster.
+
+### Clustered, stratified weights
+
+We can draw cluster-specific weights as follows:
+```{r}
+data <- sam
+clusters <- sam$specimen
+times <- 3
+
+unique_clusters = clusters %>% unique
+n_clusters <- length(unique_clusters)
+cluster_weights <- rexp(n_clusters * times) %>%
+  matrix(nrow = n_clusters)
+rownames(cluster_weights) <- unique_clusters
+w_mat <- cluster_weights[clusters,]
+w_list <- w_mat %>%
+  asplit(2) %>%
+  map(unname)
+```
+`w_mat` is a matrix with rows corresponding to samples and cols corresponding
+to bootstrap replicates; `w_list` is a list of weight vectors.
+
+Since I don't really want the names, it might be better to leave
+`cluster_weights` unnamed, and use numerical indexing.
+
+What about maintaining the original relative weighting among strata? Let's
+suppose that the specimens are split into 2 strata.
+
+```{r}
+strata <- sam %>%
+  mutate(stratum = ifelse(specimen %in% c("S1", "S2"), 
+      "Stratum 1", "Stratum 2")) %>%
+  pull(stratum)
+strata_weights <- table(strata) %>% c
+```
+We need to get stratum-specific multipliers for each `w_mat` column to adjust
+the total weight of each stratum to its original weight.
+
+```{r}
+wtb <- w_mat %>%
+  as_tibble(.name_repair = "universal") %>%
+  add_column(stratum = strata)
+```
+```{r}
+wtb0 <- wtb %>%
+  group_by(stratum) %>%
+  mutate(
+    across(everything(), ~close_elts(.) * n()),
+  ) %>%
+  ungroup
+```
+Check the weights add up as expected:
+```{r}
+wtb0 %>%
+  group_by(stratum) %>%
+  summarize(across(everything(), sum))
+strata_weights
+```
+
+All together:
+```{r}
+# Set vars for testing
+data <- sam
+clusters <- sam$specimen
+times <- 3
+strata <- sam %>%
+  mutate(stratum = ifelse(specimen %in% c("S1", "S2"), 
+      "Stratum 1", "Stratum 2")) %>%
+  pull(stratum)
+
+# Actually create the weights.
+clusters <- clusters %>% as.factor %>% as.integer
+n_clusters <- clusters %>% unique %>% length
+cluster_weights <- rexp(n_clusters * times) %>%
+  matrix(nrow = n_clusters)
+w <- cluster_weights[clusters,] %>%
+  as_tibble(.name_repair = "universal") %>%
+  add_column(stratum = strata) %>%
+  group_by(stratum) %>%
+  mutate(across(everything(), ~close_elts(.) * n()),) %>%
+  ungroup %>%
+  select(-stratum) %>%
+  as.list %>%
+  unname
+```
+
+```{r}
+draw_weights2 <- function(data, 
+                          times, 
+                          clusters = seq(nrow(data)),
+                          strata = rep(1, nrow(data))) {
+  clusters <- clusters %>% as.factor %>% as.integer
+  n_clusters <- clusters %>% unique %>% length
+  cluster_weights <- rexp(n_clusters * times) %>%
+    matrix(nrow = n_clusters)
+  # Column names are needed before converting matrix to tibble
+  colnames(cluster_weights) <- str_c("...", seq(ncol(cluster_weights)))
+  # Expand the cluster weights into sample weights, then normalize within each
+  # stratum to have the appropriate stratum weights
+  cluster_weights[clusters,] %>%
+    as_tibble %>%
+    add_column(stratum = strata) %>%
+    group_by(stratum) %>%
+    mutate(across(everything(), ~close_elts(.) * n()),) %>%
+    ungroup %>%
+    select(-stratum) %>%
+    # Return as a list of weight vectors
+    as.list %>%
+    unname
+}
+draw_weights2(sam, 2, clusters = sam$specimen, strata = strata)
+```
+
+```{r}
+lm_boot3 <- function(formula, 
+                     data, 
+                     times = 1000,
+                     clusters = seq(nrow(data)),
+                     strata = rep(1, nrow(data))) {
+  mf <- model.frame(formula, data)
+  mt <- terms(mf)
+  X <- model.matrix(mt, mf)
+  obs <- model.response(mf)
+  ref <- model.offset(mf)
+
+  wts <- draw_weights2(data, times, clusters = clusters, strata = strata)
+
+  fit <- wts %>%
+    map(~lm.wfit(X, obs, .x, offset = ref)) %>%
+    map(coef) %>%
+    # Combine into 3-d array
+    sapply(identity, simplify = "array") %>%
+    # Move taxa from cols to rows
+    aperm(c(2,1,3))
+  dimnames(fit) <- dimnames(fit) %>%
+    rlang::set_names(c("taxon", "coefficient", ".draw"))
+  fit
+}
+fit <- lm_boot3(obs ~ 0 + specimen + protocol, data = sam, times = 100,
+  clusters = sam$specimen, strata = strata)
+```
+
+Other possible improvements: We might want to save more of the lists returned
+by `lm.wfit`, such as the `qr` objects, to facilitate getting e.g. the fitted
+values.
+
+## Stratified, clustered bootstrap with rms
+
+```{r}
+import::from(rms, ols, bootcov)
+```
+
+```{r}
+fit <- ols(obs ~ 0 + specimen + protocol, data = sam, x = TRUE, y = TRUE)
+coef(fit)
+```
+Note, an intercept term is still used.
+
+Try cluster bootstrapping with `bootcov()`. For this simple design, we don't
+actually need to use strata; but we could fix the w/in strata weights with the
+`group` arguemnt.
+```{r}
+b <- bootcov(fit, cluster = sam$specimen, B = 500)
+```
+Fails with error message 
+
+> `Error in cov + cof %*% t(cof) : non-conformable arrays`
+
+
+Let's see if it works with univariate regression of just the first taxon,
+
+```{r}
+fit <- ols(obs[,1] ~ 0 + specimen + protocol, data = sam, x = TRUE, y = TRUE)
+coef(fit)
+b <- bootcov(fit, cluster = sam$specimen, B = 100)
+b$boot.Coef
+```
+This is not working as expected.
+
+
+## Working with the results
+
+Next is to figure out how to
+
+- change denominators
+- get predicted values
+- get fitted values (perhaps should keep from lm?)
+- make distribution plots of coefs with ggdist - first have to  get tidy
+  data frames of the bootrep'd coefficients. 
+
+Might want to see how rstan stores posterior samples, and how the function in
+fido that coverts posterior samples of this form into a tidy data frame. and
+tidybayes?
+
+Melt the 3d array into long format,
+```{r}
+x <- data.table::as.data.table(fit, key = ".draw") %>%
+  as_tibble
+# y <- driver::gather_array(fit, value, taxon, coefficient, .draw) %>%
+#   as_tibble
+# z <- as_tibble(fit, rownames = "taxon") %>%
+#   pivot_longer(-taxon, names_to = c("coefficient", ".draw"), names_sep = "\\.")
+```
+
+```{r}
+```
+
+Change denominator to a subset of taxa
+```{r}
+# smaller array for testing
+fit0 <- fit[1:5,,1:2]
+
+set_denom <- function(x, denom) {
+  apply(x, c(2,3), function(x) {x - mean(x[denom])})
+}
+
+set_denom(fit0, 1)
+set_denom(fit0, 1:2)
+set_denom(fit0, c("T1", "T2"))
+```
+A better name might be "set_reference". 
+
+Note, there is a symmetry between the taxa and the protocols that isn't clear
+in the `fit` array, because of how protocol 1 is not represented. It might make
+sense to add in protocol 1 (with its values set to 0), so that we can reset the
+reference protocol just like the reference taxon. This is the same as what we'd
+need to do if we fit the model on the alr of taxa, with the ref taxon exluded.
+
+```{r}
+ref_coef <- array(0, 
+  dim = c(dim(fit0)[1], 1, dim(fit0)[3]),
+  dimnames = c(dimnames(fit0)[1], list(coefficient = "protocolP1"), dimnames(fit0)[3])
+)
+a <- abind::abind(fit0, ref_coef, along = 2, 
+  use.first.dimnames = TRUE, use.dnns = TRUE) %>% print
+dimnames(fit0)
+dimnames(ref_coef)
+dimnames(a)
+```
+Note, the name of the `.draw` dimension is dropped, perhaps because its names
+are NULL.
+
+```{r}
+add_ref_coef <- function(fit, name) {
+  ref_coef <- array(0, 
+    dim = c(dim(fit)[1], 1, dim(fit)[3]),
+    dimnames = c(dimnames(fit)[1], list(coefficient = name), dimnames(fit)[3])
+  )
+  a <- abind::abind(ref_coef, fit, along = 2)
+  names(dimnames(a)) <- names(dimnames(fit))
+  a
+}
+fit1 <- fit0 %>% add_ref_coef("protocolP1")
+```
+
+
+```{r}
+set_ref <- function(x, margin, ref) {
+  # TODO: check that, if not numeric, that ref %in% the right dimnames
+  apply(x, setdiff(seq_along(dim(x)), margin), function(y) {y - mean(y[ref])})
+}
+set_ref(fit1, 1, 1)
+set_ref(fit1, 1, c("T1", "T2"))
+set_ref(fit1, 2, c("protocolP2"))
+set_ref(fit1, 2, str_c("protocol", protocols))
+set_ref(fit1, 3, 1) 
+```
+We need to do an `aperm` when resetting the protocol coef. Also, I'm not sure
+why this doesn't work on the draw dimension.
+
+Safer version that keeps the original orientation:
+```{r}
+set_ref <- function(x, margin, ref) {
+  stopifnot(identical(length(dim(x)), 3L))
+  stopifnot(margin %in% 1:2)
+  if (is.character(ref))
+    stopifnot(all(ref %in% dimnames(x)[[margin]]))
+  x <- apply(x, setdiff(seq(3), margin), function(y) {y - mean(y[ref])})
+  if (margin == 2)
+    x <- aperm(x, c(2,1,3))
+  x
+}
+set_ref(fit1, 1, 1)
+set_ref(fit1, 1, c("T1", "T2"))
+set_ref(fit1, 2, c("protocolP2"))
+set_ref(fit1, 2, str_c("protocol", protocols))
+set_ref(fit1, 3, 1) 
+```
+
+### Pairwise logratios
+
+The first dimension of the `fit` array corresponds to the clr abundance vector.
+Can we instead make it correspond to the pairwise logratios?
+```{r}
+set_pairwise <- function(x) {
+  prs <- combn(nrow(x), 2)
+  i <- prs[1,]
+  j <- prs[2,]
+  y <- x[i,,] - x[j,,]
+  nms <- dimnames(x)[[1]]
+  dimnames(y)[[1]] <- str_c(nms[i], nms[j], sep = ":")
+
+  y
+}
+
+fit[1:3,,1:2] %>% set_pairwise
+```
+
+We could generalize this to work with the specified margin, though I'm not sure
+if there is a need.
+
+The above function only gives the pairs where i < j. We might alternately want
+all pairwise combinations, or all with i != j. For that we can use
+`expand.grid()` or `tidyr::crossing()`. Question: Do we want the numerator
+taxon or the denominator taxon to vary fastest?
+
+```{r}
+# `upper` and `diag` arguments patterned after `dist`, and refer to the
+# corresponding entries in the pairwise difference matrix, even though we're
+# giving the pairwise differences stacked in a vector.
+set_pairwise <- function(x, diag = FALSE, upper = FALSE) {
+  idx <- seq(dim(x)[1])
+  prs <- expand.grid(i = idx, j = idx)
+  if (!diag) prs <- filter(prs, i != j)
+  if (!upper) prs <- filter(prs, i <= j)
+
+  y <- x[prs$i,,] - x[prs$j,,]
+  nms <- dimnames(x)[[1]]
+  dimnames(y)[[1]] <- str_c(nms[prs$i], nms[prs$j], sep = ":")
+  y
+}
+
+fit[1:3,,1:2] %>% set_pairwise
+fit[1:3,,1:2] %>% set_pairwise(upper = TRUE)
+```
+
+```{r}
+idx <- seq(10)
+bench::mark(expand.grid(i = idx, j = idx))
+bench::mark(crossing(i = idx, j = idx))
+```
+
+
+## plotting results
+
+```{r}
+library(cowplot)
+library(patchwork)
+library(ggdist)
+theme_set(theme_cowplot())
+```
+
+Posterior of differential bias relative to the reference protocol:
+```{r}
+x %>%
+  filter(!str_detect(coefficient, "specimen")) %>%
+  ggplot(aes(value, taxon)) +
+  facet_wrap(~coefficient) +
+  stat_halfeye()
+```
+
+Or, to have the protocol's bias vectors relative to the mean protocol:
+```{r}
+x0 <- fit %>%
+  add_ref_coef("protocolP1") %>%
+  set_ref(2, str_c("protocol", protocols)) %>%
+  data.table::as.data.table(key = ".draw") %>%
+  as_tibble
+```
+```{r}
+x0 %>%
+  filter(!str_detect(coefficient, "specimen")) %>%
+  ggplot(aes(value, taxon)) +
+  facet_wrap(~coefficient) +
+  stat_halfeye()
+```
+
+# With conditions
+
+## Simulate diff'l bias data in two conditions
+
+I will simulate based on the actual abundance and actual (non-differential)
+biases.
+
+We can generate the expected log(-ratio) observation vectors by multiplying a
+design matrix by a randomly generated coefficient matrix and adding a noise
+matrix.
+
+```{r}
+n_taxa <- 5
+n_specimens <- 4
+n_reps <- 2
+n_protocols <- 3
+specimens <- str_c("S", seq(n_specimens)) %>% fct_inorder
+cond_ref <- specimens[1:2]
+protocols <- c("Ref", str_c("P", seq(n_protocols))) %>% fct_inorder
+taxa <- str_c("T", seq(n_taxa)) %>% fct_inorder
+
+sam.actual <- crossing(
+  specimen = specimens,
+  rep = seq(n_reps),
+  protocol = protocols,
+) %>%
+  # mutate(across(everything(), as.factor)) %>%
+  mutate(
+    condition = ifelse(specimen %in% cond_ref, "Ref", "Mod") %>% fct_inorder,
+    sample = str_glue("{specimen}_{protocol}_{condition}_{rep}"),
+  )
+```
+
+The condition is a stand in for anything that might modify the biases of the
+different protocols. It could be e.g., a difference in the sample matrix, or it
+could be the protocol at another protocol step. I've broken down its effect
+into a protocol-independent direct effect and an interaction with the
+protocol effects.
+
+Note, I'm defining a reference protocol and condition. We can consider the
+abundances when protocol and condition are both "Ref" as the ground truth.
+
+```{r}
+X <- model.matrix(
+  ~ 0 + specimen + protocol + condition + protocol:condition, 
+  # ~ 0 + specimen + protocol:condition, 
+  data = sam.actual
+)
+rownames(X) <- sam.actual$sample
+colnames(X)
+```
+
+Now we need to create the coefficient matrix to multiply by X.
+
+```{r, eval = FALSE}
+ctb <- tibble(coefficient = colnames(X)) %>%
+  mutate(
+    sigma = case_when(
+      # Actual abundances
+      str_detect(coefficient, "^specimen[^:]+$") ~ 1,
+      # Actual bias in condition A
+      str_detect(coefficient, "^protocol[^:]+$") ~ 1,
+      # Bias associated with the conditions
+      str_detect(coefficient, "^condition[^:]+$") ~ 0.2,
+      # Change in protocol bias associated with the conditions
+      str_detect(coefficient, "^protocol[^:]+:condition[^:]+$") ~ 0.2
+    ),
+    value = map(sigma, ~rnorm(n_taxa, sd = .x))
+  ) %>%
+  print
+# get as a matrix
+B <- ctb %>%
+  select(coefficient, value) %>%
+  deframe %>%
+  do.call(cbind, .)
+```
+
+Different way to get the same outcome:
+```{r}
+ctb <- crossing(coefficient = colnames(X) %>% fct_inorder, taxon = taxa) %>%
+  mutate(
+    mean = 0,
+    sd = case_when(
+      # Actual abundances
+      str_detect(coefficient, "^specimen[^:]+$") ~ 1,
+      # Actual bias in condition A
+      str_detect(coefficient, "^protocol[^:]+$") ~ 1,
+      # Bias associated with the conditions
+      str_detect(coefficient, "^condition[^:]+$") ~ 0.2,
+      # Change in protocol bias associated with the conditions
+      str_detect(coefficient, "^protocol[^:]+:condition[^:]+$") ~ 0.2
+    ),
+    value = rnorm(n(), mean, sd)
+  ) %>%
+  mutate_by(coefficient, across(value, ~ . - mean(.))) %>%
+  print
+B <- ctb %>%
+  build_matrix(taxon, coefficient, value)
+stopifnot(identical(colnames(X), colnames(B)))
+Y.pred <- B %*% t(X)
+```
+
+Note, might make sense to remove the reference protocol observations from X
+before computing Y.
+
+Add noise:
+```{r}
+noise <- rnorm(Y.pred, sd = 0.3) %>%
+  matrix(nrow = nrow(Y.pred)) %>%
+  scale(scale = FALSE)
+Y <- Y.pred + noise
+stopifnot(all.equal(rep(0, ncol(Y)) , colSums(Y), check.attributes = FALSE))
+```
+
+The observed dataset does not have the reference protocol measurements,
+```{r}
+sam.obs <- sam.actual %>%
+  filter(protocol != "Ref")
+Y.obs <- Y[, sam.obs$sample]
+```
+
+The above is done with taxa as rows. However, to be more consistent with `lm()`
+and the more common orientation, we might consider keeping we might consider
+keeping coefficents and samples as rows, and taxa as columns, in the simulation
+function. However, the convention where the rows of the coefficient matrix
+correspond to features is also used (e.g. the Stan Users guide; Fido) and
+more convenient in some respects (namely, when the vec operation comes into
+play to stack observation or coefficient vectors.)
+
+Test simulation function:
+```{r}
+set.seed(42)
+sim <- simulate_bias_dataset(
+  n = c(5, 5, 3, 2, 2),
+  sd = c(1, 1, 0.2, 0.2, 0.3)
+)
+#> sim$coefficients
+```
+
+```{r}
+sim$data %>% map(levels)
+```
+
+### Fitting dev
+
+Once we get the bootrepped fits, we want to extract the fitted values, the
+coefficents, and the residuals, and get them in arrays in the right form.
+```{r}
+wts <- draw_weights(sim$data, 2)
+X <- model.matrix(~0 + specimen + protocol + condition + protocol:condition, 
+  data = sim$data)
+bootreps <- wts %>%
+  map(~lm.wfit(X, sim$obs %>% t, .x))
+```
+
+```{r}
+make_nice <- function(bootreps, slot, name = as.character(slot)) {
+  bootreps %>%
+    map(slot) %>%
+    # Combine matrices into a 3-d array
+    sapply(identity, simplify = "array") %>%
+    # Move features/taxa from cols to rows
+    aperm(c(2,1,3)) %>%
+    # Set names of dimensions
+    {names(dimnames(.)) <- c("feature", name, ".draw"); .}
+}
+x <- bootreps %>% make_nice("coefficients")
+x
+x %>% dimnames
+```
+
+```{r}
+bootrep_slot_arrays <- 
+  tibble(
+    slot = c("coefficients", "residuals", "fitted.values"),
+    name = c("coefficient", "residual", "fitted"),
+  ) %>%
+  pmap(make_nice, bootreps = bootreps) %>%
+  set_names(c("coefficients", "residuals", "fitted_values"))
+```
+
+
+
+Let's try fitting on the predicted values,
+```{r}
+obs <- sim$predicted %>% t
+fit <- complm(
+  obs ~ 0 + specimen + protocol + condition + protocol:condition, 
+  data = sim$data, 
+  boot = TRUE, times = 10, 
+  clusters = sim$data$specimen,
+  strata = sim$data$condition
+)
+fit %>% coef
+fit %>% coef(boot = TRUE)
+```
+Note, we cannot infer condition effects because of how specimen is nested
+within condition. I think I may have messed this up in the simulation
+development at the top of this document.
+
+Let's check that the fitted values match the correct values. I don't know of a
+simple way to convert all of the underlying unobservable coefficients to the
+observable coefficients, but it is easy enough to compute the right 
+bias vectors to compare to specific fitted coefficients,
+```{r}
+B <- sim$coefficients
+# Differential bias of P2:P1 in the Ref condition
+all.equal(
+  coef(fit)[,"protocolP2"],
+  B[, "protocolP2"] - B[, "protocolP1"]
+)
+# Change in P2/P1 differential bias moving from Ref condition to C1
+all.equal(
+  coef(fit)[,"protocolP2:conditionC1"],
+  B[, "protocolP2:conditionC1"] - B[, "protocolP1:conditionC1"]
+)
+```
+
+
+What is next? 
+
+  - key feature needed: get the point estimate, and the bootreps
+- Make the functions for changing references etc work on the complm class.
+  - this is lower priority
+
+Once I'm getting a point estimate and bootreps, I can use to look at bias in
+the VV dataset.
+
+
+- Be able to get fitted, coefs, resid, and predictions in different units/scales; in
+  particular, as log-ratios, ratios, and proportions.
+  - To go from log-ratio to ratios, just have to exponentiate; this works for
+    fitted, coefficients, resids, and preds.
+  - To go to proportions is easy for fitted and pred; for residuals, have to
+    compute directly from the observation matrix and the fitted values.
+
+```{r}
+fitted(fit, units = "proportion")
+resid(fit, units = "proportion")
+```
+
+
+
+### Getting (differential) bias vectors
+
+A predict methods might also be useful for getting the differential bias under
+different conditions implied by the model. E.g., if I want to cache out the
+interaction terms into differential bias vectors. But `predict()`
+doesn't actually do that, since it includes the specimen effect which I do not
+want. Instead I want something related to contrasts...perhaps I want a helper
+function that generates the right contrast vector, given a
+specification of numerator and denominator non-specimen covariates, and uses it
+to get the correct (log differential) bias vector. 
+
+Or: I could just use predict with an arbitrary specimen on the numerator and the
+denominator, and subtract those values. (do this). Understanding how predict.lm
+works would probably help me figure this out anyways.
+
+```{r}
+```
+
+### Check lm methods
+
+```{r}
+f <- lm(
+  t(sim$observed) ~ 0 + specimen + protocol + condition + protocol:condition, 
+  data = sim$data)
+names(f)
+f$coefficients
+f$model
+f$terms
+f$fitted.values
+```
+
+
+
+### Test viz
+
+```{r}
+library(cowplot)
+library(patchwork)
+library(ggdist)
+theme_set(theme_cowplot())
+```
+
+```{r}
+fit <- complm(
+  t(sim$observed) ~ 0 + specimen + protocol + condition + protocol:condition, 
+  data = sim$data, boot = TRUE, times = 500)
+```
+
+```{r}
+x <- data.table::as.data.table(fit$bootreps, key = ".draw") %>%
+  as_tibble
+```
+
+Posterior of differential bias relative to Protocol P1, and delta diff'l bias
+in the two treatment conditions,
+```{r}
+x %>%
+  filter(!str_detect(coefficient, "specimen")) %>%
+  ggplot(aes(value, taxon)) +
+  facet_wrap(~coefficient) +
+  stat_halfeye()
+```
