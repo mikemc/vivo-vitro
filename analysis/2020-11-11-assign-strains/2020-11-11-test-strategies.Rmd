@@ -1,0 +1,1063 @@
+
+```{r}
+library(here)
+library(tidyverse)
+library(speedyseq)
+
+import::from(Biostrings, DNAString, DNAStringSet, readDNAStringSet, complement,
+  reverseComplement, width, readDNAStringSet)
+import::from(DECIPHER, TrimDNA)
+
+library(cowplot)
+library(patchwork)
+theme_set(theme_cowplot())
+```
+
+```{r}
+my_psmelt <- function(physeq) {
+  speedyseq::psmelt(physeq, as = "tibble") %>%
+    rename(taxon = OTU, sample = Sample, abundance = Abundance)
+}
+as_tibble.phyloseq <- function(x) {
+  x %>% my_psmelt
+}
+as_tibble.sample_data <- function(x) {
+  x %>% as("data.frame") %>% as_tibble(rownames = "sample")
+}
+as_tibble.taxonomyTable <- function(x) {
+  x %>% as("matrix") %>% as_tibble(rownames = "taxon")
+}
+as_tibble.XStringSet <- function(x) {
+  x %>% as.character %>% enframe("taxon", "sequence")
+}
+```
+
+```{r}
+sam <- here("output", "sample-data", "sample-data.Rds") %>% readRDS
+sam_ps <- sam %>% sample_data
+gtdb <- here("output/strain-data/reference-genome-metadata.Rds") %>% readRDS
+rnks <- c("domain", "phylum", "class", "order", "family", "genus", "species")
+gtdb_tax <- gtdb %>%
+  select(assembly_accession, gtdb_taxonomy) %>%
+  separate(gtdb_taxonomy, into = rnks, sep = ";") %>%
+  mutate(across(all_of(rnks), str_replace, "^[a-z]__", ""))
+```
+
+Note, this isn't a complete set of all the reference sequences I have, and some
+of these are far from complete.
+```{r}
+zymo_refs <- here("output/zymo/zymobiomics-reference-16s.fasta") %>%
+  readDNAStringSet
+refseq_refs <- here("output/strain-data/reference-16s-genes.fasta") %>%
+  readDNAStringSet
+refs <- c(zymo_refs, refseq_refs)
+```
+Should also load the zymo refs, and perhaps also the other 16s seq's I
+obtained.
+
+Amplicon taxonomy:
+```{r}
+amp_tax <- readRDS(here("output/amplicon/taxonomy/",
+    "dada2-silva-v138-with-species.Rds")) %>%
+  tax_table
+asvs <- amp_tax %>% 
+  taxa_names %>%
+  set_names %>%
+  DNAStringSet
+```
+
+Count matrixes
+```{r}
+amp_ps_list <- c(
+  A1 = here("output", "a1", "dada2", "seqtab-nochim-1.Rds"),
+  A2 = here("output", "a2", "dada2", "seqtab-nochim-1.Rds")
+) %>%
+  map(readRDS) %>%
+  map(otu_table, taxa_are_rows = FALSE) %>%
+  map(phyloseq, sam_ps, amp_tax, asvs)
+for (center_id in names(amp_ps_list)) {
+  taxa_names(amp_ps_list[[center_id]]) <- 
+    str_c("v2_", center_id, "_ASV", seq(ntaxa(amp_ps_list[[center_id]])))
+}
+amp_ps <- do.call(merge_phyloseq, amp_ps_list)
+tax_table(amp_ps) <- tax_table(amp_ps) %>%
+  as("matrix") %>%
+  as_tibble(rownames = "taxon") %>%
+  mutate(source = str_extract(taxon, "(?<=^v2_)A[1-2]")) %>%
+  tax_table
+```
+
+```{r}
+shot_counts <- here("output/shotgun/v2/2020-10-12-count-matrix.Rds") %>%
+  readRDS %>%
+  otu_table(taxa_are_rows = FALSE)
+# Use dummy reference sequences to allow joining with ASVs
+shot_ref <- rep("", ntaxa(shot_counts)) %>%
+  set_names(taxa_names(shot_counts)) %>%
+  DNAStringSet
+shot_tax <- gtdb_tax %>% 
+  add_column(source = "RefSeq") %>%
+  tax_table
+shot_ps <- phyloseq(shot_counts, shot_ref, shot_tax, sam_ps)
+```
+
+```{r}
+ps <- merge_phyloseq(amp_ps, shot_ps)
+ps %>% refseq
+# tax_table(ps) %>% print(n=40)
+```
+
+```{r}
+tax_table(ps)[,"source"] %>% table
+```
+
+
+## Filtering
+
+### check taxonomy assigments
+
+```{r}
+tax <- tax_table(ps) %>% as_tibble
+tax0 <- tax %>%
+  add_column(
+    width = refseq(ps) %>% width,
+    sum = taxa_sums(ps)
+  )
+```
+
+```{r}
+tax %>% count(domain, source)
+```
+
+```{r}
+tax %>% 
+  count(source, is.na(phylum))
+```
+
+Would we lose much if we tossed ASVs without a phylum assignment?
+```{r}
+list(ps %>% subset_taxa(is.na(phylum)), ps) %>%
+  map(sample_sums) %>%
+  {.[[1]] / .[[2]]} %>%
+  summary
+```
+No; seems ok to filter out these ASVs.
+
+
+### check abundances
+
+```{r}
+pstb <- ps %>%
+  subset_samples(center_id %in% c("A1", "A2")) %>%
+  filter_taxa2(~sum(.) > 0) %>%
+  psmelt(as = "tibble")
+```
+
+```{r}
+tb <- pstb %>%
+  # group_by(OTU, center_id, specimen_type) %>%
+  group_by(OTU, center_id, domain) %>%
+  summarize(
+    total_abundance = sum(Abundance),
+    prevalance = sum(Abundance > 0),
+    .groups = "drop"
+  ) %>%
+  filter(total_abundance > 0)
+```
+
+```{r}
+ggplot(tb, aes(total_abundance, fill = center_id)) +
+  geom_histogram() +
+  scale_x_log10() +
+  scale_y_log10() +
+  facet_wrap(~center_id)
+```
+
+```{r}
+ggplot(tb, aes(prevalance, total_abundance, color = domain)) +
+  geom_point() +
+  scale_x_log10() +
+  scale_y_log10() +
+  facet_wrap(~center_id)
+```
+
+```{r}
+tb0 <- pstb %>%
+  group_by(OTU, center_id, specimen_type) %>%
+  summarize(
+    total_abundance = sum(Abundance),
+    prevalance = sum(Abundance > 0),
+    .groups = "drop"
+  ) %>%
+  filter(total_abundance > 0)
+```
+
+```{r}
+tb0 %>%
+  filter(specimen_type %in% c("Fecal", "Inoculum", "T. mobilis")) %>%
+  ggplot(aes(prevalance, total_abundance)) +
+  geom_point() +
+  scale_x_log10() +
+  scale_y_log10() +
+  facet_grid(specimen_type ~ center_id)
+```
+
+
+Many of the low abundance ASVs are likely sequencing errors leading to spurious
+sequences near the primary taxa, and we can simply filter these out.
+
+### filter
+
+```{r}
+tax1 <- tax0 %>%
+  filter(
+    !is.na(phylum), !is.na(domain), # adding domain should be unnecessary
+    sum >= 100, 
+    (source != "A2" | width >= 380) # Require A2 ASVs to be at least 380 bp long
+  )
+tax1 %>% count(source)
+```
+
+Note, I'll use this to restrict to the ASVs I try to manually assign. It is
+plausibly also a good general filter, but we might consider looser filters for
+some purposes.
+
+```{r}
+ps0 <- prune_taxa(tax1$taxon, ps) %>%
+  print
+x <- (sample_sums(ps0) / sample_sums(ps)) %>% sort
+summary(x)
+head(x)
+```
+
+Guess: The A2 sample whose reads have been entirely filtered is one of the
+failed samples in rows A and B of the plate.
+```{r}
+sam %>% filter(sample_id %in% names(head(x, 1))) %>%
+  select(sample_id, well)
+```
+Yes, so it is no worry that the reads from this sample are removed.
+
+
+## Match ASVs to reference sequences and each other
+
+
+### Compare A1 and A2 amplicon regions
+
+First, let's check whether the A1 ASVs should be fully contained in the A2
+ASVs, by comparing the target regions on a common 16S sequence.
+
+```{r}
+primer_list <- list(
+  A1 = c(
+    R1 = "GTGCCAGCMGCCGCGGTAA" %>% DNAString, 
+    R2 = "TAATCTWTGGGVHCATCAGG" %>% DNAString %>% complement
+  ),
+  A2 = c(
+    R1 = "CCTACGGGNGGCWGCAG" %>% DNAString, 
+    R2 = "GACTACHVGGGTATCTAATCC" %>% DNAString %>% reverseComplement
+  )
+)
+```
+
+```{r}
+# Join R1 and R2 primers into a single sequence with Ns in between
+join_primers <- function(primers, width = 10) {
+  ns <- DNAString(rep("N", width) %>% str_c(collapse = ""))
+  Biostrings::xscat(primers[[1]], ns, primers[[2]])
+}
+```
+
+```{r}
+seqs <- list(
+  Reference = refs[[1]], 
+  A1 = join_primers(primer_list$A1, width = 253), 
+  A2 = join_primers(primer_list$A2, width = 422)
+) %>%
+  DNAStringSet
+seqs.aligned <- DECIPHER::AlignSeqs(seqs)
+DECIPHER::BrowseSeqs(seqs.aligned, highlight = 1)
+```
+
+The A1 inter-primer region is almost completely contained in the A2 region, but
+extends 2 bp further. This means that, to truncate references to the region
+that covers both A1 and A2 regions, we can use:
+```{r}
+primers_for_joint_region <- c(R1 = primer_list$A2[["R1"]], R2 = primer_list$A1[["R2"]])
+refs.joint_region <- TrimDNA(refs[width(refs) >= 1e3], 
+  primers_for_joint_region[["R1"]],
+  primers_for_joint_region[["R2"]],
+  type = "sequences"
+)
+width(refs.joint_region) %>% summary
+refs.joint_region.400 <- refs.joint_region %>% 
+  {.[!duplicated(.)]}
+```
+Note, I first filtered to reference sequences at least 1e3 bp long.
+
+How to filter to just the seqs where both primer seqs match?
+
+
+### Compute distances
+
+Get a pairwise distance matrix between all ASVs and reference sequences,
+```{r}
+dna <- c(refseq(ps0), refs.joint_region.400) %>% .[width(.)>0]
+nproc <- 4
+aln <- DECIPHER::AlignSeqs(dna, processors = nproc, verbose = FALSE)
+d <- DECIPHER::DistanceMatrix(aln, processors = nproc, verbose = FALSE)
+dtb <- d %>%
+  as.dist(diag = FALSE, upper = TRUE) %>%
+  broom::tidy()
+# %>%
+#   mutate_at(vars(starts_with("item")), as.character)
+```
+
+```{r}
+seq_info <- tibble(name = names(dna)) %>%
+  mutate(
+    center_id = str_extract(name, "(?<=^v2_)A[1-2]"),
+    reference = str_detect(name, "^GCF|^Zymo"),
+  ) %>%
+  separate(name, remove = FALSE, into = c("seqid", "description"), sep = " ", 
+    extra = "merge", fill = "right") %>%
+  separate(description, remove = TRUE, c("organism", "gene"), sep = ", ")
+head(seq_info)
+tail(seq_info)
+
+dtb0 <- dtb %>%
+  left_join(seq_info, by = c(item1 = "name")) %>%
+  left_join(seq_info, by = c(item2 = "name"), suffix = c(".1", ".2"))
+```
+
+### Distances between V3-V4 reference sequences
+
+```{r}
+dtb0 %>%
+  filter(reference.1, reference.2) %>%
+  mutate(same_org = organism.1 == organism.2) %>%
+  ggplot(aes(distance, fill = same_org)) +
+  geom_histogram()  +
+  scale_x_continuous(trans = scales::pseudo_log_trans(sigma = 0.01),
+    breaks = c(0, 1e-2, 2e-2, 3e-2, 5e-2, 1e-1, 2e-1)
+  ) +
+  scale_y_continuous(trans = scales::pseudo_log_trans(sigma = 10),
+    breaks = c(0, 10, 50, 100, 200, 1e3, 2e3))
+```
+
+All the pairs from the same genome are w/in 0.03 of each other. What about
+within the same genus?
+
+
+```{r}
+# Note, gtdb_tax does not include the Zymo seqs
+dtb1 <- dtb0 %>%
+  filter(reference.1, reference.2) %>%
+  mutate(across(starts_with("item"), str_extract, "^GCF_[^_]+",
+      .names = "{.col}_accession")) %>%
+  left_join(gtdb_tax, by = c(item1_accession = "assembly_accession")) %>%
+  left_join(gtdb_tax, by = c(item2_accession = "assembly_accession"),
+    suffix = c(".1", ".2")) %>%
+  mutate(
+    same_genus = genus.1 == genus.2,
+    same_species = same_genus & species.1 == species.2,
+    same_organism = organism.1 == organism.2
+  ) %>%
+  filter(item1 < item2)
+```
+
+```{r}
+dtb1 %>%
+  ggplot(aes(distance, fill = same_genus)) +
+  geom_histogram()  +
+  scale_x_continuous(trans = scales::pseudo_log_trans(sigma = 0.01),
+    breaks = c(0, 1e-2, 2e-2, 3e-2, 5e-2, 1e-1, 2e-1)
+  ) +
+  scale_y_continuous(trans = scales::pseudo_log_trans(sigma = 10),
+    breaks = c(0, 10, 50, 100, 200, 1e3, 2e3))
+```
+
+
+```{r}
+dtb1 %>% filter(same_genus) %>% pull(distance) %>% summary
+dtb1 %>% filter(same_species) %>% pull(distance) %>% summary
+dtb1 %>% filter(same_organism) %>% pull(distance) %>% summary
+dtb1 %>% filter(same_genus & !same_species) %>% pull(distance) %>% summary
+```
+
+
+### Intra-genus distances in the A2 ASVs
+
+```{r}
+tax <- ps %>% tax_table %>% as_tibble
+dtb.a2 <- dtb0 %>%
+  filter(center_id.1 == "A2", center_id.2 == "A2") %>%
+  left_join(tax, by = c(item1 = "taxon")) %>%
+  left_join(tax, by = c(item2 = "taxon"),
+    suffix = c(".1", ".2")) %>%
+  mutate(
+    same_genus = genus.1 == genus.2
+  )
+dtb.a2 %>% filter(item1 < item2, same_genus) %>% pull(distance) %>% summary
+```
+
+```{r}
+dtb.a2 %>%
+  filter(item1 < item2) %>%
+  ggplot(aes(distance, fill = genus.1 == genus.2)) +
+  geom_histogram()  +
+  scale_x_continuous(trans = scales::pseudo_log_trans(sigma = 0.01),
+    breaks = c(0, 1e-2, 2e-2, 3e-2, 5e-2, 1e-1, 2e-1)
+  ) +
+  scale_y_continuous(trans = scales::pseudo_log_trans(sigma = 10),
+    breaks = c(0, 10, 50, 100, 200, 1e3, 2e3))
+```
+
+
+### Exact hits of ASVs to to refs
+
+```{r}
+dtb2 <- dtb0 %>% 
+  filter(distance == 0, !is.na(center_id.1), reference.2)
+```
+
+```{r}
+dtb2 %>% 
+  filter(center_id.1 == "A2") %>%
+  transmute(center_id.1, item1, organism.2, 
+    gene.2 = str_extract(gene.2, "Copy.+")
+  ) %>%
+  print(n=40)
+
+```
+
+Note that some relatively highly abundant ASVs, like A2-ASV8, don't have an
+exact match, likely reflecting the incompleteness of our ref set.
+
+What is going on with ASVs 13 and 182; how can we have two different ASVs that
+are both perfect matches to the same reference sequence?
+
+```{r}
+refseq(ps0)[c("v2_A2_ASV13", "v2_A2_ASV182")] 
+```
+Perhaps this is the result of a chimera, or some other PCR artifact? Seems that
+I should filter by ASV length. Could also check that there are no ASVs of the
+same seq center that have a distance of 0.
+
+```{r}
+a1 <- ps0 %>%
+  subset_taxa(source == "A1") %>%
+  refseq
+a2 <- ps0 %>%
+  subset_taxa(source == "A2") %>%
+  refseq
+width(a1) %>% table
+width(a2) %>% table
+```
+
+check that I did chimera filtering, then see if I can figure out what might be
+happening with the a2 seqs.
+
+check if the shorter seqs are contained w/in longer seqs; and check their
+abundance.
+
+could also check the distribution of the target region in the silva db seqs, as
+a way of checking the true distribution of lengths that are reasonable, and
+filtering below the min.
+
+### Distance
+
+
+### A1 and A2 exact overlaps
+
+```{r}
+dtb1 <- dtb0 %>% 
+  filter(distance == 0, center_id.1 == "A1", center_id.2 == "A2") %>%
+  select(item1, item2)
+dtb1 %>% print(n=40)
+```
+
+## Compute propr's rho
+
+first try on just A1 fecal samples
+```{r}
+ps1 <- ps0 %>% 
+  subset_samples(center_id == "A1" & specimen_type == "Fecal") %>%
+  subset_taxa(source == "A1")
+set.seed(42)
+pr <- propr::propr(
+  ps1 %>% otu_table %>% orient_taxa(as = "cols") %>% as("matrix"),
+  metric = "rho",
+  ivar = "iqlr",
+  alpha = NA,
+  p = 100
+)
+x <- propr::updateCutoffs(pr,
+  cutoff = seq(0, 1, .05),
+  ncores = 3
+)
+# how do we use x?
+prtb <- pr %>% propr::getResults() %>% as_tibble
+head(prtb)
+tail(prtb)
+```
+
+```{r}
+tax_table(ps1) %>% print(n=30)
+prtb %>% arrange(-propr) %>% filter(Zeros < 100)
+```
+
+Can see that the top 3 propr hits, with rho values > 0.97, are ASVs that I
+previously determined to be in the same genome; the next hit is substantially
+lower and corresponds to the two E. coli ASVs, and it is reassuring that it is
+noticeably lower. After that, we have many cases of Bacteroides ASVs from
+different pairs of species. So from this simple test it looks like rho values
+above 0.9 or 0.95 are good canditates for being from the same genome.
+
+It is interesting to ask why the Bacteroides ASVs from different species are so
+correlated with each other. This could be because of correlation by specimen,
+or because they have similar efficiencies. A more powerful approach to
+identifying ASVs from the same genome might be to control for bias (via
+extraction protocol and batch).
+
+```{r}
+# helper function to subset to a given center and type and get an otu table in
+# the right orientation for propr
+f <- function(ps, center_id, specimen_type) {
+  samples <- ps %>%
+    sample_data %>%
+    as_tibble %>%
+    filter(
+      # center_id == x, 
+      # specimen_type == y
+      center_id == {{center_id}}, 
+      specimen_type == {{specimen_type}}
+    ) %>%
+    pull(sample)
+  taxa <- ps %>%
+    tax_table %>%
+    as_tibble %>%
+    filter(
+      source == center_id
+    ) %>%
+    pull(taxon)
+  ps %>%
+    prune_samples(samples, .) %>%
+    prune_taxa(taxa, .) %>%
+    otu_table %>%
+    orient_taxa(as = "cols") %>%
+    as("matrix")
+}
+# f(ps0, "A1", "Fecal") %>% glimpse
+
+rho <- crossing(
+  center_id = c("A1", "A2"), 
+  specimen_type = c("Fecal", "Inoculum")
+) %>%
+  mutate(
+    otu = map2(center_id, specimen_type, ~f(ps0, .x, .y)),
+    pr = map(otu, propr::propr, metric = "rho", ivar = "iqlr")
+  )
+rho0 <- rho %>%
+  transmute(center_id, specimen_type, res = map(pr, propr::getResults)) %>%
+  unnest(res)
+```
+
+```{r}
+rho0 %>% pull(Zeros) %>% summary
+rho0 %>%
+  filter(Zeros < 50) %>%
+  arrange(-propr) %>%
+  group_by(center_id) %>%
+  slice_max(propr, n = 15) %>%
+  print(n=Inf)
+```
+
+Question - what do the zeros mean? Are those double zeros?
+
+Note, can use option `symmetrize = TRUE` to get pairs of ASVs in both
+directions
+
+### Match ASVs to custom Silva database
+
+```{r}
+import::from(Biostrings, PDict, vcountPDict, vcountPattern)
+```
+```{r}
+silva_seqs_focal <- Biostrings::readDNAStringSet(
+  here("data/16s-taxonomy-databases/custom",
+    "silva-sequences-for-focal-genera.fasta.gz")
+)
+```
+
+```{r}
+rnks <- c("domain", "phylum", "class", "order", "family", "genus", "organism_name")
+silva_seqs_focal_tax <- tibble(name = names(silva_seqs_focal)) %>%
+  separate(name, remove = FALSE, into = c("accession", "taxonomy"), sep = " ",
+    extra = "merge") %>%
+  separate(taxonomy, into = rnks, sep = ";")
+```
+
+Can use vcountPattern to match ASVs agains the references one ASV at a time, or
+use vcountPDict to test all ASVs of the same length at once.
+
+try with one seq
+```{r}
+# for (asv in as.list(refseq(ps0))) print(asv)
+asv <- refseq(ps0)[[1]]
+vc <- vcountPattern(asv, silva_seqs_focal)
+table(vc)
+which(vc > 0)
+```
+
+```{r}
+# hits <- names(silva_seqs_focal)[vc>0]
+hits <- silva_seqs_focal_tax[vc>0,]
+hits %>% select(genus, organism_name) %>% head
+hits %>% select(genus, organism_name) %>% tail
+```
+
+From this, can see that many of these sequences are not useful for
+species-level identification. Those that are, are the ones where the genus name
+appears in the beginning of the organism name, and the next word is a
+well-formed species name and isn't just something like "spp.".
+
+Many of our ASVs already have species assignments,
+```{r}
+tax %>% select(taxon, genus:source) %>% print(n=20)
+```
+But we can try the above for those that don't to see if we can assign any more.
+However, most of these probably don't have exact matches, or they would have
+been assigned by the DADA2 assignment.
+
+```{r}
+# Consider speeding up by allowing specification of a genus to restrict the
+# subject sequences to
+hits_table <- function(asvs, ...) {
+  asvs %>%
+    {.[width(.)>0]} %>%
+    as.list %>%
+    map(vcountPattern, subject = silva_seqs_focal, ...) %>%
+    map_dfr(~silva_seqs_focal_tax[.>0,], .id = "taxon") %>%
+    select(taxon, genus, organism_name) %>%
+    distinct
+}
+```
+
+#### Lachnoclostridium
+
+These should be C. symbiosum
+
+```{r}
+ps0 %>% subset_taxa(genus == "Lachnoclostridium") %>% tax_table
+asvs <- ps0 %>%
+  subset_taxa(genus == "Lachnoclostridium") %>%
+  refseq
+hits <- hits_table(asvs)
+```
+
+```{r}
+hits %>%
+  filter(str_detect(organism_name, "symbiosum"))
+```
+
+#### Staphylococcus
+
+In this case, we might be able to narrow down which ASV maps to which Staph
+contaminant.
+
+The dada2 species assignments already tell us what we'll find for some of these
+ASVs. We can narrow down the dada2 possibilities using our knowledge from the
+shotgun data that we only expect aureus, saccharolyticus/pasteuri, and warneri.
+
+```{r}
+x <- tax %>% 
+  filter(taxon %in% taxa_names(ps0), genus == "Staphylococcus") %>%
+  select(taxon, species, source) %>%
+  print
+x %>%
+  mutate(
+    aureus = str_detect(species, "aureus"),
+    saccharolyticus = str_detect(species, "saccharolyticus|pasteuri"),
+    warneri = str_detect(species, "warneri"),
+  ) %>%
+  select(taxon, aureus:warneri)
+```
+
+(Note, we only expect Staph aureus in the A1 data; it is coming from the
+Zymo mock.)
+
+Note, I say "saccharolyticus/pasteuri" because the refseq organism name is
+saccharolyticus but the gtdb taxonomy is apparently given as `pasteuri_A`.
+
+
+```{r}
+# asvs <- ps0 %>%
+#   subset_taxa(genus == "Staphylococcus") %>%
+#   refseq
+asvs <- refseq(ps0)["v2_A1_ASV36"]
+hits <- hits_table(asvs, max.mismatch = 0)
+hits
+```
+There are no exact matches; what if we allow mismatches?
+```{r}
+hits <- hits_table(asvs, max.mismatch = 2, with.indels = TRUE)
+```
+Still no hits.
+
+
+#### E. coli ASVs
+
+```{r}
+asvs <- ps0 %>%
+  subset_taxa(genus == "Escherichia-Shigella") %>%
+  refseq
+asvs
+hits <- hits_table(asvs)
+```
+
+```{r}
+hits
+hits %>%
+  filter(str_detect(organism_name, "^(Escherichia|Shigella)"))
+```
+
+Without prior knowledge, we would be unable to say much about which
+Escherichia/Shigella that, for example, ASV2 is from. However, supposing that
+the only Escherichia/Shigella are E. coli HS and E. coli Nissle 1917, we may
+be able to partly determine which ASVs come from one or the other or both.
+```{r}
+hits %>%
+  filter(str_detect(organism_name, " (HS|Nissle)"))
+```
+This aligns with my prior determination for A1 that the most abundant E. coli
+ASV is in both HS and Nissle, and the second most is just in Nissle, and we see
+the same pattern in A2.
+
+What about the rarer A2 ASV?
+```{r}
+hits %>% filter(taxon == "v2_A2_ASV52")
+```
+
+We will have to rely on other means to determine whether this is spurious and
+which genome it might be from. Does it match one of our genome-derived
+sequences?
+```{r}
+dtb0 %>%
+  filter(item1 == "v2_A2_ASV52") %>%
+  slice_min(distance, n = 5) %>%
+  select(item1, distance, item2, )
+```
+It is one bp away from A2-ASV2 (and the Zymo E. coli, which should not be
+present), and 2 mutations from HS and Nissle genome-derived reference
+sequences. Since I don't trust that these reference sequences are 100%
+accurate, we'll need to use abundance information to determine whether it is
+real or sequencing error.
+
+
+## Improve the DADA2 species assignments with prior information
+
+Idea is that we can narrow down the dada2 species assignments in cases where
+there are multiple hits by supposing that (for genera in our focal strains) the
+true species comes from the set of focal strains. We can also expand the dada2
+species assignments to unassigned cases in this way, by making the same
+assumption - if species is NA, we can set the candidate set of species to those
+in the same genus from our focal set.
+
+One tricky part is the two species with NCBI names waiting reassignment,
+(Eubacterium and Clostridium), since the Silva genus doesn't match the display
+name and the species substrings can have different forms, e.g.  Eubacterium
+rectale vs. Agathobacter rectalis. But these ASVs don't have DADA species
+assignments anyways.
+
+Load the Silva taxonomy of the focal strain set:
+```{r}
+focal_tax <- here("output/strain-data/silva-taxonomy.csv") %>%
+  read_csv
+focal_strains <- here("output/strain-data/focal-strains.csv") %>%
+  read_csv %>%
+  select(ncbi_taxid:ncbi_organism_name, display_name, strain_group) %>%
+  left_join(focal_tax, by = "ncbi_taxid") %>%
+  mutate(ncbi_species = str_extract(ncbi_organism_name, "^[\\S]+ [\\S]+")) %>%
+  glimpse
+```
+
+```{r}
+focal_strains %>%
+  select(genus, display_name) %>%
+  print(n=Inf)
+```
+
+
+Get the candidate species names formated as vectors of proper binomial species
+names.
+```{r}
+dada_tax <- tax_table(ps0) %>% as_tibble %>%
+  filter(source %in% c("A1", "A2")) %>%
+  transmute(
+    source, taxon, genus,
+    specific_name = str_split(species, "/"),
+    # across(specific_name, map, ~ifelse(is.na(.), character(), .)),
+    any_species = !is.na(specific_name),
+    species = map2(genus, specific_name, str_c, sep = " "),
+    across(species, map, str_replace, "Escherichia-Shigella", "Escherichia"),
+  ) %>%
+  print
+#> dada_tax$specific_name %>% head
+dada_tax$species %>% head(5)
+```
+
+```{r}
+candidates <- focal_strains %>%
+  filter(strain_group != "Computational control") %>%
+  select(genus, ncbi_species) %>%
+  distinct %>%
+  with_groups(genus, summarize, candidate_species = list(ncbi_species))
+#> candidates$candidate_species
+```
+
+When there are DADA species, take the intersection with focal candidates; when
+there are no DADA species, use the focal candidates in that genus.
+```{r}
+tb <- inner_join(dada_tax, candidates, by = "genus") %>%
+  mutate(
+    overlap = map2(species, candidate_species, intersect),
+    best_guess = map2(overlap, candidate_species, 
+      ~if (length(.x) > 0) .x else .y)
+  )
+#> tb %>% pull(overlap) %>% head
+tb %>% pull(best_guess) %>% head
+```
+
+Note, we can see an issue with Staph, and something similar could happen with
+Bacillus. Here we subset so saccharolyticus on the basis of that being the name
+for the Refseq genome; but the GTDB classification is `pasteuri_A`, so we might
+not really be able to distinguish saccharolyticus and pasteuri.
+```{r}
+tb[6,] %>% as.list
+```
+
+```{r}
+tb %>% pull(best) %>% head
+```
+
+```{r}
+tb %>%
+  transmute(taxon, across(best_guess, map_chr, str_c, collapse = ", ")) %>%
+  print(n=Inf)
+tb %>%
+  transmute(taxon, genus, across(overlap, map_chr, str_c, collapse = ", ")) %>%
+  print(n=Inf)
+```
+
+
+Note, I probably want to stick with the "overlap" column at this stage, so as
+to distinguish cases where there are multiple candidate species because of
+multiple exact hits to the silva database, from cases where there were no
+matches to the silva database.
+
+
+
+
+## Method for matching ASVs from the same genome
+
+Within A1 and A2:
+
+- Compute pairwise distances
+- Compute rho's (propr) within each specimen type
+
+Compare the joint distributions pw-dist and rho, by speciment type, to find
+candidate ASVs to be from the same genome. Then, create confirmatory plots for
+each set of candidate ASVs, that includes a plot based on the ratio normalized
+to the predicted 16S copy number.
+
+Then, I think I should just go strain by strain among the anticipated strains,
+and consider whether I've identified all the relevant ASVs.
+
+I suppose it makes sense to do A2 first, and then assign A1 based on A2.
+
+### A2
+
+Pairwise distances and rho values. Note, only represents each pair of ASVs in
+one direction.
+```{r}
+x <- dtb0 %>%
+  filter(center_id.1 == "A2", center_id.2 == "A2") %>% 
+  select(asv.1 = item1, asv.2 = item2, distance)
+y <- rho0 %>% 
+  filter(center_id == "A2") %>% 
+  select(center_id, specimen_type, 
+    asv.1 = Partner, asv.2 = Pair, rho = propr, zeros = Zeros)
+z <- right_join(x, y, by = c("asv.1", "asv.2"))
+```
+
+```{r}
+z %>% 
+  filter(specimen_type == "Fecal", zeros < 50) %>%
+  ggplot(aes(distance, rho, color = zeros)) +
+  geom_point() +
+  scale_color_viridis_c() +
+  ggforce::facet_zoom(xy = distance < 0.1 & rho > 0.5)
+```
+
+
+Based on above inspection of distances vs taxonomy, I expect intraspecies ASVs
+to have distance < 0.03 and intragenus to have distance < 0.08.
+
+```{r}
+z %>% 
+  filter(specimen_type == "Fecal", distance < 0.05, rho > 0.7) %>%
+  ggplot(aes(distance, rho, color = zeros)) +
+  geom_point() +
+  scale_color_viridis_c()
+```
+
+We cn use the Silva tax assignments to help by requiring the same genus;
+however, in some cases the genus may be unassigned.
+
+
+Let's focus on ASVs that are within 0.03 to a reference sequence.
+
+```{r}
+x <- dtb0 %>%
+  filter(center_id.1 == "A2", reference.2, distance < 0.03) %>%
+  group_by(item1) %>%
+  slice_min(distance, n = 1) %>%
+  left_join(tax, by = c(item1 = "taxon"))
+  # %>%
+  # left_join(gtdb_tax, by = c(item2 = "assembly_accession"),
+  #   suffix = c(".1", ".2"))
+```
+
+```{r}
+x %>%
+  select(item1, item2, distance, genus) %>%
+  print(n=Inf)
+```
+
+Can see that our reference sequence set is incomplete. In particular, we don't
+hjave a good Roseburia reference and so the Roseburia ASVs are getting mapped
+to E. rectale.
+
+
+```{r}
+x0 <- x %>%
+  filter(distance == 0) %>%
+  select(item1, item2, genus, species)
+x0 %>%
+  print(n=Inf)
+```
+
+```{r}
+x0 %>% transmute(item1, genus, species = str_sub(species, 1, 40))
+z %>% 
+  filter(
+    specimen_type == "Fecal", distance < 0.05, rho > 0.7, 
+    asv.1 %in% x0$item1 | asv.2 %in% x0$item2
+  )
+```
+
+## What taxa are we ignoring by restricting to focal genera?
+
+
+```{r}
+dada_tax <- tax_table(ps0) %>% as_tibble %>%
+  add_column(sum = taxa_sums(ps0))
+dada_tax %>%
+  filter(! genus %in% focal_silva$genus) %>%
+  select(taxon, domain, phylum, genus, sum) %>%
+  print(n = Inf)
+```
+
+Some of the A1 sequences are Zymo; the other sequences may be some other
+contaminants that I didn't identify in the shotgun screen and some may be
+sequencing-center specific.
+
+
+## Notes
+
+Check what frac of amplicon reads are classified by the ~20 v2 refset - should
+be most.
+
+Related goals:
+
+1. Make species and strain level assignments to the degree possible based on my
+   prior knowledge of which strains we expect, and coabundance and distance
+   patterns
+2. Match ASVs from the same genome
+
+In some cases like E. coli, we can assign some ASVs to a strain, and some to
+(HS or Nissle).
+
+
+TODO: Make a better 16S reference set - perhaps using Silva 138 sequences; and
+manually curate, and make sure I have a good seq for each focal strain. 
+
+Question: Are focal strains always identified by NCBI taxid? What about the
+cases where the NCBI taxid I have is also a species taxid?
+
+### Procedure
+
+Goal is to map ASVs from focal genera to focal strains. (Later, check to see if
+we might have missed any focal ASVs due to unassigned genera). One ASV may
+come from multiple strains. Question: What is the primary focal-strain
+identifier?
+
+First, we aim to get a table that classifies the ASVs (or gives options) using
+just the sequence information. Our starting point for making this table is
+
+- The DADA2 Silva 138 taxonomy assignments w/ species
+- The list of possible strains (from the strain-data and silva tax table)
+- Close best matches to the extracted 16S seqs from the reference genomes
+
+I will first narrow down cases of multiply assigned species in the DADA2
+assignment by matching against the possible focal strains; also add a column
+with the focal strains of that genus. Take care with Staph and Bacillus, where
+we don't really know what the species are.
+
+Next, I will try to add classifications to ASVs that weren't already
+classified. I will do this case-by-case using exact and very close hits to the
+extracted refs and my knowledge of the strain/species candidates. For ASVs only
+assigned to genus at this point, add the list of focal strains at that genus as
+a list of candidates. Often, there will only be one, in which case we have
+assigned that strain. Create a column overall with the candidate strains for
+each after integrating all this information.
+
+At this point, we should have candidates for each ASV and our goal is to
+disambiguate and validate using co-variation in abundance, and ratios that are
+consistent with known 16S copy number of the strain.
+
+### Taxonomy notes
+
+We have multiple options for what identifiers we use for species and strains.
+I like the idea of using NCBI taxid as our fundamental strain identifier. But
+then, should we use the NCBI organism name as the corresponding common name?
+Other options are the GTDB or Silva species names, which differ in a few cases
+from the NCBI species name.
+
+
+GTDB vs. Silva taxonomy in the GTDB metadata - does this give Silva 138 tax?
+```{r}
+rnks <- c("domain", "phylum", "class", "order", "family", "genus", "species")
+tax <- gtdb %>%
+  select(assembly_accession, gtdb_taxonomy, ssu_silva_taxonomy) %>%
+  pivot_longer(-assembly_accession, names_to = "taxonomy") %>%
+  separate(value, into = rnks, sep = ";") %>%
+  mutate(across(all_of(rnks), str_replace, "^[a-z]__", ""))
+```
+```{r}
+tax %>% select(assembly_accession, taxonomy, phylum, genus) %>% head
+tax %>% select(assembly_accession, taxonomy, genus, species) %>% head
+tax %>% select(assembly_accession, taxonomy, genus, species) %>% tail
+```
+Based on the old Silva phylum name of "Bacteroidetes", it seems that an older
+version of Silva was used for these Silva classifications. I could perhaps get
+the 138 Silva assigments by searching on NCBI taxid in the Silva website.
+
+
+## Session info
+
+```{r}
+sessioninfo::session_info()
+```
+

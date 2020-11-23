@@ -1,0 +1,186 @@
+
+## Setup
+
+```{r}
+library(here)
+library(tidyverse)
+library(speedyseq)
+
+import::from(Biostrings, DNAString, DNAStringSet, readDNAStringSet, width,
+  complement, reverseComplement, vcountPattern)
+import::from(DECIPHER, TrimDNA)
+```
+
+```{r}
+my_psmelt <- function(physeq) {
+  speedyseq::psmelt(physeq, as = "tibble") %>%
+    rename(taxon = OTU, sample = Sample, abundance = Abundance)
+}
+as_tibble.phyloseq <- function(x) {
+  x %>% my_psmelt
+}
+as_tibble.sample_data <- function(x) {
+  x %>% as("data.frame") %>% as_tibble(rownames = "sample")
+}
+as_tibble.taxonomyTable <- function(x) {
+  x %>% as("matrix") %>% as_tibble(rownames = "taxon")
+}
+as_tibble.XStringSet <- function(x) {
+  x %>% as.character %>% enframe("taxon", "sequence")
+}
+```
+
+### Get focal ASVS
+
+```{r}
+sam <- here("output", "sample-data", "sample-data.Rds") %>% readRDS
+sam_ps <- sam %>% sample_data
+# DADA2-Silva138 taxonomy assignment for all A1 + A2 ASVs
+amp_tax <- readRDS(here("output/amplicon/taxonomy/",
+    "dada2-silva-v138-with-species.Rds")) %>%
+  tax_table
+# refseq for A1+A2 ASVs
+asvs <- amp_tax %>% 
+  taxa_names %>%
+  set_names %>%
+  DNAStringSet
+# Read in each count matrix, add sam + tax + seqs, then merge after to avoid
+# dropping any taxa
+amp_ps_list <- c(
+  A1 = here("output", "a1", "dada2", "seqtab-nochim-1.Rds"),
+  A2 = here("output", "a2", "dada2", "seqtab-nochim-1.Rds")
+) %>%
+  map(readRDS) %>%
+  map(otu_table, taxa_are_rows = FALSE) %>%
+  map(phyloseq, sam_ps, amp_tax, asvs)
+# Before merging, create new ASV names
+for (center_id in names(amp_ps_list)) {
+  taxa_names(amp_ps_list[[center_id]]) <- 
+    str_c("v2_", center_id, "_ASV", seq(ntaxa(amp_ps_list[[center_id]])))
+}
+ps <- do.call(merge_phyloseq, amp_ps_list)
+# Add source column to tax table
+tax_table(ps) <- tax_table(ps) %>%
+  as("matrix") %>%
+  as_tibble(rownames = "taxon") %>%
+  mutate(source = str_extract(taxon, "(?<=^v2_)A[1-2]")) %>%
+  tax_table
+ps
+```
+
+Filter to high-quality ASVs by requiring: Phylum assigned, total abundance >=
+100, and a width in the proper range for the target region.
+```{r}
+tax <- tax_table(ps) %>% 
+  as_tibble %>%
+  add_column(
+    width = refseq(ps) %>% width,
+    sum = taxa_sums(ps)
+  ) %>%
+  filter(
+    !is.na(phylum), !is.na(domain), # Note, domain filter should be unnecessary
+    sum >= 100, 
+    (source != "A2" | width >= 380) # Require A2 ASVs to be at least 380 bp long
+  )
+```
+
+```{r}
+f <- function(x) {
+  x %>% 
+    summary %>%
+    {tibble(name = names(.), value = as.numeric(.))}
+}
+tax %>%
+  with_groups(source, summarize, f(width)) %>%
+  pivot_wider(names_from = source)
+```
+
+```{r}
+ps0 <- prune_taxa(tax$taxon, ps)
+ntaxa(ps0)
+rm(tax)
+dada_tax <- tax_table(ps0) %>% as_tibble
+```
+
+### Silva database
+
+Load the Silva reference sequences and taxonomy,
+```{r}
+silva_seqs <- Biostrings::readDNAStringSet(
+  here("data/16s-taxonomy-databases/custom",
+    "silva-sequences-for-focal-genera.fasta.gz")
+)
+rnks <- c("domain", "phylum", "class", "order", "family", "genus", "organism_name")
+silva_seqs_tax <- tibble(name = names(silva_seqs)) %>%
+  separate(name, remove = FALSE, into = c("accession", "taxonomy"), sep = " ",
+    extra = "merge") %>%
+  separate(taxonomy, into = rnks, sep = ";")
+```
+
+Trim to the region spanning A1 and A2 targets, (currently not used)
+```{r}
+primer_list <- list(
+  A1 = c(
+    R1 = "GTGCCAGCMGCCGCGGTAA" %>% DNAString, 
+    R2 = "TAATCTWTGGGVHCATCAGG" %>% DNAString %>% complement
+  ),
+  A2 = c(
+    R1 = "CCTACGGGNGGCWGCAG" %>% DNAString, 
+    R2 = "GACTACHVGGGTATCTAATCC" %>% DNAString %>% reverseComplement
+  )
+)
+primers_for_joint_region <- c(R1 = primer_list$A2[["R1"]], R2 = primer_list$A1[["R2"]])
+silva_seqs_trimmed <- TrimDNA(
+  silva_seqs,
+  primers_for_joint_region[["R1"]],
+  primers_for_joint_region[["R2"]],
+  type = "sequences"
+)
+```
+
+Helper functions,
+```{r}
+# Look for exact hits of an asv to the seqs for a given genus
+exact_hits <- function(asv, genus = NULL, seq_db, tax_db, ...) {
+  stopifnot(identical(length(seq_db), nrow(tax_db)))
+  if (is.null(genus))
+    idx <- rep(1, length(seq_db))
+  else
+    idx <- tax_db$genus == genus
+  hits <- vcountPattern(asv, subject = seq_db[idx], ...)
+  tax_db[idx,][hits > 0,] %>%
+    select(organism_name) %>%
+    distinct
+}
+```
+
+## Get all exact hits for ASVs in the focal genera
+
+```{r}
+x <- ps0 %>% tax_table %>% as_tibble %>%
+  add_column(sequence = as.list(refseq(ps0))) %>%
+  filter(genus %in% silva_seqs_tax$genus) %>%
+  select(taxon, genus, sequence) %>%
+  print(n=2)
+```
+
+```{r}
+hits <- x %>%
+  mutate(hits = map2(sequence, genus, exact_hits, 
+      seq_db = silva_seqs, tax_db = silva_seqs_tax)) %>%
+  unnest(hits)
+```
+
+```{r}
+hits0 <- hits %>%
+  transmute(
+    across(sequence, map_chr, as.character), 
+    genus,
+    organism_name
+  )
+```
+
+```{r}
+saveRDS(hits0, here("output/amplicon", "silva-exact-hits.Rds"))
+```
+

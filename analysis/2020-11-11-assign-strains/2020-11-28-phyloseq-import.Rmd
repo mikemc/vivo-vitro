@@ -1,0 +1,174 @@
+
+### Libraries
+
+```{r}
+library(here)
+library(tidyverse)
+library(speedyseq)
+```
+
+```{r}
+my_psmelt <- function(physeq) {
+  speedyseq::psmelt(physeq, as = "tibble") %>%
+    rename(taxon = OTU, sample = Sample, abundance = Abundance)
+}
+as_tibble.phyloseq <- function(x) {
+  x %>% my_psmelt
+}
+as_tibble.sample_data <- function(x) {
+  x %>% as("data.frame") %>% as_tibble(rownames = "sample")
+}
+as_tibble.taxonomyTable <- function(x) {
+  x %>% as("matrix") %>% as_tibble(rownames = "taxon")
+}
+as_tibble.XStringSet <- function(x) {
+  x %>% as.character %>% enframe("taxon", "sequence")
+}
+```
+
+### Sample data
+
+```{r}
+sam <- here("output", "sample-data", "sample-data.Rds") %>% readRDS
+sam_ps <- sam %>% sample_data
+```
+
+### Focal strain information
+
+```{r}
+#> Focal strain identifiers
+focal_id <- here("output/strain-data/focal-strains.csv") %>%
+  read_csv %>%
+  glimpse
+#> joined with Silva taxonomy
+focal_silva <- here("output/strain-data/silva-taxonomy.csv") %>%
+  read_csv %>%
+  right_join(focal_id, by = "ncbi_taxid") %>%
+  filter(strain_group != "Computational control") %>%
+  mutate(ncbi_species = str_extract(ncbi_organism_name, "^[\\S]+ [\\S]+")) %>%
+  glimpse
+```
+
+### Amplicon data
+
+```{r}
+asv_assignments <- read_csv(here("output/amplicon", "asv-strain-assignments.csv"))
+```
+
+```{r}
+#> DADA2-Silva138 taxonomy assignment for all A1 + A2 ASVs with custom strain
+#> assignments
+amp_tax <- here("output/amplicon", "taxonomy-with-strain-assigments.Rds") %>%
+  readRDS %>%
+  tax_table
+#> Abundance matrix (a.k.a. OTU table)
+amp_otu <- c(
+  A1 = here("output", "a1", "dada2", "seqtab-nochim-1.Rds"),
+  A2 = here("output", "a2", "dada2", "seqtab-nochim-1.Rds")
+) %>%
+  map(readRDS) %>%
+  map(otu_table, taxa_are_rows = FALSE) %>%
+  do.call(merge_phyloseq, .)
+#> Combine with sample data and reference sequences
+amp_refseq <- amp_tax %>% taxa_names %>% set_names %>%
+  Biostrings::DNAStringSet()
+amp_ps <- phyloseq(amp_tax, amp_otu, amp_refseq, sam_ps)
+#> Check that all taxa and samples are kept
+stopifnot(setequal(taxa_names(amp_ps), taxa_names(amp_tax)))
+stopifnot(
+  setequal(
+    sample_names(amp_ps), 
+    sam %>% filter(library_strategy == "Amplicon") %>% pull(sample_id)
+  )
+)
+rm(amp_tax, amp_otu, amp_refseq)
+```
+
+Give succinct, informative ASV names.
+```{r}
+tt <- tax_table(amp_ps) %>% 
+  as_tibble %>%
+  add_column(sum = taxa_sums(amp_ps) %>% unname) %>%
+  with_groups(source, mutate, 
+    idx = row_number(), 
+    rank = rank(-sum, ties.method = "first")) %>%
+  mutate(new_name = str_glue("v2_{source}_ASV{idx}"))
+stopifnot(identical(tt$idx, tt$rank))
+stopifnot(identical(tt$taxon, taxa_names(amp_ps)))
+taxa_names(amp_ps) <- tt$new_name
+rm(tt)
+```
+
+### Shotgun data
+
+```{r}
+#> To be compatible with the amplicon taxonomy, we'll use the Silva taxonomy for
+#> the shotgun references,
+shot_tax <- focal_silva %>% 
+  mutate(species = str_extract(display_name, "^[\\S]+ [\\S]+")) %>%
+  select(ref_assembly_accession, domain:genus, species, 
+    organism = display_name, strain_group) %>%
+  add_column(source = "RefSeq") %>%
+  tax_table
+shot_counts <- here("output/shotgun/v2/2020-10-12-count-matrix.Rds") %>%
+  readRDS %>%
+  otu_table(taxa_are_rows = FALSE)
+# Use dummy reference sequences to allow joining with ASVs
+shot_refseq <- rep("", ntaxa(shot_counts)) %>%
+  set_names(taxa_names(shot_counts)) %>%
+  Biostrings::DNAStringSet()
+shot_ps <- phyloseq(shot_counts, shot_refseq, shot_tax, sam_ps)
+rm(shot_counts, shot_refseq, shot_tax)
+```
+
+### Combine and filter
+
+```{r}
+ps <- merge_phyloseq(amp_ps, shot_ps) %>% print
+#> checks
+all_taxa <- union(taxa_names(amp_ps), taxa_names(shot_ps))
+all_samples <- union(sample_names(amp_ps), sample_names(shot_ps))
+stopifnot(setequal(all_taxa, taxa_names(ps)))
+stopifnot(setequal(all_samples, sample_names(ps)))
+stopifnot(setequal(sam$sample_id, sample_names(ps)))
+```
+
+Filter to high-quality ASVs by requiring: Phylum assigned, total abundance >=
+100, and a width in the proper range for the target region. This will also drop
+our computational controls that had sufficiently few hits.
+```{r}
+tax <- tax_table(ps) %>% 
+  as_tibble %>%
+  add_column(
+    width = refseq(ps) %>% Biostrings::width(),
+    sum = taxa_sums(ps)
+  ) %>%
+  filter(
+    !is.na(phylum), !is.na(domain), # Note, domain filter should be unnecessary
+    sum >= 100, 
+    (source != "A2" | width >= 380) # Require A2 ASVs to be at least 380 bp long
+  )
+
+  #> Check the width sof the kept ASVs:
+f <- function(x) {
+  x %>% 
+    summary %>%
+    {tibble(name = names(.), value = as.numeric(.))}
+}
+tax %>%
+  with_groups(source, summarize, f(width)) %>%
+  pivot_wider(names_from = source)
+#> Filtered phyloseq object
+ps0 <- prune_taxa(tax$taxon, ps) %>%
+  prune_samples(sample_sums(.) > 1e3, .)
+ntaxa(ps0); ntaxa(ps0) / ntaxa(ps)
+rm(tax)
+```
+
+### Save
+
+```{r}
+saveRDS(ps0, here("output/phyloseq/2020-11-28-phyloseq.Rds"))
+```
+
+

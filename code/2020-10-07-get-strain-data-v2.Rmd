@@ -1,0 +1,321 @@
+
+
+Goals: Get information about our strains and our reference genomes.
+
+- Phenotype information from JGI IMG/M (Gram status, sporulation)
+
+- Info about reference genomes from the GTDB; also, use the GTDB to get
+  taxonomy and a phylogeny
+
+- Estimate 16S copy number using the rrnDB + GTDB
+
+
+I want something that is like a combination of strain-pheno-geno-tax.Rds and
+reference-genome-metadata.Rds. Each row corresponds to a strain. For
+experimental strains, The NCBI taxid will be for the experimental strain and
+may differ from the ncbi taxid for the chosen reference genome.
+
+## Setup
+
+```{r}
+library(tidyverse)
+library(here)
+library(fs)
+```
+
+Load metadata for the experimental strains, the reference genomes, and the Zymo
+strains, as well as the v1 strain metadata.
+```{r}
+exp_strains <- here("data/strain-data", "experimental-strains.csv") %>%
+  read_csv %>%
+  select(ncbi_taxid, ncbi_organism_name, strain_group)
+zymo_strains <- here("data/zymo/table2.csv") %>% 
+  read_csv(col_types = "ccdidicc") %>%
+  janitor::clean_names()
+ref_genomes <- here("output/strain-data/", "reference-genome-metadata.Rds") %>%
+  readRDS
+v1_strain_data <- here("output/strain-data/v1/", "strain-pheno-geno-tax.Rds") %>%
+  readRDS
+```
+
+TODO: Add Zymo strains
+
+## Determine the focal strain set and match with reference genomes
+
+The table `exp_strains` contains the NCBI taxid and NCBI organism names for the
+experimental strains: Strains cultured in the Kleiner lab and put in the
+inoculum or (in the case of T.  mobilis) used as our positive control.
+```{r}
+exp_strains
+```
+The table `ref_genomes` has one row per reference genome, with information from
+the GTDB metadata for the set of reference genomes.
+```{r}
+ref_genomes %>%
+  select(ncbi_taxid, ncbi_organism_name, genome_group) %>%
+  arrange(genome_group) %>%
+  print(n = Inf)
+```
+The `genome_group == "Experiment"` strains correspond to the strains in
+`exp_strains`; however, for E. rectale the `ncbi_taxid` and
+`ncbi_organism_name` differ between the two tables because I chose a reference
+genome for a nominally different strain (in the sense of a different NCBI
+organism name and taxid), on the basis of genome quality and kmer
+representation; see
+"analysis/2020-09-18-shotgun-testing/fetch-and-compare-genomes.Rmd".
+```{r}
+setdiff(exp_strains$ncbi_taxid, ref_genomes$ncbi_taxid)
+exp_strains %>%
+  filter(str_detect(ncbi_organism_name, "Eubacterium"))
+ref_genomes %>%
+  filter(str_detect(ncbi_organism_name, "Eubacterium")) %>%
+  select(ncbi_taxid, ncbi_organism_name)
+```
+Note that taxonomy, NCBI species taxid, and GTDB representative agree for the
+two E. rectale strains.
+
+As a starting point, I want a table with one row per strain in `ref_genomes`
+but which distinguishes between the NCBI taxid/name of the strain and of the
+reference genome used for the strain. These will be identical except for E.
+rectale.
+
+```{r}
+e_rectale <- exp_strains %>%
+  filter(str_detect(ncbi_organism_name, "Eubacterium"))
+strain_data <- ref_genomes %>%
+  select(ncbi_species_taxid, assembly_accession, ncbi_taxid,
+    ncbi_organism_name, genome_group) %>%
+  rename_with(~str_c("ref_", .), .cols = -c("ncbi_species_taxid")) %>%
+  mutate(
+    ncbi_taxid = case_when(
+      str_detect(ref_ncbi_organism_name, "Eubacterium") ~ e_rectale$ncbi_taxid,
+      TRUE ~ ref_ncbi_taxid
+    ),
+    ncbi_organism_name = case_when(
+      str_detect(ref_ncbi_organism_name, "Eubacterium") ~
+        e_rectale$ncbi_organism_name,
+      TRUE ~ ref_ncbi_organism_name
+    )
+  ) %>%
+  relocate(ncbi_taxid, ncbi_species_taxid, ncbi_organism_name)
+```
+Add a more fine-grained and informative strain group classification and
+simplified versions of the NCBI organism name to use as a display name in
+figures and tables. The display name will have the form "Genus species",
+dropping the strain designation, except for E. coli, where we need to
+distinguish between the two strains. It will also remove the braces around
+"Eubacterium" and "Clostridium".
+```{r}
+strain_data1 <- strain_data %>%
+  mutate(
+    display_name = case_when(
+      str_detect(ncbi_organism_name, "Escherichia") ~ ncbi_organism_name,
+        # str_extract(ncbi_organism_name, "^(\\S+\\s+){2}\\S+"),
+      TRUE ~ str_extract(ncbi_organism_name, "^\\S+ \\S+") %>%
+        str_replace_all("[\\[\\]]", "")
+    ),
+    strain_group = case_when(
+      str_detect(ncbi_organism_name, "Thioflavicoccus") ~ "Experimental control",
+      !str_detect(ncbi_organism_name, "Thioflavicoccus") &
+        ref_genome_group == "Experiment" ~ "Inoculum",
+      ref_genome_group == "Control" ~ "Computational control",
+      ref_genome_group == "Contaminant" & 
+        !str_detect(ncbi_organism_name, "Escherichia") ~ "Inoculum contaminant",
+      ref_genome_group == "Contaminant" &
+        str_detect(ncbi_organism_name, "Escherichia") ~ "Mouse contaminant"
+    )
+  ) %>%
+  select(-ref_genome_group) %>%
+  arrange(strain_group, display_name)
+strain_data1 %>% 
+  select(strain_group, display_name) %>%
+  print(n=Inf)
+```
+Let's also add the Zymo strains to this table. I'm not sure whether we have an
+old or new Zymo lot, so I don't know for sure the strain identifiers.
+```{r}
+#> tmp <- zymo_strains %>%
+#>   transmute(display_name = str_c(species, " Zymo"), strain_group = "Zymo")
+#> strain_data1 <- bind_rows(strain_data1, tmp)
+```
+
+Note: Typically there are two distinct organism and species-level taxids, but
+not always:
+```{r}
+strain_data1 %>%
+  filter(ncbi_taxid == ncbi_species_taxid)
+```
+
+```{r}
+write_csv(strain_data1, here("output/strain-data", "focal-strains.csv"))
+```
+
+HERE.
+
+Next: Add the relevant reference-genome information:
+
+- ref assembly accession, size, other info?
+
+Other stuff is strain specific:
+- ncbi_species_taxid, gtdb representative, gtdb taxonomy, ncbi taxonomy
+
+I also want the 138 silva taxonomy. This will be harder to get.
+
+#### Silva taxonomy
+
+Could manually search by NCBI taxid at https://www.arb-silva.de/search/. Have
+to do searches one by one.
+
+```{r}
+ncbi_taxids <- strain_data1 %>% pull(ncbi_taxid)
+```
+
+The "Full metadata" files provided by Silva link NCBI taxids with Silva 16S
+accesions.
+```{r}
+silva <- here(
+  "data/16s-taxonomy-databases/silva-138",
+  "SILVA_138_SSURef.full_metadata.gz"
+) %>%
+  data.table::fread() %>%
+  as_tibble
+# silva_tax <- here(
+#   "data/16s-taxonomy-databases/silva-138",
+#   "tax_slv_ssu_138.txt.gz"
+# ) %>%
+#   data.table::fread() %>%
+#   as_tibble
+silva_ref_tax <- here(
+  "data/16s-taxonomy-databases/silva-138",
+  "SILVA_138_SSURef_tax_silva.fasta.gz-headers.txt"
+) %>%
+  read_lines %>%
+  str_split_fixed(" ", n = 2) %>%
+  as_tibble(.name_repair = "universal") %>%
+  rename(accession = ...1, taxonomy = ...2) %>%
+  mutate(
+    across(accession, str_sub, 2),
+    accession_base = str_extract(accession, "^[^\\.]+")
+  )
+```
+
+Subset to entries matching our strain taxids,
+```{r}
+silva1 <- silva %>%
+  filter(tax_xref_ncbi %in% ncbi_taxids)
+silva1$acc %>% head
+```
+Which of our strains are missed?
+```{r}
+missed_taxids <- setdiff(ncbi_taxids, silva1$tax_xref_ncbi)
+missed_strains <- strain_data1 %>%
+  filter(ncbi_taxid %in% missed_taxids) %>%
+  select(starts_with("ncbi")) %>%
+  print
+```
+
+Perhaps we can find these strains by other means?
+```{r}
+x <- silva %>%
+  filter(str_detect(description, "Roseburia intestinalis")) %>%
+  select(acc, description, tax_xref_ncbi)
+x$description
+# silva_ref_tax %>%
+#   filter(str_detect(description, "Roseburia"))
+```
+In this case, there are entries for Roseburia L1-82 under the taxid for the
+species Roseburia intestinalis. For getting species-level taxonomy, we could
+just use the species taxid as well as the strain taxids
+```{r}
+x <- silva %>%
+  filter(str_detect(description, "Bacillus thuringiensis.+JM")) %>%
+  select(acc, description, tax_xref_ncbi)
+x$description
+# silva_ref_tax %>%
+#   filter(str_detect(description, "Roseburia"))
+```
+
+
+```{r}
+silva2 <- silva %>%
+  filter(tax_xref_ncbi %in% c(ncbi_taxids, missed_strains$ncbi_species_taxid))
+```
+
+
+Parse taxonomy:
+
+```{r}
+rnks <- c("domain", "phylum", "class", "order", "family", "genus", "organism_name")
+silva_ref_tax1 <- silva_ref_tax %>%
+  filter(accession_base %in% silva2$acc) %>%
+  select(accession = accession_base, taxonomy) %>%
+  separate(taxonomy, into = rnks, sep = ";")
+```
+
+```{r}
+focal_silva_tax <- silva2 %>%
+  select(ncbi_taxid = tax_xref_ncbi, silva_accession = acc) %>%
+  left_join(silva_ref_tax1, by = c(silva_accession = "accession")) %>%
+  select(-silva_accession) %>%
+  distinct %>%
+  arrange(organism_name)
+focal_silva_tax %>%
+  select(phylum, genus, organism_name) %>%
+  print(n=Inf)
+```
+
+Note the diversity of assignments for Bacillus thuringiensis. Let's use the
+GTDB metadata to try to narrow down which is the right onie.
+
+(link to GTDB webpage:
+https://gtdb.ecogenomic.org/genomes?gid=GCF_000503755.1)
+
+```{r}
+ref_genomes %>%
+  filter(str_detect(ncbi_organism_name, "Bacillus thuringiensis")) %>%
+  select(ends_with("taxonomy")) %>%
+  as.list
+focal_silva_tax %>%
+  filter(str_detect(organism_name, "Bacillus thuringiensis")) %>%
+  select(phylum, family, genus, organism_name)
+```
+
+So it looks like the the Bacillus classfication is the right one. Let's remove
+the others, and adjust the taxids in `focal_silva_tax` to always be the
+organism-level taxids in `strain_data1` (currently there is a mix of species
+and organism-level ids)
+```{r}
+x <- focal_silva_tax %>%
+  filter(
+    ifelse(str_detect(organism_name, "Bacillus thuringiensis"), 
+      genus == "Bacillus", 
+      TRUE
+    )
+  ) %>%
+  rename(tmp_taxid = ncbi_taxid)
+# Remember that in 2 cases, the ncbi_taxid and ncbi_species_taxid are the same
+y <- strain_data1 %>% select(ncbi_taxid, ncbi_species_taxid)
+z <- x %>%
+  left_join(y, by = c("tmp_taxid" = "ncbi_taxid")) %>%
+  left_join(y, by = c("tmp_taxid" = "ncbi_species_taxid"))
+z %>% select(ends_with("taxid")) %>% print(n=Inf)
+z1 <- z %>%
+  mutate(
+    ncbi_taxid = ifelse(!is.na(ncbi_taxid), ncbi_taxid, tmp_taxid),
+    ncbi_species_taxid = ifelse(!is.na(ncbi_species_taxid), ncbi_species_taxid, 
+      tmp_taxid)
+    )
+z1 %>% select(ends_with("taxid")) %>% print(n=Inf)
+focal_silva_tax_final <- z1 %>%
+  select(ncbi_taxid, domain:genus) %>%
+  arrange(phylum, class, order, family, genus)
+```
+
+```{r}
+write_csv(focal_silva_tax_final, 
+  here("output", "strain-data", "silva-taxonomy.csv"))
+```
+
+TODO: Also write the Silva accessions so can get the sequences? (or just do
+that in this Rmd)
+
