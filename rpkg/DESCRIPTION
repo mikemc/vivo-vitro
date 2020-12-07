@@ -1,0 +1,31 @@
+Package: vivovitro
+Title: Vivo-vitro helpers
+Version: 0.0.0.9000
+Authors@R: 
+    person(given = "Michael",
+           family = "McLaren",
+           role = c("aut", "cre"),
+           email = "m.mclaren42@gmail.com",
+           comment = c(ORCID = "0000-0003-1575-473X"))
+Description: Helper functions for analyzing the Vivo-vitro dataset.
+License: MIT + file LICENSE
+Imports:
+    dplyr,
+    generics,
+    magrittr,
+    metacal,
+    phyloseq,
+    purrr,
+    tibble,
+    rlang,
+    tidyr,
+    data.table,
+    forcats,
+    stringr,
+    abind
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.1
+Suggests: 
+    testthat
