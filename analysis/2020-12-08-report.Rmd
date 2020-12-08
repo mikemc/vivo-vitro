@@ -1,0 +1,843 @@
+---
+title: "Updates on bias estimation in the Vivo-vitro experiment"
+author: Michael McLaren
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(progress = TRUE, verbose = TRUE)
+# Global chunk options
+knitr::opts_chunk$set(
+  include = FALSE, echo = FALSE,
+  warning = TRUE, message = FALSE, 
+  fig.width = 7, fig.height = 7,
+  collapse = TRUE, comment = "#>",
+  #> cache = TRUE, autodep = TRUE,
+  cache.comments = FALSE
+)
+```
+
+```{r}
+library(tidyverse)
+library(here)
+library(speedyseq)
+
+library(data.table)
+
+library(kableExtra)
+
+library(cowplot)
+library(patchwork)
+theme_set(theme_cowplot())
+library(ggridges)
+library(ggbeeswarm)
+library(ggdist)
+
+library(generics)
+
+library(metacal)
+devtools::load_all(here("rpkg"), export_all = FALSE, helpers = FALSE)
+```
+
+```{r}
+my_psmelt <- function(physeq) {
+  speedyseq::psmelt(physeq, as = "tibble") %>%
+    rename(taxon = OTU, sample = Sample, abundance = Abundance)
+}
+as_tibble.phyloseq <- function(x) {
+  x %>% my_psmelt
+}
+as_tibble.sample_data <- function(x) {
+  x %>% as("data.frame") %>% as_tibble(rownames = "sample")
+}
+as_tibble.taxonomyTable <- function(x) {
+  x %>% as("matrix") %>% as_tibble(rownames = "taxon")
+}
+as_tibble.XStringSet <- function(x) {
+  x %>% as.character %>% enframe("taxon", "sequence")
+}
+my_kbl <- function(x, position = "center", ...) {
+  kbl(x, ...) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+    full_width = FALSE, position = position)
+}
+```
+
+```{r load-data, cache = TRUE}
+ps <- here("output/phyloseq/2020-11-28-phyloseq.Rds") %>% 
+  readRDS
+## Adjust sample data
+sample_data(ps) <- sample_data(ps) %>% as_tibble %>%
+  mutate(
+    across(extraction_batch, fct_relabel, ~str_c("B", .)),
+    across(extraction_protocol, fct_relabel, ~str_c("E", .)),
+    protocol = extraction_protocol:center_id,
+    batch_protocol = fct_other(extraction_batch:extraction_protocol:center_id,
+      drop = c("B1:E1:A1", "B2:E1:A1"), other_level = "Ref") %>%
+      fct_relevel("Ref"),
+    # Center-id that combines A1 and S1 into a "Ref" level
+    center_id_ref = fct_other(center_id, drop = c("A1", "S1"), 
+      other_level = "Ref") %>%
+      fct_relevel("Ref")
+  ) %>%
+  sample_data
+assignments <- tax_table(ps) %>% 
+  as_tibble %>%
+  mutate(across(c(organism, strain_group), str_split, "; ")) %>%
+  unnest(c(organism, strain_group))
+focal_taxa <- assignments %>%
+  filter(
+    strain_group %in% c("Inoculum", "Mouse contaminant"),
+    species != "Faecalibacterium prausnitzii",
+    species != "Eubacterium rectale",
+  ) %>%
+  pull(taxon)
+ps0 <- ps %>%
+  prune_taxa(focal_taxa, .) %>%
+  prune_samples(sample_sums(.) > 1e3, .) %>%
+  subset_samples(specimen_type == "Fecal") %>%
+  tax_glom("species")
+taxa_names(ps0) <- tax_table(ps0)[,"species"] %>% c
+taxa_names(ps0)
+tree <- here("output/strain-data/gtdb-representatives.tree") %>%
+  ape::read.tree()
+focal_id <- here("output/strain-data/focal-strains.csv") %>%
+  read_csv
+tree$tip.label <- focal_id$display_name[
+  match(
+    tree$tip.label,
+    focal_id$ref_assembly_accession
+  )] %>%
+  str_replace(" HS$", "")
+ps0 <- merge_phyloseq(ps0, tree)
+# Strain metadata (currently from v1 table)
+strains <- here("output/strain-data", "v1/strain-pheno-geno-tax.Rds") %>%
+  readRDS %>%
+  mutate(taxon = ncbi_species_display_name) %>%
+  filter(taxon %in% taxa_names(ps0)) %>%
+  left_join(tax_table(ps0) %>% as_tibble, by = "taxon") %>%
+  mutate(
+    across(taxon, factor, levels = taxa_names(ps0)),
+    across(gram_stain, str_replace, "Gram", "")
+  )
+# genome bias: 16s copy numbers and sizes
+genome_bias <- strains %>%
+  filter(taxon %in% taxa_names(ps0)) %>%
+  select(
+    taxon,
+    ssu_count,
+    reference_genome_size
+  ) %>%
+  mutate(
+    across(-c(taxon), center_elts)
+  )
+sam <- sample_data(ps0) %>% as_tibble
+tree <- phy_tree(ps0)
+```
+
+Phyloseq object subset to just the fecal samples and 11 focal species,
+```{r, include = TRUE, echo = TRUE}
+ps0
+```
+```{r, include = TRUE}
+sam %>% count(specimen_type) %>% my_kbl
+```
+
+- *E. rectale* and *F. prausnitzii* are excluded
+- The two *E. coli* strains are aggregated to the species level
+
+and 16 batch-protocol combinations (Extraction batch X Extraction protocol X
+Sequencing center),
+
+```{r, include = TRUE}
+sam %>% count(extraction_batch) %>% my_kbl(position = "float_left")
+sam %>% count(extraction_protocol) %>% my_kbl(position = "float_left")
+sam %>% count(center_id, library_strategy) %>% my_kbl(position = "float_left")
+```
+
+```{r, eval = FALSE, include = FALSE}
+strains %>%
+  select(gram_stain, phylum, taxon) %>% 
+  arrange(desc(taxon)) %>%
+  my_kbl
+```
+
+```{r, include = TRUE, fig.dim = c(9,5)}
+lbls <- strains %>% 
+  arrange(taxon) %>%
+  transmute(label = str_glue("({gram_stain}) {phylum} > {taxon}")) %>%
+  pull(label)
+tree0 <- tree
+tree0$tip.label <- lbls
+plot(tree0)
+rm(lbls, tree0)
+```
+
+
+## Absolute vs. relative changes in log bias
+
+```{r, eval = FALSE}
+# Simulate 20 taxa, 10 specimens, 2 protocols, 2 conditions, 2 technical
+# replicates. First simulation: change in bias comparable to bias; second, it
+# is about 25% less
+sim1 <- simulate_bias_dataset(
+  n = c(20, 10, 2, 2, 2),
+  sd = c(1, 1, 0.2, 1, 0.2)
+)
+sim2 <- simulate_bias_dataset(
+  n = c(20, 10, 2, 2, 2),
+  sd = c(1, 1, 0.2, 0.25, 0.2)
+)
+#> fit1 <- 
+#> fit2 <- 
+```
+
+\DeclareMathOperator{\clr}{clr}
+
+In our last meeting, I argued that not just the absolute change in log-bias
+between the fecal and inoculum samples, but also the relative change, mattered
+for the goals of the Vivo-vitro experiment. Here is a clearer explanation of my
+reasoning. The bottom line is that the change in bias between control and
+target sample types determines the remaining compositional error after
+calibration. As long as the change in bias between sample types is smaller than
+the bias within the target sample type, calibration reduces compositional
+error.
+
+Consider calibration of target samples that are measured by a protocol with
+bias vector (i.e., vector of relative efficiencies) $B$. However, due to
+differences between the control samples and the target samples, our estimate of
+bias $\hat B$ differs from the true bias by $\Delta$: $\clr \hat B = \clr B +
+\clr \Delta$. Consider a target sample with actual and observed relative
+abundances given by $A$ and $O$, such that $\clr O = \clr A + \clr B$. When we
+use $\hat B$ to calibrate there will be a remaining error given by $\Delta$.
+
+$$
+\begin{align}
+  \clr \hat A &= \clr O - \clr \hat B 
+  \\&= \clr O - (\clr B + \clr \Delta)
+  \\&= \clr A - \clr \Delta
+\end{align}
+$$
+
+Calibration has changed the measurement error, as quantified by the difference
+between the true and estimated value of $\clr A$, from $\clr B$ to $\clr
+\Delta$. Therefore, even if the difference in bias between the control and
+target samples, $\Delta$, is substantial, if it is smaller in magnitude than
+the bias $B$ then calibration still leads to a significantly more accurate
+estimate of relative abundances.
+
+## Visualize protocol similarity
+
+```{r, echo = TRUE, include = TRUE}
+sam %>% count(batch_protocol) %>% head
+fit1 <- complm(
+  ps0 %>% transform_sample_counts(~. + 1),
+  ~ 0 + specimen_id + batch_protocol,
+  boot = FALSE,
+  clusters = sample_data(ps0)$specimen_id,
+  strata = sample_data(ps0)$extraction_batch
+)
+X <- model.matrix(terms(fit1), model.frame(fit1))
+t(head(X))
+```
+
+To visualize differential bias while still getting a feel for the variability
+in the raw data, we can work with the observed data after subtracting the
+corresponding estimated specimen effects.
+```{r, echo = TRUE, include = TRUE}
+specimens <- str_c("specimen_id", fit1$model$specimen_id)
+otu <- otu_table(fit1$observed - coef(fit1)[,specimens], taxa_are_rows = TRUE)
+```
+
+PCA with equal weighting to each batch:protocol combination,
+```{r}
+sam <- sample_data(ps0) %>% as_tibble
+sample_weights <- sam %>%
+  group_by(extraction_batch, extraction_protocol, center_id) %>%
+  mutate(weight = 1 / n()) %>%
+  pull(weight)
+pca <- ade4::dudi.pca(t(otu), row.w = sample_weights, scale = FALSE, 
+  scannf = FALSE, nf = 6)
+#> screeplot(pca)
+#> pca %>% summary
+prop_var <- pca$eig %>% {. / sum(.)} %>% round(2) * 100
+pcatb <- pca$li[,1:4] %>%
+  as_tibble(rownames = "sample") %>%
+  rename_with(str_replace, everything(), "Axis", "PC") %>%
+  left_join(sam, by = "sample")
+```
+
+```{r, include = TRUE, fig.dim = c(6, 5.5) * 1.8}
+p1 <- pcatb %>%
+  ggplot(aes(PC1, PC2, color = extraction_protocol:center_id)) +
+  geom_text(aes(label = specimen_id)) +
+  scale_color_brewer(type = "qual", palette = 3) +
+  scale_shape_manual(values = c(16, 1, 4, 8)) +
+  labs(
+    x = str_glue('PC1 [{prop_var[1]}%]'),
+    y = str_glue('PC2 [{prop_var[2]}%]'),
+    color = "Extraction:Sequencing"
+  ) +
+  facet_wrap(~extraction_batch, ncol = 1, labeller = label_both) +
+  coord_fixed(ratio = prop_var %>% {.[2] / .[1]})
+p1 +
+  ggforce::geom_mark_ellipse(
+    aes(
+      # group = str_c("P", extraction_protocol," + " library_strategy),
+      # label = str_c("P", extraction_protocol," + " library_strategy)
+      group = extraction_protocol:library_strategy,
+      label = str_glue("{extraction_protocol}:{library_strategy}"),
+    )) +
+  plot_annotation(
+    title = "Observed bias among extraction:sequencing combinations",
+    subtitle = "PCA of CLR observations after subtracting specimen composition (for an arbitrary reference protocol)")
+```
+
+```{r, eval = FALSE}
+ggsave(here("output/figures", "2020-12-01-pca.pdf"),
+  units = "in", width = 6, height = 5.5, scale = 1.8)
+```
+
+Notes
+
+* Because the specimen compositions vary only slightly, a similar pattern is be
+  seen from PCA using the original observations, with some additional structure
+  within the protocol clusters.
+* Including E. rectale leads to a split within clusters between male and female
+  mice consistenly (batch 1) and less consistently (batch 2)
+* The PCA indicates a possible mislabeling of samples in Batch 2.
+* These compositions are in based on insert (read-pair) counts; therefore
+  Amplicon:Shotgun bias of the form (16S copy number / genome length) is
+  expected
+
+From email:
+The PCA is showing a type of analysis/plot I mentioned in our call last week as
+a simple graphical way of visualizing bias in the raw observations. Starting
+from the observations as CLR vectors I subtract out the specimen effect from
+each sample (i.e., the composition that would have been measured by the
+reference protocol E1:A1); under the MWC model, all that is left is the
+specimen-independent, protocol-associated effects. Here you can see that on the
+whole, the bias associated with extraction is roughly independent of sequencing
+center and vice versa, at least within an extraction batch, and the bias
+associated with extraction protocol and sequencing strategy (amplicon vs
+shotgun) are much larger than any bias between sequencing centers of the same
+strategy.
+
+## Differential extraction bias across centers
+
+Question: Is differential extraction bias consistent across different
+sequencing protocols/centers? Strategy: Estimate the log-bias vector (P2 - P1 |
+Center) for each of the four sequencing centers. For now, restrict to just the
+first extraction batch.
+
+I will model the observed clr value of the i-th taxon with the linear model of
+the form `~ 0 + specimen_id + center_id + extraction_protocol:center_id`,
+
+```{r, echo = TRUE, include = TRUE, cache = TRUE}
+fit2 <- ps0 %>%
+  transform_sample_counts(~. + 1) %>%
+  subset_samples(extraction_batch == "B1") %>%
+  complm(
+    .,
+    ~ 0 + specimen_id + center_id + extraction_protocol:center_id,
+    boot = TRUE,
+    clusters = sample_data(.)$specimen_id
+  )
+```
+
+Check the head of the model matrix:
+```{r, echo = TRUE, include = TRUE}
+X <- model.matrix(terms(fit2), model.frame(fit2))
+t(head(X))
+```
+
+The specimen terms denote the clr-composition measured by the reference
+protocol, which here is E1:A1. The `center_id` main effect terms capture the
+differential bias between that center and A1 under the E1 protocol. The
+interaction terms give the differential extraction bias (E2/E1) in the given
+sequencing center. To see why the interaction terms are the E2/E1 differential
+bias: Consider comapring a specimen 5, A2:E1 sample to a specimen 5, A2:E2
+sample; the only difference in the mean model is the addition of the
+coefficient for the `center_idA2:extraction_protocolE2` term.
+
+```{r, eval = FALSE, include = TRUE, fig.dim = c(8, 4) * 1.2}
+coef(fit2, boot = TRUE) %>% 
+  data.table::as.data.table(key = ".draw") %>%
+  filter(str_detect(term, "protocol")) %>%
+  mutate(
+    across(response, factor, levels = taxa_names(ps0)),
+  ) %>%
+  ggplot(aes(value, response, color = term)) +
+  # facet_wrap(~term) +
+  scale_color_brewer(type = "qual", palette = "Paired") +
+  # geom_vline(xintercept = 0, color = "grey") +
+  stat_pointinterval(position = position_dodge(width = 0.5)) +
+  plot_annotation(
+    title = "Differential extraction bias (P2:P1) conditional on sequencing center"
+  )
+```
+
+```{r, include = TRUE, fig.dim = c(8, 4) * 1.2}
+# For outside communication:
+tt <- tax_table(ps0) %>% as_tibble %>% 
+  transmute(response = taxon, 
+    gram = ifelse(phylum %in% c("Firmicutes", "Actinobacteriota"), "+", "-"),
+    label = str_glue("({gram}) {phylum} > {taxon}"))
+x <- coef(fit2, boot = TRUE) %>% 
+  data.table::as.data.table(key = ".draw") %>%
+  filter(str_detect(term, "protocol")) %>%
+  left_join(tt, by = "response") %>%
+  mutate(
+    across(response, factor, levels = taxa_names(ps0)),
+    across(label, fct_reorder, as.integer(response)),
+    center = str_extract(term, "(?<=center_id)[^:]+")
+  )
+p <- x %>%
+  ggplot(aes(value / log(2), label, color = center)) +
+  # facet_wrap(~term) +
+  scale_color_brewer(type = "qual", palette = "Paired") +
+  # geom_vline(xintercept = 0, color = "grey") +
+  stat_pointinterval(.width = 0.90, position = position_dodge(width = 0.5)) +
+  labs(y = NULL, x = "log2 relative efficiency") +
+  expand_limits(x = -2) +
+  theme_minimal_hgrid() +
+  theme(axis.text.y = element_text(hjust = 0))
+p +
+  plot_annotation(
+    title = "Differential extraction bias conditional on sequencing center",
+    #> subtitle = "Only differences between "
+    subtitle = "Efficiencies are relative to the average taxon (i.e., they are centered log ratios)"
+  )
+```
+
+```{r, eval = FALSE}
+ggsave(here("output/figures",
+    "2020-12-01-extraction-bias-conditional-on-sequencing-center.pdf"),
+  units = "in", width = 8, height = 4, scale = 1.2)
+```
+
+- This is for extraction batch 1
+- I am leaving out E. rectale since it appears to violate the model (it does
+  not have a consistent differential bias among specimens within a batch)
+- Taxa are ordered phylogenetically, and major grouping is shown by phylum
+  names. A Bacteroides:Firmicutes bias is apparent, which is perhaps to be
+  expected given the known differences between Gram+/- regarding extraction
+- The chosen reference tax(a/on) doesn't affect how we interpret differences
+  between values of different taxa within a center; however, it does affect our
+  interpretation of differences between values between centers.
+
+From email:
+
+> The second figure shows estimated differential extraction bias within each
+sequencing center. The taxa are ordered by phylogeny and labeled by phylum and
+Gram type (+/-). Note, Gram type is confounded with phylum - the Actinobacteria
+and Firmicutes species are + and the rest are -. There are at least 2 big
+takeaways: 1) Consistent with the PCA, you can see that differential extraction
+bias is fairly consistent across sequencing centers and 2) differential
+extraction bias is heavily associated with phylogeny and Gram type.
+
+### Mutually consistent interpretations
+
+From email:
+
+> There are still some challenges to interpretation posed by the relative
+nature of bias; for example, the difference you point to in Akkermansia
+muciniphila (the Verrucomicrobiota) could be an artefact of what's happening
+with all the other taxa (though I doubt it). The Bacteroides taxa are another
+good example: They all have a higher efficiency in A1 relative to the average
+taxon, but this is perhaps being driven by lower absolute A1 efficiencies in
+Akkermansia, Marvinbryantia, etc.
+
+> The core interpretability challenge with this plot can perhaps be summarized
+as: I could shift all of the efficiency values of a given sequencing center by
+a fixed amount (e.g. so that the Bacteroidetes values line up across centers)
+without changing the implied bias, but it changes the suggested interpretation
+
+To demonstrate this interpretability challenge, we can view the same estimates
+with different taxonomic references.
+```{r}
+x <- list(
+  All = taxa_names(ps0),
+  `Bacteroides spp.` = taxa_names(ps0) %>% str_subset("Bacteroides"),
+  `Akkermansia muciniphila` = taxa_names(ps0) %>% str_subset("Akkermansia")
+) %>%
+  enframe("reference_label", "reference") %>%
+  mutate(
+    across(reference_label, fct_inorder),
+    coef_draws = map(reference, 
+      ~coef(fit2, boot = TRUE) %>% 
+        set_ref_taxa(ref = .x) %>%
+        data.table::as.data.table(key = ".draw") %>%
+        filter(str_detect(term, "protocol"))
+    )
+  ) %>%
+  unnest(coef_draws) %>%
+  select(-reference) %>%
+  left_join(tt, by = "response") %>%
+  mutate(
+    across(response, factor, levels = taxa_names(ps0)),
+    across(label, fct_reorder, as.integer(response)),
+    center = str_extract(term, "(?<=center_id)[^:]+")
+  )
+```
+```{r, include = TRUE, fig.dim = c(8, 8) * 1.2}
+p <- x %>%
+  ggplot(aes(value / log(2), label, color = center)) +
+  facet_wrap(~reference_label, ncol = 1, scales = "free_x") +
+  scale_color_brewer(type = "qual", palette = "Paired") +
+  # geom_vline(xintercept = 0, color = "grey") +
+  stat_pointinterval(.width = 0.9, position = position_dodge(width = 0.5)) +
+  labs(y = NULL, x = "log2 relative efficiency") +
+  theme_minimal_hgrid() +
+  theme(axis.text.y = element_text(hjust = 0))
+p +
+  plot_annotation(
+    title = "Differential extraction bias conditional on sequencing center",
+    subtitle = "Facet title denotes the taxonomic reference"
+  )
+```
+
+### Relative vs. absolute changes in bias
+
+The above plot shows that there are substantial deviations in the E2/E1 bias
+across sequencing center, but that these deviations are smaller in magnitude
+than the E2/E1 bias within centers. 
+
+This example provides a clear illustration of a case where the relative
+log-bias deviation is of interest, not the absolute log-bias deviation.
+
+```{r}
+p1 <- x %>%
+  mutate(across(value, ~ .x / log(2))) %>%
+  with_groups(c(.draw, center), summarize, norm = sum(value^2)) %>%
+  ggplot(aes(y = center, x = norm, color = center)) +
+  scale_color_brewer(type = "qual", palette = "Paired", guide = "none") +
+  stat_halfeye() +
+  # labs(x = "base-2 Aitchison norm") +
+  labs(
+    title = "Magnitude of E2/E1 bias within centers",
+    x = "base-2 Aitchison norm"
+  ) +
+  expand_limits(x = 0) +
+  theme_minimal_hgrid()
+```
+
+```{r, cache = TRUE}
+# Get the Aitchison distances between differential bias
+nms <- coef(fit2) %>% colnames %>% str_subset("extraction_protocol")
+y <- coef(fit2, boot = TRUE)[,nms,] %>% {. / log(2)}
+colnames(y) <- colnames(y) %>% str_extract("center_id[AS][12]")
+dtb <- map(seq(dim(y)[[3]]), ~dist(t(y[,, .x]), upper = FALSE)) %>%
+  map_dfr(broom::tidy, .id = ".draw")
+rm(nms, y)
+```
+
+```{r}
+p2 <- dtb %>%
+  mutate(
+    difference = str_glue("{item1}/{item2}") %>% str_replace_all("center_id", "")
+  ) %>%
+  ggplot(aes(y = difference, x = distance)) +
+  stat_halfeye() +
+  labs(
+    title = "Magnitude of the difference in E2/E1 bias between centers",
+    x = "base-2 Aitchison norm"
+  ) +
+  lims(x = c(0, max(p1$data$norm)/10)) +
+  theme_minimal_hgrid()
+```
+
+```{r, include = TRUE}
+p1 / p2 +
+  plot_layout(heights = c(1,1.5))
+```
+
+
+Can see that, despite there being noticeable inconsistency in differential
+extraction bias across sequencing centers, the overall magnitude of the
+inconsistency is more than 10X smaller than the differential extraction bias
+itself.
+
+Other observations: the difference in diff'l bias is smaller between centers of
+the same sequencing type. This makes sense, but wasn't a priori obvious - at
+least not as much as for the differential bias between sequencing centers.
+
+
+### Plotting the fitted model with the data
+
+One approach is to plot the observed and predicted abundance of an
+individual taxon as measured by the various protocols on the y axis against the
+the predicted measurement by a chosen reference protocol on the x axis.
+
+```{r}
+ref_pred <- predict(fit2,
+  fit2$model %>% transform(extraction_protocol = "E1", center_id = "A1"),
+)
+arr <- list(
+  ref_pred = ref_pred, 
+  pred = predict(fit2, fit2$model), 
+  observed = fit2$observed
+) %>%
+  simplify2array
+names(dimnames(arr))[[3]] <- "type"
+x <- arr %>% 
+  as.data.table(key = ".prediction") %>%
+  pivot_wider(names_from = type) %>%
+  left_join(fit2$model %>% mutate(.prediction = row_number()), 
+    by = ".prediction")
+```
+
+Using fixed coordinates allows seeing the radically different ranges of the
+different taxa, and make it clear that the slopes of the lines are always 1,
+and bias just changes the intercept
+```{r, include = TRUE, fig.dim = c(9,9)}
+x %>%
+  mutate(across(.response, factor, levels = taxa_names(ps0))) %>%
+  ggplot(aes(ref_pred, color = extraction_protocol:center_id)) +
+  facet_wrap(~.response, scales = "fixed") +
+  geom_line(aes(y = pred)) +
+  geom_point(aes(y = observed)) +
+  scale_color_brewer(type = "qual", palette = "Paired") +
+  theme(legend.position = "bottom") +
+  labs(
+    x = "Predicted value in reference protocol (E1:A1)",
+    y = "Observed and predicted values"
+  ) +
+  coord_fixed()
+```
+
+It is also useful to zoom in on the relevant range for each taxon,
+```{r, include = TRUE, fig.dim = c(9,11)}
+x %>%
+  mutate(across(.response, factor, levels = taxa_names(ps0))) %>%
+  ggplot(aes(ref_pred, color = extraction_protocol:center_id)) +
+  facet_wrap(~.response, scales = "free") +
+  geom_line(aes(y = pred)) +
+  geom_point(aes(y = observed)) +
+  scale_color_brewer(type = "qual", palette = "Paired") +
+  theme(legend.position = "bottom") +
+  labs(
+    x = "Predicted value in reference protocol (E1:A1)",
+    y = "Observed and predicted values"
+  )
+```
+
+
+An alternative could perhaps be to color by taxon and facet by protocol.
+
+
+TODO: Add plot of residuals vs. fitted values; can borrow code from other doc
+
+
+## Sequencing type vs. center, across extraction protocols and batches
+
+TODO:
+* include E. rectale, but adjust denominator to exclude it
+
+Of interest is whether the difference between library strategies (Shotgun vs.
+Amplicon) is larger than the difference between sequencing centers using the
+same strategy (A1/A2, and S1/S2). To allow for the possibility that the bias
+associated with sequencing protocol varies by extraction protocol and batch,
+I will estimate the effect of sequencing center separately within the 4
+extraction batch and protocol combinations.
+```
+observed =
+  sum_j alpha_j I(specimen_id == j)
+  + beta_1 I(library_strategy == "Shotgun")
+  + beta_2 I(center_id == "A2")
+  + beta_3 I(center_id == "S2")
+  + noise
+```
+where `j` indexes the various specimens and `library_strategy` has the value 
+"Amplicon" for samples from centers A1 and A2 and "Shotgun" for samples from
+centers "S1" and "S2". So the terms represent
+
+* `alpha_j` is the CLR value for the taxon as measured by Center A1
+* `beta_1` is the differential bias A1:S1
+* `beta_2` is the differential bias A2:A1
+* `beta_3` is the differential bias S2:S1
+
+Thus `beta_1` quantifies the differential bias between library strategies, and
+`beta_2` and `beta_3` measure differential bias between strategies. Ultimately
+it is probably be better to use a symmetric different measure of bias betwen
+strategies (the difference in the average S1+S2 bias vs. A1+A2 bias).
+
+```{r}
+sam <- sample_data(ps0) %>% as_tibble
+tb <- sam %>%
+  # Get separate phyloseq objects for each (extraction batch, extraction
+  # protocol) combination,
+  group_by(extraction_batch, extraction_protocol) %>%
+  nest %>%
+  mutate(
+    ps = map(data, ~prune_samples(.x$sample, ps0)),
+    ps = map(ps, transform_sample_counts, ~. + 1)
+  ) %>%
+  mutate(
+    fit = map(ps, ~complm(
+        .x,
+        ~ 0 + specimen_id + library_strategy + center_id_ref,
+        boot = TRUE,
+        clusters = sample_data(.x)$specimen_id
+      ))
+  )
+```
+
+```{r}
+# Get a big data frame of the bootstrapped coefficient estimates
+x <- tb %>%
+  mutate(
+    x = map(fit, coef, boot = TRUE) %>% 
+      map(data.table::as.data.table, key = ".draw")
+  ) %>%
+  select(extraction_batch, extraction_protocol, x) %>%
+  unnest(x) %>%
+  filter(!str_detect(term, "specimen")) %>%
+  mutate(
+    across(response, factor, levels = taxa_names(ps0)),
+    across(term, as.factor)
+  )
+# And the pairwise point estimates
+pw <- tb %>%
+  mutate(
+    x = map(fit, coef, boot = FALSE) %>% 
+      map(set_pairwise, upper = TRUE) %>%
+      map(as_tibble, rownames = "response")
+  ) %>%
+  select(extraction_batch, extraction_protocol, x) %>%
+  unnest(x) %>%
+  select(-starts_with("specimen")) %>%
+  pivot_longer(-c(starts_with("extraction"), response), 
+    names_to = "term")
+```
+
+
+Are the sequencing biases consistent across extraction batch and protocol?
+
+```{r, include = TRUE, fig.dim = c(8, 9)}
+p0 <- x %>%
+  ggplot(aes(value, response, color = extraction_batch:extraction_protocol)) +
+  facet_wrap( ~ term, ncol = 1) +
+  scale_color_brewer(type = "qual", palette = "Paired") +
+  stat_pointinterval(position = position_dodge(width = 0.5)) +
+  theme_minimal_hgrid() +
+  theme(legend.position = "bottom")
+p0 +
+  plot_annotation(
+    title = "Consistency of sequencing bias across extraction batch and protocol"
+  )
+```
+
+
+```{r, include = TRUE, fig.dim = c(7, 5)}
+p1 <- x %>%
+  filter(extraction_batch == "B1") %>%
+  ggplot(aes(value, response, color = term)) +
+  facet_grid(extraction_batch ~ extraction_protocol, labeller = label_both) +
+  scale_color_brewer(type = "qual", palette = 1) +
+  stat_pointinterval(position = position_dodge(width = 0.5)) +
+  theme_minimal_hgrid() +
+  theme(legend.position = "bottom")
+p1
+```
+
+Can see that the Shotgun-vs-Amplicon bias vector is much larger than the
+bias within each methodology.
+
+Possible visualizations for the pairwise bias values (all pairs of taxa): If we
+just use the point estimate, then we can use a dotplot:
+
+```{r}
+```
+
+Notes
+
+- Ultimately, I suspect it will be better to show a shotgun effect that is the
+  difference between the average A and the average S bias, rather than the
+  difference between A1 and A2
+- Should compare the S/A bias to the prediction (assembly size) / (16S copy
+  number)
+
+```{r, include = TRUE, fig.dim = c(7, 5)}
+p2 <- pw %>%
+  filter(extraction_batch == "B1") %>%
+  # # Give more informative term names
+  # mutate(
+  #   term = fct_recode(term,
+  #     "Shotgun:Amplicon" = "library_strategyShotgun",
+  #     "A2:A1" = "center_id_refA2",
+  #     "S2:S1" = "center_id_refS2",
+  #   )
+  # ) %>%
+  ggplot(aes(value, term, color = term, fill = term)) +
+  facet_grid(extraction_batch ~ extraction_protocol, labeller = label_both) +
+  scale_color_brewer(type = "qual", palette = 1) +
+  scale_fill_brewer(type = "qual", palette = 1) +
+  #> stat_dots(linetype = 0) +
+  stat_dots() +
+  theme_minimal_hgrid() +
+  theme(legend.position = "none") +
+  plot_annotation(
+    title = "Distribution of pairwise log efficiencies"
+  )
+p2
+```
+
+```{r, eval = FALSE}
+(p1 + theme(legend.position = "none")) / 
+  (p2) +
+  plot_layout(heights = c(1,1))
+```
+
+### Genomic explanation?
+
+Compare the S/A bias to genomic expectation `ssu_count /
+reference_genome_size`,
+```{r}
+y <- x %>%
+  filter(extraction_batch == "B1", extraction_protocol == "E1",
+    term == "library_strategyShotgun") %>%
+  group_by(term, response) %>%
+  median_qi(value) %>%
+  left_join(genome_bias, by = c(response = "taxon")) %>%
+  mutate(across(c(reference_genome_size, ssu_count), log),
+    predicted = reference_genome_size - ssu_count
+  )
+p2 <- y %>%
+  mutate(across(response, fct_reorder, value)) %>%
+  ggplot(aes(value, response, color = term)) +
+  scale_color_brewer(type = "qual", palette = 1, drop = FALSE, 
+    guide = "none") +
+  geom_pointinterval(aes(xmin = .lower, xmax = .upper)) +
+  geom_point(aes(x = predicted),
+    color = "black", shape = 3, size = 2) +
+  theme_minimal_hgrid() +
+  theme(legend.position = "bottom")
+p3 <- y %>%
+  ggplot(aes(predicted, value, color = term)) +
+  scale_color_brewer(type = "qual", palette = 1, drop = FALSE, 
+    guide = "none") +
+  geom_abline(color = "black") +
+  geom_pointinterval(aes(ymin = .lower, ymax = .upper)) +
+  theme_minimal_grid() +
+  theme(legend.position = "bottom")
+```
+
+```{r, include = TRUE, fig.dim = c(8, 8)}
+p1 / (p2 + p3)
+```
+
+
+- The variation within Bacteroides can be largely explained by the predicted
+  genomic bias.
+- E. coli S/A bias is lower than the prediction - this is somewhat expected,
+  since the genomic prediction does not account for the fact that we are
+  throwing out reads that align to both the Nissle and HS genomes. Not sure
+  about the expected magnitude of this effect, however. 
+
+
+TODO: Calculate the fraction of S/A bias explained by the genomic prediction.
