@@ -40,6 +40,66 @@ v1_strain_data <- here("output/strain-data/v1/", "strain-pheno-geno-tax.Rds") %>
 
 TODO: Add Zymo strains
 
+| group      | name                       | description                                                             |
++------------+----------------------------+-------------------------------------------------------------------------|
+| strain     | ncbi_taxid                 | Determined manually, from GTDB metadata, or from Zymo catalog depending on strain group |
+| strain     | ncbi_species_taxid         | 
+| strain     | ncbi_organism_name         |
+| strain     | display_name               |
+| strain     | strain_group               | Whether an inoculum strain or various types of contaminants or controls | 
+| strain     | notes                      | 
+| reference  | ref_assembly_accession     | NCBI RefSeq genome accession for reference genome                       |
+| reference  | ref_ncbi_taxid             | NCBI taxid for reference genome; from GTDB metadata                     |
+| reference  | ref_ncbi_organism_name     | NCBI species taxid for reference genome; from GTDB metadata             |
+| reference  | ref_genome_size            | Size of ref; from GTDB metadata
+| reference  | ref_gc_fraction            | GC percentage of reference genome; from GTDB metadata or Zymo manual
+| taxonomy   | gtdb_genome_representative | GTDB 95 genome representative; from GTDB metadata
+| taxonomy   | gtdb_taxonomy              | GTDB 95 taxonomy; from GTDB metadata
+| taxonomy   | ncbi_taxonomy              | NCBI taxonomy; from GTDB metadata or Zymo manual
+| taxonomy   | silva_taxonomy             | Silva 138 taxonomy; see Rmd
+| properties | ssu_count                  | Estimated 16S copy number. Source: Mixed, see Rmd
+| properties | gram_stain                 | Reported Gram stain. Source: IMG/M or Zymo manual
+| properties | sporulation                | Reported sporulation ability. Source: IMG/M or Zymo manual
+
+Note that genome size and gc percent are arguably reference variables and also
+strain properties.
+
+HERE - work to assemble the above table for all strains.
+
+Questions: What "strains" are the inoculum contaminants, and the Zymo strains?
+
+Note, it is ok if I don't have definitive answers for the contaminants - one
+option would be to just define these to the species level. In cases where we're
+just specifying at species level, might be better to leave ncbi_taxid as NA, so
+that we have a way of what level an organism is at. Or add a column that
+indicates the level. (species or strain; though what to do for Zymo strains,
+and I still want to distinguish the Zymo Staph from the non-Zymo Staph)
+
+TODO: look into the strains where species and strain taxids were the same.
+
+Note, we don't really need complete or finalized info for the inoculum contaminants.
+
+## Zymo strains
+
+We don't actually need info for the zymo strains, but it is useful to include
+them to have a complete strain list.
+
+Question: Do I bother with strain-level info, and taxids?
+
+```{r}
+zymo_strains1 <- zymo_strains %>%
+  filter(ploidy == 1) %>%
+  transmute(
+    strain_group = "Zymo",
+    ncbi_species_name = species, 
+    gram_stain,
+    # TODO: make sure this is formatted like the others
+    ncbi_taxonomy = ncbi_phylogeny_database,
+    ssu_count = x16_18s_copy_number,
+    ref_gc_fraction = gc_content_percent / 100
+  )
+```
+
 ## Determine the focal strain set and match with reference genomes
 
 The table `exp_strains` contains the NCBI taxid and NCBI organism names for the
@@ -318,4 +378,105 @@ write_csv(focal_silva_tax_final,
 
 TODO: Also write the Silva accessions so can get the sequences? (or just do
 that in this Rmd)
+
+## Phenotype data from JGI's IMG/M website
+
+Goal is to get Gram stain and sporulation phenotypes for our strains.
+
+Can construct a search query in the IMG genome search by NCBI Taxon ID,
+```{r}
+strain_data1 %>% 
+  select(ncbi_taxid, ncbi_species_taxid) %>%
+  pivot_longer(everything()) %>%
+  pull(value) %>% 
+  str_c(collapse = ", ") %>%
+  clipr::write_clip()
+```
+I submitted this as a query as NCBI taxid to
+https://img.jgi.doe.gov/cgi-bin/m/main.cgi?section=GenomeSearch&page=searchForm,
+added some metadata columns, and saved the results in a tsv file,
+
+```{r}
+img <- here("output/jgi-img", "2020-09-01-genome-metadata.tsv") %>%
+  read_tsv %>%
+  janitor::clean_names() %>%
+  select(ncbi_taxid = ncbi_taxon_id, gram_stain = gram_staining,
+    sporulation, genome_name = genome_name_sample_name) %>%
+  print
+```
+
+Note, some strains have multiple entries,
+```{r}
+img %>%
+  group_by(genome_name, ncbi_taxid) %>%
+  count
+```
+
+Which strain(s) are missing?
+```{r}
+m <- setdiff(strains$ncbi_taxid, img$ncbi_taxid)
+gtdb1 %>%
+  filter(ncbi_taxid == m) %>%
+  select(ncbi_organism_name, ncbi_taxid, ncbi_species_taxid)
+```
+
+No match for the Marvinbryantia strain, but might be for the species; so re-ran
+a search with the species id,
+
+```{r}
+img.marv <- here("output/jgi-img", "2020-09-04-genome-metadata.tsv") %>%
+  read_tsv %>%
+  janitor::clean_names() %>%
+  select(
+    ncbi_species_taxid = ncbi_taxon_id, gram_stain = gram_staining,
+    sporulation, genome_name = genome_name_sample_name) %>%
+  print
+```
+Let's use these as the values for our Marvinbryantia strain.
+```{r}
+img.marv0 <- img.marv %>%
+  # Add the strain-level taxid
+  left_join(gtdb1 %>% select(contains("taxid")), by = "ncbi_species_taxid")
+img0 <- bind_rows(img, img.marv0)
+```
+
+Let's collapse these to unique values, making sure their is no disagreement
+among the duplicates,
+```{r}
+# Get all unqiue non-NA values, or return NA
+f <- function(x) {
+  x <- x[!is.na(x)]
+  if (identical(length(x), 0L))
+    NA_character_
+  else
+    unique(x)
+}
+
+phenotype <- img0 %>%
+  group_by(ncbi_taxid) %>%
+  summarize(across(c(gram_stain, sporulation), f), .groups = "drop")
+```
+
+NOTE: Should be able to get the gram stain of this missing taxon.
+
+Let's join this info to our strains table,
+```{r}
+strains0 <- strains %>%
+  left_join(phenotype, by = "ncbi_taxid") %>%
+  print
+```
+
+In future, may want to track down the sporulation info for the other taxa.
+
+## Dev testing
+
+### Looking up NCBI taxonomy with the taxa package
+
+```{r}
+x <- taxa::lookup_tax_data("411476", type = "taxon_id")
+taxa::taxonomy_table(x) %>% glimpse
+taxa::classifications(x) %>% tail(2)
+```
+This approach is one way to get NCBI species-level taxids from strain-level taxids.
+
 
