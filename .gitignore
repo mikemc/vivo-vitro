@@ -1,0 +1,20 @@
+.env
+/notes
+**/extra
+**/data/*
+!/data/sample-data
+!/data/lab
+
+# **/output/*
+/output/figures
+# /analysis/*/output
+# /analysis/*/*/output
+!/output/sample-data
+!/output/lab
+
+# Rmd files
+*_cache/
+# *_files/
+
+# Distill site
+/_site/
