@@ -1,0 +1,198 @@
+
+```{r}
+library(tidyverse)
+library(here)
+#> library(speedyseq)
+
+library(cowplot)
+library(patchwork)
+theme_set(theme_cowplot())
+
+import::from(Biostrings, DNAString, DNAStringSet, readDNAStringSet, complement,
+  matchPattern, vmatchPattern, 
+  Views, toString, width,
+  reverseComplement, complement
+)
+```
+
+
+```{r}
+full_seqs <- here("output/strain-data", "reference-16s-genes.fasta") %>%
+  readDNAStringSet
+names(full_seqs) %>% head(2)
+
+full_seqs %>% width %>% sort
+```
+
+
+Info about the primer sequences from v2 DADA2 Rmds.
+
+### A1 primers
+
+```{r}
+primers <- c(
+  r1 = "GTGCCAGCMGCCGCGGTAA",
+  r2 = "TAATCTWTGGGVHCATCAGG"
+)
+primers["r2"] <- primers["r2"] %>% DNAString %>% complement %>% as.character
+```
+
+Can extract with `DECIPHER::TrimDNA()`
+```{r}
+primers.dna <- primers %>% map(DNAString)
+x <- DECIPHER::TrimDNA(full_seqs, primers.dna[[1]], primers.dna[[2]] %>% complement, 
+  type = "sequences")
+width(x) %>% summary
+width(x) %>% table
+```
+
+How to get the seq corresonding to the binding region?
+
+```{r}
+
+extract_sequence_from_view <- function(views) {
+  stopifnot(length(views) %in% c(0L, 1L))
+  if (identical(length(views), 0L))
+    NA_character_
+  else
+    # Handle errors when match extends beyond sequence
+    tryCatch(toString(views), error = function(e) {NA_character_})
+}
+
+extract_match <- function(pattern, sequences, ...) {
+  stopifnot(identical(length(pattern), 1L))
+  as(sequences, "list") %>%
+    map(function(x) matchPattern(pattern, x, ...)) %>%
+    map_chr(extract_sequence_from_view)
+}
+
+#> map(v, extract_sequence_from_view)
+
+#> map2(rep(pattern, length(sequences)), as(sequences, "list"), matchPattern, ...) %>%
+#>   map_chr(extract_sequence_from_view)
+
+extract_match(primers["r1"], full_seqs %>% head, 
+  max.mismatch = 4, with.indels = TRUE, fixed = FALSE)
+extract_match(primers["r2"], full_seqs %>% head, 
+  max.mismatch = 4, with.indels = TRUE, fixed = FALSE)
+```
+
+
+```{r}
+
+#> tb <- tibble(seqid = names(full_seqs)) %>%
+pat <- "^([^ ]+) ([^,]+), 16S ribosomal RNA gene Copy ([0-9]+)"
+nms <- c("name", "seqid", "ncbi_organism_name", "copy")
+
+x <- names(full_seqs) %>% 
+  str_match(pat) %>%
+  {colnames(.) <- nms; .} %>%
+  as_tibble %>%
+  add_column(
+    sequence_full = as(full_seqs, "list"),
+    sequence_a1_r1 = extract_match(primers["r1"], full_seqs,
+      max.mismatch = 4, with.indels = TRUE, fixed = FALSE), 
+    sequence_a1_r2 = extract_match(primers["r2"], full_seqs,
+      max.mismatch = 4, with.indels = TRUE, fixed = FALSE), 
+  )
+x %>% glimpse
+```
+
+```{r}
+x %>% count(sequence_a1_r1, sequence_a1_r2)
+x %>% count(sequence_a1_r1, sequence_a1_r2) %>% filter(if_all(.fns = ~!is.na(.x)))
+```
+
+Find the sequences with the unusual combinations,
+
+```{r}
+x %>% 
+  add_count(sequence_a1_r1, sequence_a1_r2) %>%
+  filter(n < 57, if_all(.fns = ~!is.na(.x))) %>%
+  select(ncbi_organism_name, copy, starts_with("sequence_a"), n) %>%
+  print(n=Inf)
+```
+
+It looks like Akkermansia is the only experimental strain with a distinct sequence.
+
+```{r}
+x %>%
+  add_count(sequence_a1_r1, sequence_a1_r2) %>%
+  filter(str_detect(ncbi_organism_name, "Akkermansia")) %>%
+  select(ncbi_organism_name, copy, starts_with("sequence_a"), n)
+```
+
+All three copies have the same sequence. Does it have a mismatch with the primers?
+
+TODO 
+
+```{r}
+```
+
+
+
+
+### A2 primers
+
+
+
+The [Illumina manual](https://support.illumina.com/documents/documentation/chemistry_documentation/16s/16s-metagenomic-library-prep-guide-15044223-b.pdf) lists the primer sequences as
+
+> 16S Amplicon PCR Forward Primer = 5'
+> TCGTCGGCAGCGTCAGATGTGTATAAGAGACAGCCTACGGGNGGCWGCAG
+> 16S Amplicon PCR Reverse Primer = 5'
+> GTCTCGTGGGCTCGGAGATGTGTATAAGAGACAGGACTACHVGGGTATCTAATCC
+
+Only part of the described primer sequences were actually present in the sequenced amplicons
+```{r}
+primers_a2 <- c(r1 = "CCTACGGGNGGCWGCAG", r2 = "GACTACHVGGGTATCTAATCC")
+primers_a2["r2"] <- primers["r2"] %>% DNAString %>% reverseComplement %>% as.character
+```
+
+```{r}
+extract_match(primers_a2["r1"], full_seqs,
+  max.mismatch = 2, with.indels = TRUE, fixed = FALSE)
+extract_match(primers_a2["r2"], full_seqs,
+  max.mismatch = 2, with.indels = TRUE, fixed = FALSE)
+```
+
+Why so few matches for r2?
+
+need to investigate what is going on here. to get matches, have to increase the allowed errors so much that get multiple matches.
+
+
+```{r}
+x <- x %>%
+  add_column(
+    sequence_a2_r1 = extract_match(primers_a2["r1"], full_seqs,
+      max.mismatch = 4, with.indels = TRUE, fixed = FALSE), 
+    sequence_a2_r2 = extract_match(primers_a2["r2"], full_seqs,
+      max.mismatch = 4, with.indels = TRUE, fixed = FALSE), 
+  )
+x %>% glimpse
+```
+
+```{r}
+x %>% count(sequence_a1_r1, sequence_a1_r2)
+x %>% count(sequence_a1_r1, sequence_a1_r2) %>% filter(if_all(.fns = ~!is.na(.x)))
+```
+
+Find the sequences with the unusual combinations,
+
+```{r}
+x %>% 
+  add_count(sequence_a1_r1, sequence_a1_r2) %>%
+  filter(n < 57, if_all(.fns = ~!is.na(.x))) %>%
+  select(ncbi_organism_name, copy, starts_with("sequence_a"), n) %>%
+  print(n=Inf)
+```
+
+It looks like Akkermansia is the only experimental strain with a distinct sequence.
+
+```{r}
+x %>%
+  add_count(sequence_a1_r1, sequence_a1_r2) %>%
+  filter(str_detect(ncbi_organism_name, "Akkermansia")) %>%
+  select(ncbi_organism_name, copy, starts_with("sequence_a"), n)
+```
+

@@ -1,0 +1,391 @@
+
+## Setup
+
+Starting point is the BURST output files from the
+2020-06-15-bbmap-pipeline-test test. BURST was run with the "ALLPATHS" option,
+which reports all tied best-hit alignments by BURST score.
+
+```{r}
+library(tidyverse)
+library(here)
+library(fs)
+
+library(cowplot)
+library(ggridges)
+library(ggbeeswarm)
+```
+
+```{r}
+burst_path <- here("analysis", "2020-06-15-bbmap-pipeline-test", "output",
+  "burst")
+fns <- dir_ls(burst_path)
+```
+
+Load the fecal sample alignments,
+```{r}
+fn <- fns[[3]]
+# http://www.metagenomics.wiki/tools/blast/blastn-output-format-6
+cns <- c("qseqid", "sseqid", "pident", "length", "mismatch", "gapopen",
+  "qstart", "qend", "sstart", "send", "evalue", "bitscore")
+res <- read_tsv(fn, 
+  col_names = cns,
+  col_types = "ccniiiiiiidd"
+  )
+# Get the species name (as Genus species) from the sseqid
+res <- res %>%
+  separate(sseqid, into = c("sacc", "sgenus", "sspecies"), sep = " ", 
+    extra = "drop", remove = FALSE) %>%
+  unite(sspecies, c(sgenus, sspecies), sep = " ")
+# res %>% pull(qseqid) %>% unique %>% length
+# res %>% nrow
+```
+
+Notes
+- For speed in later sessions, might be worth it to save the gzipped TSV files
+  as Rds objects. 
+- Since only best scoring alignments are kept, I may not need the bitscore and
+  evalue cols
+
+Random subsample of reads - 
+```{r}
+reads.sub <- res %>% pull(qseqid) %>% unique %>% sample(2e5)
+res.sub <- res %>% filter(qseqid %in% reads.sub)
+```
+
+Note, `res$length` refers to the alignment length and can differ from the read
+length due to gaps. So let's get the read length from the query start and end.
+Also, let's extraction the species name from the subject accessions,
+```{r}
+res.sub0 <- res.sub %>% 
+  mutate(qlength = qend - qstart + 1)
+```
+
+## Compute the "refstats" table 
+
+Want unique and non-unique mappings for each species, where a mapping is unique
+even if it has multiple alignments to the same species, as they are all
+to the particular species.
+
+```{r}
+tb <- res %>%
+  # grab just one alignment per qseq + sspecies, then count number of mappings
+  # per qseq
+  select(qseqid, sspecies) %>%
+  group_by(qseqid, sspecies) %>%
+  slice_head(n = 1) %>%
+  group_by(qseqid) %>%
+  mutate(n = n()) %>%
+  # and use that count to get unamb and amb mappings for each species
+  group_by(sspecies) %>%
+  summarize(unambig = sum(n == 1), ambig = sum(n > 1))
+# Takes ~5m to run
+```
+
+If using this in production, can prob speed up with data.table or dyplyr.
+
+```{r}
+tb %>% mutate(ambig/unambig) %>% knitr::kable()
+```
+|sspecies                     | unambig| ambig| ambig/unambig|
+|:----------------------------|-------:|-----:|-------------:|
+|Akkermansia muciniphila      |  108340|     9|     0.0000831|
+|Bacteroides caccae           |  123209| 19438|     0.1577644|
+|Bacteroides ovatus           | 1410032| 25906|     0.0183726|
+|Bacteroides thetaiotaomicron |  529800| 19145|     0.0361363|
+|Bacteroides uniformis        |  536108| 16847|     0.0314246|
+|Barnesiella intestinihominis |   14848|   436|     0.0293642|
+|Clostridium symbiosum        |    6131|    30|     0.0048932|
+|Collinsella aerofaciens      |     257|    12|     0.0466926|
+|Escherichia coli             |   35417|    23|     0.0006494|
+|Eubacterium rectale          |       8|   104|    13.0000000|
+|Faecalibacterium prausnitzii |       3|    15|     5.0000000|
+|Marvinbryantia formatexigens |    9576|    17|     0.0017753|
+|Roseburia intestinalis       |    8871|   123|     0.0138654|
+|Thioflavicoccus mobilis      |       3|    23|     7.6666667|
+
+### Compare to BBSplit refstats
+
+Output from BBSplit - 
+
+| species                      | unambig | ambig | assigned |
+|------------------------------+---------+-------+----------|
+| Akkermansia muciniphila      |  107502 |     0 |   107502 |
+| Bacteroides caccae           |  122210 |  8584 |   129671 |
+| Bacteroides ovatus           | 1401916 | 19125 |  1401916 |
+| Bacteroides thetaiotaomicron |  527238 | 16265 |   543503 |
+| Bacteroides uniformis        |  531610 | 11777 |   535449 |
+| Barnesiella intestinihominis |   14744 |    12 |    14753 |
+| Clostridium symbiosum        |    6051 |    14 |     6052 |
+| Collinsella aerofaciens      |     254 |     0 |      254 |
+| Escherichia coli             |   35131 |     0 |    35131 |
+| Eubacterium rectale          |       9 |    83 |        9 |
+| Faecalibacterium prausnitzii |       3 |    15 |        3 |
+| Marvinbryantia formatexigens |    9488 |     5 |     9493 |
+| Roseburia intestinalis       |    8799 |   105 |     8904 |
+| Thioflavicoccus mobilis      |       3 |     0 |        3 |
+
+- Overall, similar. though ratio of ambig to unambig can vary significantly for
+  the rarest taxa
+
+Things we need to decide
+
+- Which aligner? (perhaps less important than rest)
+- What sim threshold?
+- How to define ambig? (Tied best hit only, or all w/in threshold?)
+  - i.e. use exact or fuzzy ties for best hits to compute abundances
+- How to define P/A
+  - E. rectale is a good case study in `17_1`
+- How to compute abundances?
+- How to handle contaminants (esp. important for the inoc samples); ok to just
+  toss reads > 3% (or 2%?)
+
+questions that could help decide
+- what is the EE of reads? / What EE should we filter on?
+- abundances of specific taxa for these samples, e.g. E rectale for 17_1 and
+  Barnesiella in 14_1, in the A1 data, since these are taxa we want to treat as
+  generally present, but not sure about specific samples + specimens
+
+## Check the abundances in the A1 data
+
+```{r}
+library(speedyseq) 
+ps <- here("results/a1", "a1-phyloseq-silva-v138.Rds") %>%
+  readRDS
+sam <- sample_data(ps) %>% as_tibble(rownames = "sample")
+a1_strains <- here("results/a1", "a1-asv-strain-assignments.csv") %>%
+  read_csv
+# Note, E. rectale is classfied as Silva genus "Agathobacter" 
+pstb <- ps %>% 
+  # subset to just the focal species and the 4 17_1 specimens
+  prune_taxa(a1_strains$feature_id, .) %>% 
+  subset_samples(specimen_id %in% c("13", "14", "17")) %>% 
+  psmelt %>%
+  select(asv = OTU, sample = Sample, abundance = Abundance) %>%
+  left_join(a1_strains, by = c("asv" = "feature_id")) %>%
+  select(-sequence) %>%
+  unite("species", genus, species, sep = " ") %>%
+  # combine ASVs from the same species w/in samples
+  group_by(species, sample) %>%
+  summarize_at("abundance", sum) %>%
+  # compute prportions
+  group_by(sample) %>%
+  mutate(proportion = abundance / sum(abundance)) %>%
+  ungroup %>%
+  # sort by species for consistency with above
+  arrange(species, sample) %>%
+  left_join(sam, by = "sample")
+```
+```{r}
+pstb %>% filter(sample == "A1_17_1") %>% select(species, abundance, proportion) %>% knitr::kable()
+```
+|species                      | abundance| proportion|
+|:----------------------------|---------:|----------:|
+|Akkermansia muciniphila      |     24602|  0.2056387|
+|Bacteroides caccae           |      5071|  0.0423866|
+|Bacteroides ovatus           |     39857|  0.3331494|
+|Bacteroides thetaiotaomicron |     13712|  0.1146134|
+|Bacteroides uniformis        |     18479|  0.1544589|
+|Barnesiella intestinihominis |      2330|  0.0194756|
+|Clostridium symbiosum        |      1291|  0.0107910|
+|Collinsella aerofaciens      |        74|  0.0006185|
+|Escherichia coli             |     10918|  0.0912594|
+|Eubacterium rectale          |         1|  0.0000084|
+|Faecalibacterium prausnitzii |         2|  0.0000167|
+|Marvinbryantia formatexigens |       997|  0.0083335|
+|Roseburia intestinalis       |      2244|  0.0187567|
+|Thioflavicoccus mobilis      |        59|  0.0004932|
+
+```{r}
+pstb %>% filter(specimen_id == "17", species == "Eubacterium rectale") %>%
+  select(species, sample, abundance, proportion) %>%
+  knitr::kable()
+#> 
+#> 
+#> |species             |sample  | abundance| proportion|
+#> |:-------------------|:-------|---------:|----------:|
+#> |Eubacterium rectale |A1_17_1 |         1|  0.0000084|
+#> |Eubacterium rectale |A1_17_2 |        15|  0.0001406|
+#> |Eubacterium rectale |A1_17_3 |         3|  0.0000458|
+#> |Eubacterium rectale |A1_17_4 |        18|  0.0002092|
+```
+
+```{r}
+sam %>% filter(sample == "A1_17_1") %>% pull(host_sex)
+#> [1] "female"
+```
+
+```{r}
+pstb %>% 
+  filter(specimen_id == "14", species == "Barnesiella intestinihominis") %>%
+  select(species, sample, abundance, proportion) %>% 
+  knitr::kable()
+#> 
+#> 
+#> |species                      |sample  | abundance| proportion|
+#> |:----------------------------|:-------|---------:|----------:|
+#> |Barnesiella intestinihominis |A1_14_1 |         0|   0.00e+00|
+#> |Barnesiella intestinihominis |A1_14_2 |         0|   0.00e+00|
+#> |Barnesiella intestinihominis |A1_14_3 |         2|   2.39e-05|
+#> |Barnesiella intestinihominis |A1_14_4 |         0|   0.00e+00|
+```
+
+Here - 
+
+
+## Compute the precusor table to Centrifuge-style EM
+
+## Questions
+
+What is the length distribution of unique vs. non-unique mappings? Hypothesis
+is that non-unique mappings will be shorter.
+
+Can I understand the BBMap refstats results for one particular case. E.g. E.
+rectale? This will require that I figure out whether BBMap considers only ties
+as ambiguous, or within a threshold as ambiguous.
+
+Questions perhaps best answered from the BAM files -
+
+what genes do windows w/ high coverage overlap?
+
+
+Other questions for the meeting - 
+- Implications of mapping against just our 14 genomes; what % id threshold
+  should be safe given contam's in the inoculum?
+
+
+
+## Length distribution
+
+
+Tally the number of alignments for each query,
+```{r}
+res.sub.tally <- res.sub %>%
+  mutate(qlength = qend - qstart + 1) %>%
+  group_by(qseqid, qlength) %>%
+  count()
+```
+
+```{r}
+res.sub.tally %>%
+  group_by(n) %>%
+  count %>%
+  print(n = Inf)
+```
+
+
+
+```{r}
+res.sub.tally %>%
+  mutate(n_cut = cut(n, c(0, 1, 2, 10, 50))) %>% # slow?
+  ggplot(aes(qlength, fill = n_cut)) +
+  geom_histogram() +
+  scale_y_log10() +
+  scale_fill_brewer(type = "qual")
+```
+I'm not sure how to interpret the log scale w/ the stacked histogram
+
+
+Can also try a heatmap with x= qlength and y = n
+```{r}
+res.sub.tally %>%
+  group_by(qlength, n_hits = n) %>%
+  count %>%
+  ggplot(aes(qlength, n_hits, fill = log10(n))) +
+  geom_tile()
+```
+
+Might be hard to tell what's going on here b/c so many more 100bps and this
+doesn't adjust for that.
+
+Perhaps - 
+
+```{r}
+res.sub.tally %>%
+  ggplot(aes(qlength, y = n > 1, fill = n > 1)) +
+  geom_density_ridges(stat = "binline", scale = 4) + 
+  scale_y_discrete(expand = c(0, 0)) +
+  scale_x_continuous(expand = c(0, 0)) +
+  coord_cartesian(clip = "off") +
+  theme_ridges()
+  # scale_fill_brewer(type = "qual")
+```
+
+Shows that there is at most a weak effect of sequence length on whether n > 1!
+
+
+
+```{r}
+p <- res.sub.tally %>%
+  # filter(qlength < 80) %>%
+  ggplot(aes(x = qlength, y = (n > 1) * 1)) +
+  # geom_quasirandom(groupOnX = FALSE) +
+  geom_smooth()
+p +
+  expand_limits(y = c(0, 0.06))
+```
+
+This ^^ is perhaps the best look so far. Shows that while there is some of the
+expected effect of length, it is fairly small; the fraction of ambig alignments
+at 100bp is still ~1/2 that at 30bp. And since the vast majority of reads are
+100bp, tossing the shorter reads won't address the issue.
+
+check:
+
+```{r}
+res.sub.tally %>%
+  group_by(qlength < 100, n > 1) %>%
+  count %>%
+  group_by(`qlength < 100`) %>%
+  mutate(frac = n / sum(n))
+```
+
+Hmm...this says that ~0.1 of queries (reads) are ambig, which is noticeably
+less than what is seen in the smooth above.
+
+
+## coverage - 
+
+```{r}
+ir <- res %>%
+  filter(sspecies == "Escherichia coli") %>%
+  mutate(
+    strand = ifelse(sstart <= send, "+", "-"),
+    start = ifelse(strand == "+", sstart, send),
+    end = ifelse(strand == "+", send, sstart)
+  ) %>%
+  {IRanges::IRanges(start = .$start, end = .$end)}
+# Could go further, and add the strand, seqnames, and other info into a GRanges
+# object.
+
+# Coverage as an RLE
+cvrg <- IRanges::coverage(ir)
+
+# Function for computing average coverage in non-overlapping genomic windows
+window_means <- function(x, width = 500) {
+  ir <- IRanges::IRanges(start = seq(1, length(x), by = width), width = width)
+  IRanges::end(ir)[length(ir)] <- length(x)
+  y <- aggregate(x, by = ir, mean)
+  tibble(
+    start = IRanges::start(ir), 
+    end = IRanges::end(ir), 
+    width = IRanges::width(ir), 
+    coverage = y
+  )
+}
+cvrg.ecoli <- IRanges::coverage(ir) %>% window_means(width = 1000)
+```
+
+```{r}
+ggplot(cvrg.ecoli, aes(start, coverage)) +
+  geom_line() +
+  geom_smooth() +
+  geom_hline(aes(yintercept = mean(coverage)), color = 'red') +
+  geom_hline(aes(yintercept = median(coverage)), color = 'orange') +
+  labs(x = "position",
+       title = "coverage across E. coli chromosome",
+       subtitle = "1000 bp windows")
+```
+
+This is similar to the coverage from BBSplit, but with many more high-coverage
+windows.
+

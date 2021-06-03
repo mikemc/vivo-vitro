@@ -1,0 +1,1004 @@
+## setup
+
+```{r load_packages}
+# library(speedyseq)
+library(phyloseqpp)
+library(here)
+library(tidyverse)
+
+library(cowplot)
+library(patchwork)
+# library(ggridges)
+library(ggbeeswarm)
+library(ggdist)
+# library(ggrastr)
+# library(ggforce)
+
+devtools::load_all("~/research/metacal")
+```
+
+```{r}
+# font_size = 12
+# theme_set(theme_cowplot(font_size))
+theme_set(theme_cowplot())
+
+# color brewer palettes for other plots
+palettes = c(
+  specimen_type = 6,
+  host_sex = 6,
+  extraction_protocol = 1,
+  taxon = 2,
+  sex_batch = 6
+)
+```
+
+```{r}
+psmelt <- function(physeq) {
+  speedyseq::psmelt(physeq) %>%
+    as_tibble %>%
+    rename(taxon = OTU, sample = Sample, abundance = Abundance)
+}
+```
+
+
+A1
+```{r a1-ps}
+ps_a1 <- here("results", "a1", "a1-phyloseq-silva-v138-filt-cust.Rds") %>% 
+  readRDS %>%
+  subset_taxa(!is.na(vv_organism)) %>%
+  merge_taxa_vec(., c(tax_table(.)[, "vv_organism"]), tax_adjust = 0)
+taxa_names(ps_a1) <- tax_table(ps_a1)[, "vv_organism"] %>% c
+tax_table(ps_a1) <- tax_table(ps_a1)[, 1:6]
+sample_data(ps_a1) <- sample_data(ps_a1) %>%
+  transform(dna_sample_id = str_c(specimen_id, aliquot_number, sep = "_"))
+```
+
+S1
+```{r}
+dna_sam <- here("sample-data/dna-sample-data.Rds") %>% readRDS
+sam_s1 <- dna_sam %>%
+  filter(S1) %>%
+  mutate(
+    sample_id = str_c("S1_", dna_sample_id),
+    center_id = "S1"
+    ) %>%
+  select(-A1, -A2, -S1, -S2) %>%
+  column_to_rownames("sample_id") %>%
+  sample_data
+otu_s1 <- here("results", "s1", "count-matrix.Rds") %>% readRDS %>%
+  otu_table(taxa_are_rows = FALSE)
+setdiff(taxa_names(otu_s1), taxa_names(ps_a1))
+ps_s1 <- phyloseq(otu_s1, sam_s1, tax_table(ps_a1))
+```
+
+Merge.
+```{r}
+ps <- merge_phyloseq(ps_a1, ps_s1)
+```
+
+Note, the host reads are dropped from S1, and the contaminant reads are dropped
+from A1.
+
+
+Adjust the sample data
+
+```{r}
+sample_data(ps) <- sample_data(ps) %>%
+  transform(
+    specimen_id = as.factor(specimen_id),
+    extraction_batch = as.factor(extraction_batch),
+    extraction_protocol = factor(extraction_protocol),
+    center_id = factor(center_id),
+    specimen_type = factor(specimen_type, 
+      levels = c("T. mobilis", "inoculum", "fecal"))
+    )
+```
+
+
+## Proportions overview
+
+Average proportion, setting 1e-5 as the lower bound / detection limit.
+```{r}
+specimen_props <- ps %>%
+  subset_samples(specimen_type %in% c("fecal", "inoculum")) %>%
+  transform_sample_counts(
+    # ~ close_elts(.) %>% {. * (1 - 1e-5) + (1 - .) * 1e-5}
+    close_elts
+  ) %>%
+  psmelt %>%
+  rename(proportion = abundance) %>%
+  group_by(center_id, taxon, specimen_type, host_sex,
+    collection_week, extraction_batch, specimen_id) %>%
+  summarize_at(vars(proportion), mean, .groups = "drop")
+```
+
+```{r}
+p.all <- specimen_props %>%
+  mutate(
+    sex_batch = interaction(host_sex, extraction_batch),
+  ) %>%
+  ggplot(aes(taxon %>% fct_rev, pmax(1e-5, proportion), 
+      color = interaction(specimen_type, center_id))) +
+  geom_quasirandom(dodge.width = 0.8) +
+  # facet_wrap(~extraction_batch) +
+  coord_flip() +
+  scale_y_log10(breaks = 10^seq(-5, 0), limits = c(1e-5, 1.1)) +
+  scale_color_brewer(type = "qual", palette = palettes["specimen_type"]) +
+  labs(
+    x = "", y = "mean proportion"
+  ) +
+  theme_minimal_hgrid(12) +
+  theme(
+    legend.position = "bottom"
+  )
+p.all
+```
+
+A1 and S1 data are consistent, demonstrating that the S1 experiment worked. The
+apparent cases of bias between A1 and S1 could be due to genome size variation
+among the strains.
+
+#### E. coli
+
+The difference between E. coli proportion between A1 and S1 in fecal versus
+inoculum suggests that the perhaps our S1 pipeline is biased against the fecal
+E. coli for not closely enough matching the reference.
+
+Last week, Amy suggested why not use a very high identity requirement in the
+S1 pipeline. However, this observation makes me think that greater id %'s will
+tend to increase the inconsistency of bias due to w/in OTU variation.
+
+I wonder if we should be allowing e.g. 95% matching, if that is the ANI species
+boundary? That might resolve the change in differential bias between fecal and
+inoc for E. coli.
+
+
+
+## pairwise ratios
+
+Get taxa to look at
+```{r}
+taxa <- taxa_names(ps) %>%
+  setdiff(c("Faecalibacterium prausnitzii", "Thioflavicoccus mobilis"))
+ref <- "Akkermansia muciniphila"
+denom <- taxa_names(ps) %>% str_subset("^Bacteroides")
+taxa <- taxa %>% 
+  sort %>%
+  {c(ref, setdiff(., ref))}
+ps0 <- ps %>%
+  speedyseq:::select_taxa(taxa) %>% 
+  # subset_samples(extraction_batch == 1) %>%
+  subset_samples(specimen_type %in% c("fecal", "inoculum"))
+```
+
+```{r}
+ps0.pw <- ps0 %>%
+  transform_sample_counts(~close_elts(close_elts(.) + 1e-5)) %>%
+  pairwise_ratios(margin = "taxa", filter = FALSE) %>%
+  pairwise_ratios(margin = "samples", filter = FALSE) %>%
+  subset_samples(specimen_id.1 == specimen_id.2)
+pwtb <- ps0.pw %>%
+  psmelt %>%
+  rename(pair = taxon, bias = abundance) %>%
+  separate(pair, c("taxon.1", "taxon.2"), sep = ":", remove = FALSE)
+```
+
+
+```{r, include = TRUE, fig.width = 8, fig.asp = 0.65}
+pwtb %>%
+  filter(
+    center_id.1 == center_id.2,
+    extraction_protocol.1 == "1",
+    extraction_protocol.2 == "2",
+    taxon.1 < taxon.2,
+    str_detect(taxon.1, "Bacteroides"), 
+    str_detect(taxon.2, "Bacteroides"),
+  ) %>%
+  mutate_at("pair", str_replace_all, "Bacteroides", "") %>%
+  ggplot(aes(pair, log(bias),
+      color = specimen_type.1)) +
+  # geom_hline(yintercept = 0, color = "grey") +
+  geom_quasirandom(dodge.width = 0.5) +
+  scale_color_brewer(type = "qual", palette = palettes["specimen_type"], 
+    name = "Specimen type") +
+  # facet_wrap(~str_glue("batch{extraction_batch.1}")) +
+  facet_grid(
+    center_id.1 ~ extraction_batch.1,
+    labeller = labeller(
+      extraction_batch.1 = function(x) paste("Batch", x),
+      center_id.1 = function(x) paste("Center", x)
+    )
+  ) +
+  # theme_minimal_vgrid(12) +
+  theme(
+    panel.spacing = unit(0.05, "npc"),
+    legend.position = "bottom"
+  ) +
+  labs(
+    title = "Bacteroides spp.",
+    x = ""
+  ) +
+  coord_flip()
+```
+
+bias of sequencing?
+```{r, include = TRUE, fig.width = 8, fig.asp = 0.65}
+pwtb %>%
+  filter(
+    extraction_protocol.1 == extraction_protocol.2,
+    center_id.1 == "A1",
+    center_id.2 == "S1",
+    str_detect(taxon.1, "Bacteroides"), 
+    str_detect(taxon.2, "Bacteroides"),
+    taxon.1 < taxon.2,
+  ) %>%
+  mutate_at("pair", str_replace_all, "Bacteroides", "") %>%
+  ggplot(aes(pair, log(bias),
+      color = specimen_type.1)) +
+  # geom_hline(yintercept = 0, color = "grey") +
+  geom_quasirandom(dodge.width = 0.5) +
+  scale_color_brewer(type = "qual", palette = palettes["specimen_type"], 
+    name = "Specimen type") +
+  # facet_wrap(~str_glue("batch{extraction_batch.1}")) +
+  facet_grid(
+    extraction_protocol.1 ~ extraction_batch.1,
+    labeller = labeller(
+      extraction_batch.1 = function(x) paste("Batch", x),
+      extraction_protocol.1 = function(x) paste("Protocol", x)
+    )
+  ) +
+  # theme_minimal_vgrid(12) +
+  theme(
+    panel.spacing = unit(0.05, "npc"),
+    legend.position = "bottom"
+  ) +
+  labs(
+    title = "Bacteroides spp.",
+    x = ""
+  ) +
+  coord_flip()
+```
+
+
+Consider zooming in on just ovatus:uniformis, to demonstrate inconsistent
+differential bias (S1:A1) in fecal vs. inoculum samples. Differential bias is
+greater in the inoculum samples.
+
+Also seems to be an interaction w/ Protocol for some pairwise comparisons, e.g.
+ovatus:thetaiotaomicron
+
+
+Expected bias of S1:A1 is the ratio of genome length to 16S copy number.
+
+### E. coli : Bacteroides
+
+```{r, include = TRUE, fig.width = 8, fig.asp = 0.65}
+pwtb %>%
+  filter(
+    center_id.1 == center_id.2,
+    extraction_protocol.1 == "1",
+    extraction_protocol.2 == "2",
+    str_detect(taxon.1, "Escherichia"), 
+    str_detect(taxon.2, "Bacteroides"),
+  ) %>%
+  mutate_at("taxon.2", str_replace_all, "Bacteroides", "B.") %>%
+  ggplot(aes(taxon.2, log(bias), color = specimen_type.1)) +
+  # geom_hline(yintercept = 0, color = "grey") +
+  geom_quasirandom(dodge.width = 0.5) +
+  scale_color_brewer(type = "qual", palette = palettes["specimen_type"], 
+    name = "Specimen type") +
+  # facet_wrap(~str_glue("batch{extraction_batch.1}")) +
+  facet_grid(
+    center_id.1 ~ extraction_batch.1,
+    labeller = labeller(
+      extraction_batch.1 = function(x) paste("Batch", x),
+      center_id.1 = function(x) paste("Center", x)
+    )
+  ) +
+  # theme_minimal_vgrid(12) +
+  theme(
+    panel.spacing = unit(0.05, "npc"),
+    legend.position = "bottom"
+  ) +
+  labs(
+    title = "E. coli vs. Bacteroides spp.",
+    x = ""
+  ) +
+  coord_flip()
+```
+
+Simplify by taking the geometric mean of Bacteroides spp.
+
+```{r, include = TRUE, fig.width = 8, fig.asp = 0.65}
+pwtb %>%
+  filter(
+    center_id.1 == center_id.2,
+    extraction_protocol.1 == "1",
+    extraction_protocol.2 == "2",
+    str_detect(taxon.1, "Escherichia"), 
+    str_detect(taxon.2, "Bacteroides"),
+  ) %>%
+  group_by(center_id.1, specimen_type.1, extraction_batch.1, 
+    sample.1, sample.2) %>%
+  summarize(bias = gm_mean(bias), .groups = "drop") %>%
+  ggplot(aes(specimen_type.1, log(bias), color = specimen_type.1)) +
+  # geom_hline(yintercept = 0, color = "grey") +
+  geom_quasirandom(dodge.width = 0.5) +
+  scale_color_brewer(type = "qual", palette = palettes["specimen_type"], 
+    name = "Specimen type") +
+  # facet_wrap(~str_glue("batch{extraction_batch.1}")) +
+  facet_grid(
+    center_id.1 ~ extraction_batch.1,
+    labeller = labeller(
+      extraction_batch.1 = function(x) paste("Batch", x),
+      center_id.1 = function(x) paste("Center", x)
+    )
+  ) +
+  # theme_minimal_vgrid(12) +
+  theme(
+    panel.spacing = unit(0.05, "npc"),
+    legend.position = "bottom"
+  ) +
+  labs(
+    title = "E. coli vs. Bacteroides spp.",
+    x = ""
+  ) +
+  coord_flip()
+```
+
+NEXT - make a new doc that creates a double-checked version of this figure, and
+writes some takeways / hypotheses to discuss with the team.
+
+### all pairs; protocol bias
+
+```{r}
+#' Abbreviate taxon names from "Genus species" to "Gsp"
+tax_abbrev <- function (taxa) {
+    m <- str_match(taxa, "([A-Z])[a-z]+ ([a-z]{2})[a-z]*")
+    ifelse(is.na(m[,1]), taxa, paste0(m[,2], m[,3]))
+}
+p <- pwtb %>%
+  filter(
+    center_id.1 == center_id.2,
+    extraction_protocol.1 == "1",
+    extraction_protocol.2 == "2",
+    taxon.1 != taxon.2,
+  ) %>%
+  mutate(
+    type_center = interaction(specimen_type.1, center_id.1),
+    across(c(taxon.1, taxon.2), tax_abbrev)
+  ) %>%
+  ggplot(aes(type_center, log(bias), color = type_center)) +
+  # stat_summary(fun.data = mean_se) +
+  # geom_quasirandom(alpha = 0.3) +
+  geom_hline(yintercept = 0, color = "grey") +
+  geom_quasirandom(size = 0.5) +
+  scale_color_brewer(type = "qual", palette = palettes["specimen_type"]) +
+  facet_grid(taxon.1 ~ taxon.2, scales = "free_y") +
+  labs(x = "specimen type . sequencing center") +
+  theme(
+    axis.text.x = element_text(angle = 90)
+  )
+```
+
+```{r}
+ggsave(plot = p, here("results", "figures", "pw-bias-a1-s1.pdf"),
+  # width = 10, height = 10, units = "in", scale = 1.5)
+  width = 10, height = 10, units = "in", scale = 2)
+```
+
+### Clostridium symbiosum to other taxa
+
+```{r, include = TRUE, fig.width = 10, fig.asp = 0.55}
+pwtb %>%
+  filter(
+    # center_id.1 == center_id.2,
+    extraction_protocol.1 == "1",
+    extraction_protocol.2 == "2",
+    str_detect(taxon.1, "Clostridium"), 
+    !str_detect(taxon.2, "Clostridium"),
+  ) %>%
+  mutate(
+    type_center = interaction(specimen_type.1, center_id.1),
+  ) %>%
+  ggplot(aes(taxon.2, log(bias), color = type_center)) +
+  geom_hline(yintercept = 0, color = "grey") +
+  geom_quasirandom(dodge.width = 0.5) +
+  scale_color_brewer(type = "qual", palette = palettes["specimen_type"], 
+    name = "Specimen type") +
+  facet_grid(
+    . ~ extraction_batch.1,
+    labeller = labeller(
+      extraction_batch.1 = function(x) paste("Batch", x),
+      center_id.1 = function(x) paste("Center", x)
+    )
+  ) +
+  theme(
+    panel.spacing = unit(0.05, "npc")
+  ) +
+  labs(
+    title = "Clostridium symbiosum vs. other",
+    x = ""
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 90)
+  )
+  # coord_flip() +
+  # scale_y_continuous(limits = c(-4, 2), oob = scales::squish)
+  # coord_flip()
+```
+
+```{r, include = TRUE, fig.width = 10, fig.asp = 0.55}
+pwtb %>%
+  filter(
+    # center_id.1 == center_id.2,
+    extraction_protocol.1 == "1",
+    extraction_protocol.2 == "2",
+    str_detect(taxon.1, "Clostridium"), 
+    !str_detect(taxon.2, "Clostridium"),
+    !str_detect(taxon.2, "Escherichia"),
+    extraction_batch.1 == "2"
+  ) %>%
+  mutate(
+    type_center = interaction(specimen_type.1, center_id.1),
+  ) %>%
+  ggplot(aes(type_center, log(bias), color = type_center)) +
+  geom_hline(yintercept = 0, color = "grey") +
+  geom_quasirandom(dodge.width = 0.5) +
+  scale_color_brewer(type = "qual", palette = palettes["specimen_type"], 
+    name = "Specimen type") +
+  facet_wrap(~ taxon.2, ncol = 5) +
+  theme(
+    panel.spacing = unit(0.05, "npc")
+  ) +
+  labs(
+    title = "Clostridium symbiosum vs. other",
+    x = ""
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 90)
+  )
+  # coord_flip() +
+  # scale_y_continuous(limits = c(-4, 2), oob = scales::squish)
+  # coord_flip()
+```
+
+```{r, include = TRUE, fig.width = 10, fig.asp = 0.55}
+pwtb %>%
+  filter(
+    # center_id.1 == center_id.2,
+    extraction_protocol.1 == "1",
+    extraction_protocol.2 == "2",
+    str_detect(taxon.1, "Clostridium"), 
+    taxon.2 == "Bacteroides ovatus",
+    extraction_batch.1 == "2"
+  ) %>%
+  ggplot(aes(specimen_type.1, log(bias), color = specimen_type.1)) +
+  geom_hline(yintercept = 0, color = "grey") +
+  stat_summary(fun.data = mean_se) +
+  geom_quasirandom(dodge.width = 0.5, alpha = 0.7) +
+  scale_color_brewer(type = "qual", palette = palettes["specimen_type"], 
+    name = "Specimen type", guide = "none") +
+  facet_wrap(~ center_id.1, ncol = 5, 
+    labeller = labeller(
+      center_id.1 = function(x) paste("Sequencing center", x)
+    )
+  ) +
+  theme(
+    panel.spacing = unit(0.05, "npc")
+  ) +
+  labs(
+    x = "Specimen type"
+  ) +
+  theme(
+    # axis.text.x = element_text(angle = 90)
+  ) +
+  # scale_y_continuous(breaks = -4:4) +
+  plot_annotation(
+    title = "Differential bias between protocols, Clostridium symbiosum : Bacteroides ovatus",
+    # subtitle = "Protocol 1 : Protocol 2"
+  )
+  # coord_flip() +
+  # scale_y_continuous(limits = c(-4, 2), oob = scales::squish)
+  # coord_flip()
+ggsave(here("results", "figures", "bias-csymbiosum-bovatus.pdf"),
+  width = 6, height = 4, units = "in", scale = 1.5
+)
+```
+
+
+
+
+
+### Clostridium symbiosum to Bacteroides spp.
+
+```{r, include = TRUE, fig.width = 10, fig.asp = 0.55}
+pwtb %>%
+  filter(
+    center_id.1 == center_id.2,
+    extraction_protocol.1 == "1",
+    extraction_protocol.2 == "2",
+    str_detect(taxon.1, "Clostridium"), 
+    str_detect(taxon.2, "Bacteroides"),
+  ) %>%
+  ggplot(aes(taxon.2, log(bias),
+      color = specimen_type.1)) +
+  geom_hline(yintercept = 0, color = "grey") +
+  geom_quasirandom(dodge.width = 0.5) +
+  scale_color_brewer(type = "qual", palette = palettes["specimen_type"], 
+    name = "Specimen type") +
+  facet_grid(
+    center_id.1 ~ extraction_batch.1,
+    labeller = labeller(
+      extraction_batch.1 = function(x) paste("Batch", x),
+      center_id.1 = function(x) paste("Center", x)
+    )
+  ) +
+  theme(
+    panel.spacing = unit(0.05, "npc")
+  ) +
+  labs(
+    title = "Clostridium symbiosum vs. Bacteroides spp.",
+    x = ""
+  ) +
+  coord_flip() +
+  scale_y_continuous(limits = c(-4, 2), oob = scales::squish)
+  # coord_flip()
+```
+
+---
+
+### Eubacterium rectale bias differs between <br> male and female cages in Batch 1 only
+
+
+```{r, include = TRUE, fig.width = 10, fig.asp = 0.55}
+pwtb %>%
+  mutate(
+    specimen_type.1 = ifelse(!is.na(host_sex.1), host_sex.1, specimen_type.1)
+  ) %>%
+  # filter(taxon.1 %in% "Clostridium symbiosum", taxon.1 != taxon.2) %>%
+  filter(
+    center_id.1 == center_id.2,
+    extraction_protocol.1 == "1",
+    extraction_protocol.2 == "2",
+    str_detect(taxon.1, "Eubacterium"), 
+    str_detect(taxon.2, "Bacteroides")
+  ) %>%
+  ggplot(aes(taxon.2, log(bias),
+      color = specimen_type.1)) +
+  geom_hline(yintercept = 0, color = "grey") +
+  geom_quasirandom(dodge.width = 0.5) +
+  scale_color_brewer(type = "qual", palette = palettes["specimen_type"], 
+    name = "Specimen type") +
+  facet_grid(
+    center_id.1 ~ extraction_batch.1,
+    labeller = labeller(
+      extraction_batch.1 = function(x) paste("Batch", x),
+      center_id.1 = function(x) paste("Center", x)
+    )
+  ) +
+  theme(
+    panel.spacing = unit(0.05, "npc")
+  ) +
+  labs(
+    title = "Eubacterium rectale vs. Bacteroides spp.",
+    x = ""
+  ) +
+  coord_flip()
+```
+
+## Ordination
+
+```{r}
+ps0.clr <- ps0 %>% transform_sample_counts(~clr(1 + .))
+ord <- ordinate(ps0.clr, "RDA")
+# ord %>%
+# p <- plot_ordination(ps0.clr, ord)
+```
+
+```{r}
+tb <- plot_ordination(ps0.clr, ord, axes = 2:3, justDF = TRUE) %>%
+  as_tibble(rownames = "sample")
+ggplot(tb, 
+  aes(x = PC2, y = PC3, shape = extraction_protocol,
+    color = interaction(specimen_type, center_id))) +
+  geom_point() +
+  scale_color_brewer(type = "qual", palette = palettes["specimen_type"]) +
+  scale_shape_manual(values = c(1, 3))
+```
+
+
+
+
+## A1 bias overview
+
+```{r}
+taxa <- taxa_names(ps) %>%
+  setdiff(c("Faecalibacterium prausnitzii", "Thioflavicoccus mobilis"))
+ref <- "Akkermansia muciniphila"
+denom <- taxa_names(ps) %>% str_subset("^Bacteroides")
+taxa <- taxa %>% 
+  sort %>%
+  {c(ref, setdiff(., ref))}
+ps0 <- ps %>%
+  speedyseq:::select_taxa(taxa) %>% 
+  subset_samples(extraction_batch == 1, center_id = "A1") %>%
+  subset_samples(specimen_type %in% c("fecal", "inoculum"))
+```
+
+Point estimate
+```{r}
+sam <- sample_data(ps0) %>% 
+  as("data.frame") %>% 
+  as_tibble(rownames = "sample") %>%
+  mutate(across(specimen_id, as.factor))
+fit <- nnet::multinom(
+  otu_table(ps0) ~ 0 + specimen_id + specimen_type*extraction_protocol, 
+  sam
+)
+```
+
+```{r}
+tidy.multinom <- function(x) {
+  coef(x) %>% 
+    as_tibble(rownames = "response") %>%
+    pivot_longer(-response, names_to = "term", values_to = "estimate")
+}
+ctb <- tidy(fit)
+ctb$term %>% unique
+```
+
+Bootstrap replicates:
+```{r}
+N <- nrow(sam)
+R <- 1e2
+wlist <- rep(N, R) %>%
+  purrr::map(rexp, rate = 1) %>%
+  set_names(., seq_along(.))
+reps <- purrr::map(wlist,
+  ~nnet::multinom(
+    otu_table(ps0) ~ 0 + specimen_id + specimen_type*extraction_protocol, 
+    sam,
+    weights = .
+  )
+)
+# reps[[1]] %>% coef %>% corner
+# reps[[2]] %>% coef %>% corner
+btb <- reps %>%
+  map_dfr(tidy.multinom, .id = "id")
+```
+
+TODO: I'm not sure if this is the correct way to use the weights param.
+
+```{r}
+```
+
+```{r}
+btb %>% 
+  filter(term == "extraction_protocol2", response == "Bacteroides ovatus")
+```
+
+
+
+```{r}
+ggplot(data = ctb, aes(y = response, x = estimate)) +
+  # geom_point(data = ctb %>% filter(term == "extraction_protocol2")) +
+  stat_halfeye(data = btb %>% filter(term == "extraction_protocol2")) +
+  coord_cartesian(xlim = c(-4, 4)) +
+  plot_annotation(title = "Bias of P2:P1 in fecal samples")
+```
+
+```{r}
+ggplot(data = ctb, aes(y = response, x = estimate)) +
+  stat_halfeye(
+    data = btb %>% 
+    filter(term == "specimen_typeinoculum:extraction_protocol2")
+  ) +
+  coord_cartesian(xlim = c(-10, 5)) +
+  plot_annotation(title = "Change in P2:P1 from fecal to inoculum")
+```
+
+Should pick the denominator in a principled way; want to reduce noise, but also
+to improve interpretability of changes in differential bias. 
+
+Need to make sure to avoid taxa like B. ovatus. Speaking of which, what is
+going on there?
+
+
+
+## Simple figure
+
+Get taxa to look at
+```{r}
+ps1 <- ps %>%
+  speedyseq:::select_taxa(c("Clostridium symbiosum", "Bacteroides ovatus")) %>% 
+  subset_samples(extraction_batch == 2) %>%
+  subset_samples(specimen_type %in% c("fecal", "inoculum"))
+
+ps1.pw <- ps1 %>%
+  # transform_sample_counts(~close_elts(close_elts(.) + 1e-5)) %>%
+  pairwise_ratios(margin = "taxa", filter = FALSE) %>%
+  pairwise_ratios(margin = "samples", filter = FALSE) %>%
+  subset_samples(specimen_id.1 == specimen_id.2)
+pwtb <- ps1.pw %>%
+  psmelt %>%
+  rename(pair = taxon, bias = abundance) %>%
+  separate(pair, c("taxon.1", "taxon.2"), sep = ":", remove = FALSE)
+
+pwtb %>%
+  filter(
+    # center_id.1 == center_id.2,
+    extraction_protocol.1 == "1",
+    extraction_protocol.2 == "2",
+    taxon.1 == "Clostridium symbiosum",
+    taxon.2 == "Bacteroides ovatus"
+  ) %>%
+  ggplot(aes(specimen_type.1, bias, color = specimen_type.1)) +
+  geom_hline(yintercept = 1, color = "grey") +
+  stat_summary(fun.data = mean_se) +
+  geom_quasirandom(dodge.width = 0.5, alpha = 0.7) +
+  scale_color_brewer(type = "qual", palette = palettes["specimen_type"], 
+    name = "Specimen type", guide = "none") +
+  facet_wrap(~ center_id.1, ncol = 5, 
+    labeller = labeller(
+      center_id.1 = function(x) paste("Sequencing center", x)
+    )
+  ) +
+  theme(
+    panel.spacing = unit(0.05, "npc")
+  ) +
+  labs(
+    x = "Specimen type", y = "Differential bias"
+  ) +
+  theme(
+    # axis.text.x = element_text(angle = 90)
+  ) +
+  scale_y_log10() +
+  plot_annotation(
+    title = "Bias between extraction protocols - Clostridium symbiosum:Bacteroides ovatus",
+    # subtitle = "Batch 1"
+  )
+  # coord_flip() +
+  # scale_y_continuous(limits = c(-4, 2), oob = scales::squish)
+  # coord_flip()
+ggsave(here("results", "figures", "bias-csymbiosum-bovatus-batch2.pdf"),
+  width = 6, height = 4, units = "in", scale = 1.5
+)
+```
+
+
+## Bias estimation dev
+
+keep things simple by working with just the shotgun data for now
+
+```{r}
+taxa <- taxa_names(ps) %>%
+  setdiff(c("Faecalibacterium prausnitzii", "Thioflavicoccus mobilis"))
+ps0 <- ps %>%
+  speedyseq:::select_taxa(taxa) %>% 
+  subset_samples(center_id == "S1") %>%
+  subset_samples(specimen_type %in% c("fecal", "inoculum"))
+sam0 <- sample_data(ps0) %>% as("data.frame") %>% 
+  as_tibble(rownames = "sample")
+```
+
+```{r}
+sample_otu <- function(n, otu, prior_count = 0.5, simplify = TRUE) {
+  # Helper function to draw gamma samples matching a matrix
+  sample_alpha_mat <- function(alpha_mat) {
+    sampled_mat <- rgamma(length(alpha_mat), alpha_mat) %>%
+      matrix(
+        nrow = nrow(alpha_mat),
+        ncol = ncol(alpha_mat)
+      )
+    colnames(sampled_mat) <- colnames(alpha_mat)
+    rownames(sampled_mat) <- rownames(alpha_mat)
+    sampled_mat
+  }
+  # alpha param for Dirichlet posterior
+  alpha_mat <- as(otu, "matrix") + prior_count
+  # draw n sets of matrices, then convert to an `otu_table` of proportions
+  li <- seq(n) %>% 
+    map(~sample_alpha_mat(alpha_mat)) %>%
+    map(phyloseq::otu_table, taxa_are_rows = phyloseq::taxa_are_rows(otu)) %>%
+    map(phyloseq::transform_sample_counts, fun = function(x) x / sum(x))
+  if (simplify && identical(length(li), 1L))
+    li[[1]]
+  else
+    li
+}
+
+rep_otus <- sample_otu(n = 16, otu_table(ps0)) %>%
+  map(transform_sample_counts, .f = clr)
+```
+
+Get weights,
+```{r}
+wtb <- sam0 %>%
+  group_by(center_id, extraction_batch, specimen_type, specimen_id) %>%
+  nest %>%
+  group_by(center_id, extraction_batch, specimen_type) %>%
+  mutate(
+    weight = close_elts(rexp(n(), 1))
+  ) %>%
+  ungroup %>%
+  unnest(data)
+all(wtb$sample == sam0$sample)
+```
+
+Question, how can I succinctly draw a bunch of such weight vectors?  For now,
+can do it one at a time,
+```{r}
+draw_weights <- function(sam) {
+  sam %>%
+    group_by(center_id, extraction_batch, specimen_type, specimen_id) %>%
+    nest %>%
+    group_by(center_id, extraction_batch, specimen_type) %>%
+    # Could probably use a matrix column, or a list of matrices,
+    mutate(
+      weight = close_elts(rexp(n(), 1))
+    ) %>%
+    ungroup %>%
+    unnest(data) %>%
+    pull(weight)
+}
+```
+This should weigh specimens in proportion to their number of aliquots.
+
+Figure out what is the right regression formula. Note, make sure that specimen
+id and extraction batch are factors.
+
+```{r}
+mm <-  model.matrix(
+  ~ 0 + specimen_id + extraction_protocol + extraction_protocol:specimen_type,
+  data = sam0)
+mm %>%
+  head %>%
+  t
+```
+
+Note, this formula is creating 2 interaction terms when we just want one. We
+can't estimate both, because specimen type is determined by specimen id. The
+lm function is smart enough to figure out to ignore the second interaction
+term, but it would be nice to remove it first so that we could get 
+`extraction_protocol2:specimen_typefecal` in the coefficients.
+
+```{r}
+sam1 <- sam0 %>% 
+  mutate(`extraction_protocol2:specimen_typefecal` = 
+    (extraction_protocol == "2" & specimen_type == "fecal") * 1L
+  )
+
+mm <-  model.matrix(
+  ~ 0 + specimen_id + extraction_protocol + 
+    # I(extraction_protocol == "2" & specimen_type == "fecal"),
+    `extraction_protocol2:specimen_typefecal`,
+  data = sam1)
+mm %>%
+  head %>%
+  t
+```
+
+
+```{r}
+otu <- rep_otus[[1]]
+fit <- lm(
+  otu ~ 0 + specimen_id + extraction_protocol +
+    # extraction_protocol:specimen_type,
+    I(extraction_protocol == "2" & specimen_type == "fecal"),
+  data = sam0,
+  weights = draw_weights(sam0)
+)
+coef(fit) %>% corner(Inf, 1)
+```
+
+Do we need to 0-center the estimates?
+```{r}
+cmat <- coef(fit)
+rowSums(cmat) %>% head
+```
+
+It seems that, yes. I guess lm does not get the minimum norm LS estimate.
+
+```{r}
+cmat <- coef(fit) %>%
+  sweep(., 1, rowMeans(.))
+rowSums(cmat) %>% head
+```
+
+```{r}
+# TODO: add option to select a subset of terms, since often we don't need
+# the specimen estimates, which form a large majority of the rows
+my_tidy <- function(fit, center = FALSE) {
+  cmat <- coef(fit)
+  if (center)
+    cmat <- cmat %>% sweep(., 1, rowMeans(.))
+  cmat %>%
+    t %>%
+    as_tibble(rownames = "response") %>% 
+    pivot_longer(cols = -response, names_to = "term", values_to = "estimate")
+}
+# ctb <- my_tidy(fit, center = TRUE)
+```
+
+
+
+Try sampling,
+
+```{r}
+fit_and_tidy <- function(otu, data, center = FALSE) {
+  fit <- lm(
+    otu ~ 0 + specimen_id + extraction_protocol +
+      # extraction_protocol:specimen_type,
+      I(extraction_protocol == "2" & specimen_type == "fecal"),
+    data = data,
+    weights = draw_weights(data)
+  )
+  my_tidy(fit, center = center)
+}
+# fit_and_tidy(rep_otus[[2]], sam0)
+```
+
+```{r}
+R <- 1e2
+rep_otus <- sample_otu(n = R, otu_table(ps0)) %>%
+  map(transform_sample_counts, .f = clr)
+```
+
+```{r}
+bts <- rep_otus %>%
+  map_dfr(fit_and_tidy, data = sam0, center = TRUE, .id = "id")
+```
+
+```{r}
+bts %>%
+  filter(str_detect(term, "extraction_protocol")) %>%
+  ggplot(aes(y = response, x = estimate, color = term, fill = term)) +
+  geom_vline(xintercept = 0, color = "grey") +
+  stat_halfeye(slab_alpha = 0.5) +
+  scale_color_brewer(type = "qual") + 
+  scale_fill_brewer(type = "qual") + 
+  theme(
+    legend.position = "bottom"
+  )
+
+```
+
+- It is confusing to have the main effect (2:1 bias) and interaction
+  (specimen-type of the 2:1 bias) together; might be more intuitive if I show
+  the protocol 1 and protocol 2 biases together in one panel, and the
+  interaction in a separate panel / facet.
+- Think about what this is saying about E. coli 
+- What is going on in the cases where the distributions are largely overlapping?
+- What will taxa with constant bias look like, given that other taxa have
+  changing bias?
+
+Next: For next meeting, stick to showing pw-ratios, but perhaps show
+distributions based on `rep_otus` instead of a simple pseudocount.
+
+Focal question for tomorrow's meeting is what to think about the E. coli and
+whether to reanalyze the shotgun data using an expanded set of reference
+genomes (incl. E. coli, + inoc. contams)
+
+
+## Sample data todo:
+
+Make everything factors, especially specimen id and extraction batch, but
+perhaps also aliquot number.
+
+## bug report for broom
+
+
+```{r}
+fit <- ...
+```
+
+```{r}
+
+ctb <- fit %>% tidy(quick = FALSE)
+ctb <- fit %>% tidy(quick = TRUE)
+# bug when quick = TRUE
+```
+
+
+## 

@@ -1,0 +1,224 @@
+---
+title: "Check A2 data"
+author: "Michael McLaren"
+date: "2020-11-02"
+output: html_document
+---
+
+## Setup
+
+Load the libraries
+```{r}
+library(here)
+library(tidyverse)
+library(fs)
+# library(dada2)
+library(patchwork)
+```
+Path to the fastq files:
+```{r path}
+reads_path <- here("data", "a2", "reads")
+dir_ls(path(reads_path, "raw")) %>% head
+```
+
+Use the ShortRead package to get the read count and quality stats from each
+file, then inspect the distributions, and see what patterns there are about the
+samples that failed to sequence. E.g., plot on the plate map, see if failures
+related to DNA concentration, failures more likely to occur among aliquots of
+the same specimen.
+
+```{r}
+sam <- here("output", "sample-data", "sample-data.Rds") %>% readRDS
+```
+
+```{r}
+ftb <- tibble(path = dir_ls(path(reads_path, "raw"), glob = "*.fastq.gz")) %>%
+  mutate(
+    file = path_file(path),
+    read_direction = case_when(
+      str_detect(file, "_R1_") ~ "Forward",
+      str_detect(file, "_R2_") ~ "Reverse"
+    ),
+    dna_sample_id = str_extract(file, "[^_]+") %>% str_replace("-", "_"),
+    sample_id = str_c("A2_", dna_sample_id)
+  ) 
+```
+
+## Count reads in each file
+
+```{r}
+cnt <- ShortRead::countFastq(path(reads_path, "raw"), pattern = "fastq.gz") %>%
+  as_tibble(rownames = "file")
+```
+
+```{r}
+ftb0 <- ftb %>% 
+  left_join(sam, by = c("sample_id", "dna_sample_id")) %>%
+  left_join(cnt %>% select(file, records), by = "file")
+```
+
+```{r}
+ftb0 %>%
+  filter(read_direction == "Forward") %>%
+  ggplot(aes(records, fill = specimen_type)) +
+  geom_histogram() + 
+  scale_x_log10() +
+  scale_fill_brewer(type = "qual")
+```
+
+```{r}
+ftb0 %>%
+  filter(read_direction == "Forward") %>%
+  ggplot(aes(dna_conc, fill = records < 1e4)) +
+  geom_histogram() + 
+  scale_x_log10() +
+  scale_fill_brewer(type = "qual")
+```
+
+```{r}
+ftb0 %>%
+  filter(read_direction == "Forward") %>%
+  ggplot(aes(dna_conc, records, color = extraction_protocol:extraction_batch)) +
+  geom_point() + 
+  scale_x_log10() +
+  scale_y_log10() +
+  scale_color_brewer(type = "qual")
+```
+
+None of batch, protocol, or DNA concentration seem to explain why these samples
+did not sequence well.
+
+## Primers
+
+
+Are primer sequences present? What is the length of the amplified region vs the
+sequence?
+
+Assuming the primers used in the manual, the sequenced region is V3-V4 and
+approximately 460 bp long.
+
+
+From the [Illumina manual](https://support.illumina.com/documents/documentation/chemistry_documentation/16s/16s-metagenomic-library-prep-guide-15044223-b.pdf)
+
+> 16S Amplicon PCR Forward Primer = 5'
+> TCGTCGGCAGCGTCAGATGTGTATAAGAGACAGCCTACGGGNGGCWGCAG
+> 16S Amplicon PCR Reverse Primer = 5'
+> GTCTCGTGGGCTCGGAGATGTGTATAAGAGACAGGACTACHVGGGTATCTAATCC
+
+From inspecting the reads, it looks like part of the F primer seq is present:
+
+Forward: "CCTACGGGNGGCWGCAG"
+
+Reverse: "GACTACHVGGGTATCTAATCC"
+
+TODO: Confirm that these seqs are present at the start of a few different
+files, then set the trimleft param.
+
+Does it make sense that part of the primer region would be seq'd? Or perhaps
+these shorter seq's are the real primer seqs.
+
+```{r}
+primer.F <- "CCTACGGGNGGCWGCAG"
+primer.R <- "GACTACHVGGGTATCTAATCC"
+```
+
+
+```{r}
+reads <- ftb %>% 
+  filter(dna_sample_id == "5_2") %>% 
+  select(read_direction, path) %>%
+  deframe %>%
+  map(Biostrings::readDNAStringSet, format = "fastq")
+```
+
+Can see that the forward and reverse primer sequences are at the beginning of
+the respective reads.
+
+Check that reads are in matching order:
+```{r}
+reads %>% map(head) %>% map(names)
+```
+
+
+Let's try merging the reads to check the length of the amplicon region.
+
+```{r, eval = FALSE}
+fns <- ftb %>% 
+  filter(dna_sample_id == "5_2") %>% 
+  select(read_direction, path) %>%
+  deframe
+args <- c(
+  'in1={fns["Forward"]}',
+  'in2={fns["Reverse"]}',
+  'out={path(reads_path, "merged", "5_2-merged.fastq.gz")}',
+  'outu={path(reads_path, "merged", "5_2-unmerged.fastq.gz")}',
+  'ihist={path(reads_path, "merged", "5_2-ihist.txt")}'
+) %>%
+  map_chr(str_glue)
+system2("bbmerge.sh", args)
+```
+
+The mode is 460.
+
+
+```{r}
+
+```
+
+
+### Check length of amplicon region
+
+Load the 16S sequences that were extracted from the reference whole genomes,
+```{r}
+dna <- Biostrings::readDNAStringSet(
+  here("output", "strain-data", "reference-16s-genes.fasta")
+)
+```
+and extraction with `DECIPER::TrimDNA()`
+```{r}
+import::from(Biostrings, complement, reverseComplement, width, DNAString)
+import::from(DECIPHER, TrimDNA)
+
+primers <- c(primer.F, primer.R) %>% map(DNAString)
+x <- TrimDNA(dna, primers[[1]], primers[[2]] %>% reverseComplement, 
+  type = "sequences")
+width(x) %>% summary
+```
+
+From this we can see that the true length of the amplicon is 420-430 bp
+_excluding_ the primer sequences.
+
+
+
+## After DADA2
+
+```{r}
+library(speedyseq)
+```
+
+```{r}
+sts <- here("output", c("a1", "a2"), "dada2", "seqtab-nochim-1.Rds") %>%
+  set_names(c("A1", "A2")) %>%
+  map(readRDS) %>%
+  map(otu_table, taxa_are_rows = FALSE)
+sts %>% map(dim)
+sts %>% map(taxa_names) %>% map(nchar) %>% map(table)
+```
+
+
+Note, I forgot to set the sample names.
+
+```{r}
+dadas <- here("output", "a2", "dada2", "dadas-1.Rds") %>%
+  readRDS
+head(dadas)
+```
+
+I think what I wanted was for `path_filt[[1]]` to be a named vector when I
+called `dada()` - I think this would use those names as the sample names.  e.g.
+
+```{r}
+path_filt <- list(R1 = ftb$path_filt_R1, R2 = ftb$path_filt_R2) %>%
+  map(set_names, ftb$sample_id)
+```
+

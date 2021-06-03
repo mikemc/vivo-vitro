@@ -1,0 +1,134 @@
+#+TITLE: Determine presence of E. coli genomes from shotgun data
+* emacs setup
+** Interative display
+Get text and images to display nicely in emacs,
+#+BEGIN_SRC elisp :results silent
+;; Increase text width
+(setq visual-fill-column-width 100)
+;; Default inline image width
+(setq org-image-actual-width (list 800))
+#+END_SRC
+** Org-babel and remote shell setup
+#+PROPERTY: header-args:shell :eval never-export
+
+#+PROPERTY: header-args:R :results value :colnames yes :exports both :eval never-export
+
+The `brc` shell session will be logged into computer cluster.
+#+BEGIN_SRC shell :session brc :results silent
+ssh brc
+#+END_SRC
+* test
+
+
+** prepare references
+Genomes to consider:
+| NZ_CP007799.1 Escherichia coli Nissle 1917, complete genome  |
+| NC_009800.1 Escherichia coli HS, complete genome             |
+| NC_020518.1 Escherichia coli str. K-12 substr. MDS42 DNA, co |
+
+Note, this E. coli HS genome is the same as the one used for my initial mapping, GCA_000017765.1
+
+Note, the K-12 genome was removed from RefSeq, https://www.ncbi.nlm.nih.gov/nuccore/NC_020518.1
+
+https://www.ncbi.nlm.nih.gov/nuccore/NZ_CP007799.1
+From the genbank summary txt file,
+GCA_000714595.1	PRJNA248167	SAMN02794012		na	316435	562	Escherichia coli Nissle 1917	strain=Nissle 1917		latest	Complete Genome	Major	Full	2014/06/27	ASM71459v1	Bioifnormatik, Biozentrum, Uni Wuerzburg	GCF_000714595.1	identical	ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/714/595/GCA_000714595.1_ASM71459v1
+
+So we can use that ftp link to download the genome
+
+#+BEGIN_SRC shell :session brc :results silent
+data_path=/home/mrmclare/data/vivo-vitro
+analysis_path=/home/mrmclare/brc-analysis/2020-08-06-e-coli-mapping
+mkdir $analysis_path/genomes
+cd $analysis_path
+#+END_SRC
+
+#+BEGIN_SRC shell :session brc :results silent
+ln -s $data_path/references/bacteria/GCA_000017765.1_ASM1776v1_genomic.fna.gz genomes
+#+END_SRC
+
+#+BEGIN_SRC shell :session brc :results silent
+wget -P genomes ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/714/595/GCA_000714595.1_ASM71459v1/GCA_000714595.1_ASM71459v1_genomic.fna.gz
+#+END_SRC
+
+index with bbsplit
+#+BEGIN_SRC shell :session brc
+cd genomes
+sbatch --exclusive --wrap="bbsplit.sh ref=."
+cd ..
+#+END_SRC
+
+#+RESULTS:
+| cd                                                               | genomes[?2004l |             |                    |                     |
+| mrmclare@node0:~/brc-analysis/2020-08-06-e-coli-mapping/genomes% | [?2004hsbatch  | --exclusive | --wrap="bbsplit.sh | ref=."[?2004l |
+| Submitted                                                        | batch            | job         |            1524605 |                     |
+
+
+** bbplit sbatch command
+
+- minid=0.97
+- Reference and scaffold/contig mapping stats saved
+- Alignments to reference saved for inspection (BAM file)
+- Unmapped reads saved for later inspection and assembly
+
+
+#+BEGIN_SRC shell :session brc :results verbatim
+mkdir bbsplit
+WELL=A01
+sbatch --exclusive --wrap="
+  bbsplit.sh -eoom path=genomes \
+    interleaved=t minid=0.97 \
+    ambig2=split \
+    in=$data_path/s2/reads/clean/$WELL.fastq.gz \
+    outm=bbsplit/$WELL-mapped.bam \
+    basename=bbsplit/$WELL-%.fastq.gz \
+    refstats=bbsplit/$WELL-refstats.tsv \
+    scafstats=bbsplit/$WELL-scafstats.tsv"
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+mkdir bbsplit[?2004l
+mrmclare@node0:~/brc-analysis/2020-08-06-e-coli-mapping% [?2004hWELL=A01[?2004l
+mrmclare@node0:~/brc-analysis/2020-08-06-e-coli-mapping% [?2004hsbatch --exclusive --wrap="[?2004l
+[?2004h  bbsplit.sh -eoom path=genomes \[?2004l
+[?2004h    interleaved=t minid=0.97 \[?2004l
+[?2004h    ambig2=split \[?2004l
+[?2004h    in=$data_path/s2/reads/clean/$WELL.fastq.gz \[?2004l
+[?2004h    outm=bbsplit/$WELL-mapped.bam \[?2004l
+[?2004h    basename=$WELL-%.fastq.gz \[?2004l
+[?2004h    refstats=bbsplit/$WELL-refstats.tsv \[?2004l
+[?2004h    scafstats=bbsplit/$WELL-scafstats.tsv"[?2004l
+Submitted batch job 1524606
+#+end_example
+
+
+HERE. Next is to inspect the refstats, and to inspect the coverage. Might also consider mapping the ambiguous reads, since I don't think those will be included in the BAM output.
+
+Download results to local machine,
+#+BEGIN_SRC shell
+mkdir output
+scp brc:"~/brc-analysis/2020-08-06-e-coli-mapping/bbsplit/*" output
+#+END_SRC
+
+#+RESULTS:
+** Anvio
+#+BEGIN_SRC shell :session anvio :results silent
+conda activate anvio-6.2
+#+END_SRC
+
+#+BEGIN_SRC shell :session anvio :results silent
+mkdir genomes
+scp -r brc:"~/brc-analysis/2020-08-06-e-coli-mapping/genomes/*.fna.gz" genomes
+#+END_SRC
+
+#+BEGIN_SRC shell :session anvio :results silent
+anvi-init-bam output/A01-mapped.bam -o output/A01-mapped-sorted.bam
+#+END_SRC
+
+#+BEGIN_SRC shell :session anvio :results silent
+
+#+END_SRC
+
+#+BEGIN_SRC shell :session anvio :results silent
+#+END_SRC

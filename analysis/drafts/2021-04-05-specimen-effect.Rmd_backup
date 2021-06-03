@@ -1,0 +1,711 @@
+---
+title: ""
+author: Michael McLaren
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+Goal: Check the specimen effect, similar to the 2020-12-08 analysis
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(progress = TRUE, verbose = TRUE)
+# Global chunk options
+knitr::opts_chunk$set(
+  include = FALSE, echo = FALSE,
+  warning = TRUE, message = FALSE, 
+  fig.width = 7, fig.height = 7,
+  collapse = TRUE, comment = "#>",
+  #> cache = TRUE, autodep = TRUE,
+  cache.comments = FALSE
+)
+```
+
+```{r}
+library(tidyverse)
+library(here)
+library(speedyseq)
+
+library(data.table)
+
+library(kableExtra)
+
+library(cowplot)
+library(patchwork)
+theme_set(theme_cowplot())
+library(ggridges)
+library(ggbeeswarm)
+library(ggdist)
+
+library(generics)
+
+library(recipes)
+library(mniw)
+library(fido)
+library(metacal)
+#> devtools::load_all(here("rpkg"), export_all = FALSE, helpers = FALSE)
+```
+
+```{r}
+my_psmelt <- function(physeq) {
+  speedyseq::psmelt(physeq, as = "tibble") %>%
+    rename(taxon = OTU, sample = Sample, abundance = Abundance)
+}
+as_tibble.phyloseq <- function(x) {
+  x %>% my_psmelt
+}
+as_tibble.sample_data <- function(x) {
+  x %>% as("data.frame") %>% as_tibble(rownames = "sample")
+}
+as_tibble.taxonomyTable <- function(x) {
+  x %>% as("matrix") %>% as_tibble(rownames = "taxon")
+}
+as_tibble.XStringSet <- function(x) {
+  x %>% as.character %>% enframe("taxon", "sequence")
+}
+my_kbl <- function(x, position = "center", ...) {
+  kbl(x, ...) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+    full_width = FALSE, position = position)
+}
+```
+
+```{r load-data, cache = TRUE}
+ps <- here("output/phyloseq/2020-11-28-phyloseq.Rds") %>% 
+  readRDS
+## Adjust sample data
+sample_data(ps) <- sample_data(ps) %>% as_tibble %>%
+  mutate(
+    sample_sum = sample_sums(ps),
+    across(extraction_batch, fct_relabel, ~str_c("B", .)),
+    across(extraction_protocol, fct_relabel, ~str_c("E", .)),
+    protocol = extraction_protocol:center_id,
+    batch_protocol = extraction_batch:protocol,
+    #> batch_protocol = fct_other(extraction_batch:extraction_protocol:center_id,
+    #>   drop = c("B1:E1:A1", "B2:E1:A1"), other_level = "Ref") %>%
+    #>   fct_relevel("Ref"),
+    # Center-id that combines A1 and S1 into a "Ref" level
+    #> center_id_ref = fct_other(center_id, drop = c("A1", "S1"), 
+    #>   other_level = "Ref") %>%
+    #>   fct_relevel("Ref")
+  ) %>%
+  sample_data
+assignments <- tax_table(ps) %>% 
+  as_tibble %>%
+  mutate(across(c(organism, strain_group), str_split, "; ")) %>%
+  unnest(c(organism, strain_group))
+focal_taxa <- assignments %>%
+  filter(
+    strain_group %in% c("Inoculum", "Mouse contaminant"),
+    species != "Faecalibacterium prausnitzii",
+    species != "Eubacterium rectale",
+  ) %>%
+  pull(taxon)
+ps0 <- ps %>%
+  prune_taxa(focal_taxa, .) %>%
+  prune_samples(sample_sums(.) > 1e3, .) %>%
+  subset_samples(specimen_type %in% c("Fecal", "Inoculum")) %>%
+  tax_glom("species")
+taxa_names(ps0) <- tax_table(ps0)[,"species"] %>% c
+taxa_names(ps0)
+tree <- here("output/strain-data/gtdb-representatives.tree") %>%
+  ape::read.tree()
+focal_id <- here("output/strain-data/focal-strains.csv") %>%
+  read_csv
+tree$tip.label <- focal_id$display_name[
+  match(
+    tree$tip.label,
+    focal_id$ref_assembly_accession
+  )] %>%
+  str_replace(" HS$", "")
+ps0 <- merge_phyloseq(ps0, tree)
+# Strain metadata (currently from v1 table)
+strains <- here("output/strain-data", "v1/strain-pheno-geno-tax.Rds") %>%
+  readRDS %>%
+  mutate(taxon = ncbi_species_display_name) %>%
+  filter(taxon %in% taxa_names(ps0)) %>%
+  left_join(tax_table(ps0) %>% as_tibble, by = "taxon") %>%
+  mutate(
+    across(taxon, factor, levels = taxa_names(ps0)),
+    across(gram_stain, str_replace, "Gram", "")
+  )
+# genome bias: 16s copy numbers and sizes
+genome_bias <- strains %>%
+  filter(taxon %in% taxa_names(ps0)) %>%
+  select(
+    taxon,
+    ssu_count,
+    reference_genome_size
+  ) %>%
+  mutate(
+    across(-c(taxon), center_elts)
+  )
+sam <- sample_data(ps0) %>% as_tibble
+tree <- phy_tree(ps0)
+```
+
+Phyloseq object subset to just the fecal and inoculum samples and 11 focal species,
+```{r, include = TRUE, echo = TRUE}
+ps0
+```
+```{r, include = TRUE}
+sam %>% count(specimen_type)
+```
+
+- *E. rectale* and *F. prausnitzii* are excluded
+- The two *E. coli* strains are aggregated to the species level
+
+and 16 batch-protocol combinations (Extraction batch X Extraction protocol X
+Sequencing center),
+
+```{r, include = TRUE}
+sam %>% count(extraction_batch)
+sam %>% count(extraction_protocol)
+sam %>% count(center_id, library_strategy)
+```
+
+```{r, eval = FALSE, include = FALSE}
+strains %>%
+  select(gram_stain, phylum, taxon) %>% 
+  arrange(desc(taxon)) %>%
+  my_kbl
+```
+
+```{r, include = TRUE, fig.dim = c(9,5)}
+lbls <- strains %>% 
+  arrange(taxon) %>%
+  transmute(label = str_glue("({gram_stain}) {phylum} > {taxon}")) %>%
+  pull(label)
+tree0 <- tree
+tree0$tip.label <- lbls
+plot(tree0)
+rm(lbls, tree0)
+```
+
+TODO: Think about whether it is really ok to aggregate the E. coli given the potential bioinformatics bias.
+
+Create a version without E. coli, and subset to batch 1
+```{r}
+ps1 <- ps0 %>%
+  prune_taxa(setdiff(taxa_names(ps0), "Escherichia coli"), .)
+ps1.b1 <- ps1 %>%
+  subset_samples(extraction_batch == "B1")
+```
+
+
+## Checks
+
+```{r}
+sample_sums(ps1) %>% min
+```
+
+```{r}
+pstb <- my_psmelt(ps1) %>%
+  with_groups(sample, mutate,
+    proportion = close_elts(abundance),
+    clr = metacal::clr(proportion + 1e-4),
+    clr2 = metacal::clr(proportion + 1e-4, base = 2),
+  )
+```
+
+Check for zeros,
+```{r}
+pstb %>%
+  filter(abundance == 0) %>%
+  count(taxon, batch_protocol, specimen_type)
+```
+
+Check for patterns of read depth with sample type,
+```{r}
+sam %>%
+  with_groups(c(center_id, extraction_batch, specimen_type), summarize,
+    across(sample_sum, c(median, mean)),
+  )
+    #> c(center_id, extraction_batch, specimen_type), 
+```
+
+## Vis relative abundances
+
+Plot distributions of relative abundances in different conditions
+
+```{r}
+p1 <- pstb %>%
+  ggplot(aes(y = taxon, x = proportion, color = protocol)) +
+  facet_grid(specimen_type ~ extraction_batch) +
+  #> geom_quasirandom(groupOnX = FALSE) +
+  stat_pointinterval(.width = 0.9, position = position_dodge(width = 0.7)) +
+  scale_x_continuous(
+    trans = scales::pseudo_log_trans(1e-3),
+    breaks = c(1e-3, 1e-2, 3e-2, 1e-1, 0.3)
+  ) +
+  theme_minimal_hgrid()
+p1
+```
+
+```{r}
+p2 <- pstb %>%
+  ggplot(aes(y = taxon, x = clr2, color = protocol)) +
+  facet_grid(specimen_type ~ extraction_batch) +
+  stat_pointinterval(.width = 0.9, position = position_dodge(width = 0.7)) +
+  theme_minimal_hgrid()
+p2
+```
+
+## Effect of specimen type - MVP
+
+
+
+Batch 1, center A1. Ignore cage effects.
+```{r}
+ps1.b1.a1 <- ps1 %>% 
+  subset_samples(extraction_batch == "B1" & center_id == "A1")
+sam <- ps1.b1.a1 %>% sample_data %>% as_tibble
+Y <- ps1.b1.a1 %>% otu_table %>% orient_taxa(as = "rows") %>% as("matrix")
+n_taxa <- ntaxa(ps1.b1.a1)
+```
+
+### model
+
+```{r}
+rcp <- sam %>%
+  recipe %>%
+  step_dummy(specimen_id, one_hot = TRUE) %>%
+  step_dummy(specimen_type, extraction_protocol, 
+    one_hot = TRUE, role = "tmp") %>%
+  step_interact(~starts_with("specimen_type"):extraction_protocol_E2)
+X <- rcp %>% 
+  prep %>%
+  bake(new_data = NULL, all_predictors(), composition = "matrix") %>%
+  t
+rownames(X)
+```
+
+### priors
+
+#### Sigma
+
+Sigma appears as the covariance of ALR vectors in both eta and Lambda.
+It has an inverse Wishart distribution determined by parameters Xi and v.
+
+We should determine our prior on Sigma first, since this will interact with Gamma to determine the prior variance of Theta.
+We can determine Sigma from thinking about eta, based on the amount of variation among technical replicates.
+I will ignore phylogenetic information.
+
+What is a plausible degree of multiplicative error in log abundance?
+Multiplicative error of $*/ 1$ order of magnitude—a factor within (0.1, 10)—seems large but plausible.
+On the natural log scale, this interval corresponds to `r log(c(0.1, 10)) %>% round(2)`.
+Taking this range as the central 95% interval of a normal distribution corresponds to a standard deviation of approximately `log(10) / 2`.
+This is near the upper end of standard deviations I consider plausible.
+
+For the lower end of plausible sigmas, can consider that a typical multiplicative error much lower than 10% seems optimistic.
+A sigma with typical error of 10% corresponds to `log(1.1)`.
+
+```{r}
+sigma_upper <- log(10) / 2
+sigma_lower <- log(1.1)
+rng <- c(sigma_lower, sigma_upper)
+summary(rng, digits = 2)
+```
+
+**TODO**
+
+I think we can use the formula
+\begin{align}
+  \Var(x_{ii}) = \frac{2 S_{ii}}{(v - D - 2)^2(v - D - 4)}
+\end{align}
+to determine how to translate these variances into parameter choices.
+
+Perhaps easiest is to modify the pibble tutorial and then check the mean and var of Sigma,
+```{r}
+upsilon <- n_taxa + 10
+Omega <- diag(n_taxa) * 0.25
+G <- cbind(diag(n_taxa - 1), -1)
+Xi <- (upsilon - n_taxa) * G %*% Omega %*% t(G)
+
+mean_Sigma <- Xi / (upsilon - n_taxa - 2)
+mean_Sigma %>% print(digits = 2)
+
+# Standard deviation of diags
+sqrt( 2 * diag(Xi)^2 / ((upsilon - n_taxa - 2)^2 * (upsilon - n_taxa - 4)) ) %>% print(digits = 2)
+
+# check the geometric standard deviation of the multiplicative error
+#> mean_Sigma %>% exp %>% round(1)
+```
+
+TODO: use mniw to check the quartiles; or perhaps the distribution of just a diagonal element and an off diagonal element would be easier.
+```{r}
+#> diwish(Xi, upsilon)
+```
+
+Note, setting upsilon to a large value (ntaxa + 10) and reducing Omega, then setting Gamma to a large value, results in me not being able to fit.
+
+
+#### Theta
+
+First let's set $\Theta$, which is the prior mean of Lambda. 
+This will just be a matrix of zeros, since we don't have any prior insight into what compositions or bias values we should expect.
+```{r}
+Theta <- matrix(0, nrow = nrow(Y) - 1, ncol = nrow(X))
+```
+
+To set $\Gamma$, the column (coefficient) covariance matrix, let's first determine the variance in Theta that we wish.
+Take to be diagonal; in future we can handle covariance by adding more terms to the model.
+We can set the variance of the different groups of coefficents by matching their names,
+```{r}
+nms <- X %>% rownames %>% print
+
+V <- diag(NA_real_, nrow = length(nms))
+diag(V)[str_which(nms, "^specimen_id")] <- log(30)^2
+diag(V)[str_which(nms, "^specimen_type_.+_x_extraction_protocol_E2")] <- log(10)^2
+
+stopifnot(!anyNA(V))
+
+diag(V)
+```
+
+Finally we set Gamma as a scaling of V so that the combination of Sigma and Gamma gives the desired variance.
+
+The prior (co)variance of $\Lambda_{i \cdot}$ is $\Sigma_{ii} \Gamma$ conditional on Sigma; we want this to have a typical value of $V_{i \cdot}$, .
+(This is the variance in the coeffficients for taxon $i$).
+
+We want the distribution of $\Lambda_{ij}$, which equals $\Sigma_{ii} \Gamma_{jj}$ conditioned on Sigma, to have a variance of $V_{jj}$.
+In our case, all taxa have the same variance, $\Sigma_{ii} = \Sigma_{11}$.
+```{r}
+Gamma <- diag( diag(V) / mean_Sigma[1] ) * 3
+```
+
+TODO: Figure out why I need the fudge factor 3 to get a high enough variance of Lambda
+
+### prior predictive check
+
+```{r}
+priors <- pibble(NULL, X, upsilon, Theta, Gamma, Xi)
+print(priors)
+priors <- to_clr(priors)
+#> print(priors)
+names_covariates(priors) <- rownames(X)
+names_categories(priors) <- rownames(Y)
+coord_names <- str_c( priors$coord_system, priors$names_categories, sep = "_")
+#> summary(priors, pars = "Lambda") %>% .[[1]] %>%
+#>   filter(coord == coord_names[1])
+```
+
+Visualize the prior on the coefficients; same for all taxa so can just look at one taxon.
+
+```{r}
+x <- priors$Lambda %>%
+  data.table::as.data.table() %>%
+  rlang::set_names("coord", "term", ".draw", "value") %>%
+  filter(coord == coord_names[1])
+x %>% group_by(term) %>% median_qi(value, .width = 0.9)
+x %>% group_by(term) %>% summarize(across(value, c(mean, sd, var)))
+x %>%
+  ggplot(aes(y = term, x = value)) +
+  stat_interval()
+```
+
+(the summary table is perhaps better here).
+
+
+## fit
+
+```{r}
+priors$Y <- Y
+posterior <- refit(priors, optim_method="adam")
+names_categories(posterior) <- rownames(Y)
+```
+
+Somehow I need to fix this fitting problem to proceed.
+
+
+
+```{r}
+post <- posterior$Lambda %>%
+  data.table::as.data.table() %>%
+  rlang::set_names("coord", "term", ".draw", "value") %>%
+  mutate(
+    taxon = str_sub(coord, 5),
+    across(taxon, factor, levels = taxa_names(ps0)),
+  ) %>%
+  print
+```
+
+E2/E1 bias in specimen type:
+```{r}
+post %>%
+  filter(str_detect(term, "extraction_protocol_E2")) %>%
+  mutate(specimen_type = str_extract(term, "Fecal|Inoculum")) %>%
+  ggplot(aes(y = taxon, x = value, color = specimen_type)) +
+  stat_pointinterval(.width = 0.5, position = position_dodge(width = 0.7)) +
+  theme_minimal_hgrid() +
+  scale_color_brewer(type = "qual") +
+  labs(x = "Log2 relative efficiency") +
+  plot_annotation(title = "Effect on CLR efficiency")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+## Pibble fit
+
+### Model matrix with recipes
+
+Create the model matrix with recipes:
+
+```{r}
+```
+
+```{r}
+sam <- sample_data(ps1) %>% as("data.frame") %>% as_tibble(rownames = "sample")
+```
+
+```{r}
+rcp <- recipe(sam) %>%
+  step_dummy(specimen_id, one_hot = TRUE) %>%
+  step_dummy(specimen_type, extraction_protocol) %>%
+  step_interact(~specimen_type_Inoculum:extraction_protocol_E2) %>%
+  step_rm(specimen_type_Inoculum)
+X <- rcp %>% 
+  prep(data = sam) %>% 
+  bake(new_data = NULL, all_predictors(), composition = "matrix") %>%
+  t
+```
+
+HERE. Problem is that right now, complm doesn't let me use a model matrix.
+Need to decide if worth extending complm just for this (probably eventually) or going straight to fido
+
+
+### With fido
+
+```{r}
+library(fido)
+```
+
+Let's create a model matrix for all centers,
+```{r}
+ps3 <- ps0 %>%
+  subset_samples(extraction_batch == "B1")
+sam <- sample_data(ps3) %>% as("data.frame") %>% as_tibble(rownames = "sample")
+```
+
+```{r}
+rcp <- recipe(sam) %>%
+  step_dummy(specimen_type, specimen_id, center_id, one_hot = TRUE) %>%
+  step_dummy(extraction_protocol) %>%
+  step_interact(
+    ~starts_with("center_id_"):specimen_type_Inoculum:extraction_protocol_E2
+  ) %>%
+  #> step_rm(specimen_type_Inoculum, center_id_A1) %>%
+  step_rm(center_id_A1) %>%
+  step_zv(starts_with("specimen_id")) # drop unneeded factor levels
+X <- rcp %>% 
+  prep(data = sam) %>% 
+  bake(new_data = NULL, all_predictors(), composition = "matrix") %>%
+  t
+X %>% rownames
+```
+
+
+```{r}
+Y <- ps3 %>% otu_table %>% orient_taxa(as = "rows") %>% as("matrix")
+```
+
+First let's set $\Theta$, which is the prior mean of Lambda. This will just be a matrix of zeros, since we don't have any prior insight into what bias values we should expect.
+```{r}
+Theta <- matrix(0, nrow = nrow(Y) - 1, ncol = nrow(X))
+```
+
+For now, I will pretend like there is no other structure, though in reality we have cage effects and aliquot effects: mice from same cage more similar; aliquots (defined by specimen_id:aliquot_num) across centers more similar; A centers and S centeres likely more similar to each other; etc.
+In some cases, I can imagine accounting for this structure either with new model terms, or by having a non-zero prior covariance on the coefficients.
+For example, I could have a positive covariance on the specimen effect for mice from the same cage, or I could have a cage term.
+
+Setting $\Gamma$: Covariance among the coviarate coefficients.
+For now take to be diagonal.
+```{r}
+# Note, there might be a way to generate Gamma using the recipe object
+X %>% rownames
+alph <- 2 # Signal to noise ratio
+Gamma <- alph * diag(c(
+    # rep(x, y) -> set the prior variance to x for y different covariates,
+    rep(1, 2), # specimen type
+    rep(0.5, 11), # specimen id
+    rep(1, 3), # center_id rel to A1
+    rep(1, 1), # extraction protocol E2 rel to E1
+    rep(1, 4) # effect of specimen_type on E2/E1 bias for each center
+))
+stopifnot(identical(nrow(Gamma), nrow(X)))
+```
+Here I'm using the fact that specimens of the same type are likely more similar than specimens of different types.
+(In fact, they are much more similar than this 2:1 ratio suggests.)
+
+TODO: Revisit what alpha should be
+
+Now we need to determine Sigma: Prior on the taxa covariances.
+This involves choosing Xi and v.
+For now let's just use the example from the pibble tutorial.
+```{r}
+n_taxa <- ntaxa(ps3)
+upsilon <- n_taxa + 3
+Omega <- diag(n_taxa)
+G <- cbind(diag(n_taxa - 1), -1)
+Xi <- (upsilon - n_taxa) * G %*% Omega %*% t(G)
+```
+
+```{r}
+priors <- pibble(NULL, X, upsilon, Theta, Gamma, Xi)
+print(priors)
+```
+
+TODO: Prior predictive check
+
+```{r}
+priors <- to_clr(priors)
+names_covariates(priors) <- rownames(X)
+priors$Y <- Y
+posterior <- refit(priors, optim_method="adam")
+names_categories(posterior) <- rownames(Y)
+```
+
+```{r}
+post <- posterior$Lambda %>%
+  data.table::as.data.table() %>%
+  rlang::set_names("coord", "term", ".draw", "value") %>%
+  mutate(
+    taxon = str_sub(coord, 5),
+    across(taxon, factor, levels = taxa_names(ps0)),
+  ) %>%
+  print
+```
+
+Let's look at the effect of specimen type on the E2/E1 bias in each protocol,
+```{r}
+post0 <- post %>%
+  filter(
+    str_detect(term, 
+      "center_id_.{2}_x_specimen_type_Inoculum_x_extraction_protocol_E2"
+    )
+  ) %>%
+  mutate(
+    center_id = str_extract(term, "(?<=^center_id_).{2}"),
+    # Convert to log base 2
+    across(value, `*`, log2(exp(1)))
+  )
+```
+
+```{r}
+post0 %>%
+  count(taxon, center_id)
+```
+
+```{r, eval = FALSE}
+x <- post0 %>% 
+  group_by(taxon, center_id) %>%
+  point_interval(value, .width = 0.9)
+x %>% 
+  ggplot(aes(y = taxon,  color = center_id)) +
+  geom_pointinterval(aes(x = value, xmin = .lower, xmax = .upper),
+    position = position_dodge(width = 0.7)) +
+  theme_minimal_hgrid() +
+  scale_color_brewer(type = "qual", palette = "Paired") +
+  plot_annotation(title = "Effect on CLR efficiency")
+```
+
+```{r}
+post0 %>% 
+  ggplot(aes(y = taxon, x = value, color = center_id)) +
+  stat_pointinterval(.width = 0.9, position = position_dodge(width = 0.7)) +
+  theme_minimal_hgrid() +
+  scale_color_brewer(type = "qual", palette = "Paired") +
+  labs(x = "Log2 relative efficiency") +
+  plot_annotation(title = "Effect on CLR efficiency")
+```
+
+Cool! Observations and questions
+
+- The overall effect is smaller in th shotgun centers - can quantify by the norm
+- We have the same issue I noted in the Dec report when it comes to interpretting the differences between centers
+  - A way to illustrate this would be an animated version with a slide for each center
+- For the A centers, the trend seems to be roughly oppossing the E2/E1 bias seen in the fecal specimens in the Dec 12 report. (With E. coli being a strong exception)
+  - This would align with my hypothesis that extraction is easier in the inoculum samples IF we also saw this trend in the S centers. The fact that we see this mainly in the A centers suggests it has something to do with PCR instead.
+
+TODO: Prior and posterior checks; find ways to summarize and interpret the fit; check that I can simulate from the posterior
+
+TODO: Account for genomic bias. Perhaps in the priors? Or should I add those as a fixed term?
+
+
+TODO: Adjust the coefficients after removing E. coli; or change the denom to be all taxa except E. coli; to make sure it isn't contorting things.
+
+Questions: Are the posteriors on the coefficients normally distributed?
+
+
+Need to think about PCR saturation; I expect it to happen more in the fecal samples. What are the implications for bias?
+Crus2021 data is a chance to interrogate this question.
+
+
+I need multiple figures to help interpret everything. One is just to see how the relative abundances vary across sample types and extraction protocols. 
+Need to redo this analysis now that I have all sequencing centers.
+
+Recall that Barnesiella is overall quite rare, and much rarer in inoculum. ~1e-2 in fecal and ~3e-5 in inoculum samples.
+
+Barnesiella has a clumped structure that makes me unsure how to interp its coefficients
+file:///home/michael/research/vivo-vitro/main/analysis/2020-04-03-lab-meeting/slides.html#31
+Like E. rectale, though not as bad.
+
+
+I might want to do an analysis that flags for sample-taxon pairs where index hopping could be an issue; or, confirm that it is reduced in the S centers, so any patterns seen in S and A can be vouched for.
+
+
+TODO: Check the primer matches to our taxa. Also look into GC content of each ASV.
+
+
+# trying alternative specifications
+
+
+## Effect of specimen type
+
+Start with a simple model, where each center's bias is independent and each specimen's composition is independent (i.e. ignore library strategy, batch/week, and cage as predictors), and also fit separate independent E2/E1 bias vectors for type:batch:center combination.
+
+```{r, eval = FALSE}
+rcp <- ps1 %>% sample_data %>% as_tibble %>%
+  mutate(
+    type_batch_center = specimen_type:extraction_batch:center_id
+  ) %>%
+  recipe %>%
+  step_dummy(specimen_id, one_hot = TRUE) %>%
+  step_dummy(type_batch_center, extraction_protocol, one_hot = TRUE, role = "tmp") %>%
+  step_interact(~starts_with("type_batch_center"):starts_with("extraction_protocol"))
+X <- rcp %>% 
+  prep %>%
+  bake(new_data = NULL, all_predictors(), composition = "matrix") %>%
+  t
+rownames(X)
+```
+
+are there problems with doing it this way? This way is more symmetric between the two protocols; but there will be poor identifiability in the coefficents, because I have a 
+
+
+as an interaction:
+```{r, eval = FALSE}
+rcp <- ps1.b1 %>% sample_data %>% as_tibble %>%
+  recipe %>%
+  step_dummy(specimen_id, one_hot = TRUE) %>%
+  step_dummy(specimen_type, extraction_protocol) %>%
+  step_interact(~specimen_type_Inoculum:extraction_protocol_E2) %>%
+  step_rm(specimen_type_Inoculum)
+# model matrix for pibble
+X <- rcp %>% 
+  prep %>%
+  bake(new_data = NULL, all_predictors(), composition = "matrix") %>%
+  t
+```
+

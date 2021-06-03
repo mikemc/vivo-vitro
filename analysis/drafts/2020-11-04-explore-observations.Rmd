@@ -1,0 +1,315 @@
+## Setup
+
+```{r}
+library(tidyverse)
+library(here)
+library(speedyseq)
+# library(metacal)
+
+library(cowplot)
+library(ggridges)
+library(ggbeeswarm)
+library(ggforce)
+theme_set(theme_cowplot(12))
+
+library(fido)
+library(driver)
+
+import::from(metacal, gm_mean)
+```
+
+```{r}
+my_psmelt <- function(physeq) {
+  speedyseq::psmelt(physeq, as = "tibble") %>%
+    rename(taxon = OTU, sample = Sample, abundance = Abundance)
+}
+as_tibble.phyloseq <- function(x) {
+  x %>% my_psmelt
+}
+as_tibble.sample_data <- function(x) {
+  x %>% as("data.frame") %>% as_tibble(rownames = "sample")
+}
+as_tibble.taxonomyTable <- function(x) {
+  x %>% as("matrix") %>% as_tibble(rownames = "taxon")
+}
+as_tibble.XStringSet <- function(x) {
+  x %>% as.character %>% enframe("taxon", "sequence")
+}
+```
+
+Phyloseq object w/ the A1 sequencing data,
+```{r}
+ps <- here('output/phyloseq/2020-09-12-phyloseq-focal-strains.Rds') %>%
+  readRDS %>% 
+  subset_samples(specimen_type %in% c("Fecal", "Inoculum"))
+tax <- tax_table(ps) %>% as_tibble
+sam <- sample_data(ps) %>% as_tibble
+sam %>%
+  pull(specimen_type) %>%
+  table
+```
+
+```{r}
+dna_sam <- here('output/sample-data/dna-sample-data.Rds') %>%
+  readRDS
+```
+
+## application 1: dependence on sample dna concentration
+
+First, how much variation is there to work with? (within a batch + spec-type)
+
+```{r}
+dna_conc <- dna_sam %>%
+  pivot_longer(starts_with("dna_conc"), values_to = "dna_conc") %>%
+  group_by(
+    specimen_type, extraction_batch, specimen_id, aliquot_number
+  ) %>%
+  summarize(across(dna_conc, gm_mean, na.rm = TRUE), .groups = "drop_last") %>%
+  summarize(across(dna_conc, gm_mean, na.rm = TRUE), .groups = "drop")
+```
+
+```{r}
+dna_conc %>%
+  ggplot(aes(dna_conc, fill = specimen_type)) +
+  geom_histogram() +
+  scale_x_log10() +
+  facet_wrap(~extraction_batch, ncol = 1) +
+  scale_fill_brewer(type = "qual")
+```
+
+TODO - look into the sample with inf value. guess it was measured as 0 by one
+of the centers?
+
+I'm not sure how to best combine the concentration measurements from different
+methods, so perhaps best to just use our conc. measurements,
+```{r}
+dna_conc <- dna_sam %>%
+  group_by(
+    specimen_type, extraction_batch, specimen_id
+  ) %>%
+  summarize(across(dna_conc, gm_mean, na.rm = TRUE), .groups = "drop")
+```
+
+```{r}
+dna_conc %>%
+  ggplot(aes(dna_conc, fill = specimen_type)) +
+  geom_histogram() +
+  scale_x_log10() +
+  facet_wrap(~extraction_batch, ncol = 1) +
+  scale_fill_brewer(type = "qual") +
+  expand_limits(x = 30)
+```
+
+Can see that we have a fairly narrow range to work with within each specimen
+type, and definitely can't safely extrapolate from the narrow range to the
+larger ranger we are interested in.
+
+
+TODO: 
+
+- add this to a doc to discuss in our next call
+
+
+For the purposes of seeing whether there is an effect of concentration on PCR,
+we could leverage that fact that yields differ between P1 and P2 (and in
+opposing ways in the two specimen types.
+
+
+Compare the three DNA conc measurements,
+
+```{r}
+library(ggforce)
+```
+
+```{r}
+dna_sam %>%
+  drop_na(starts_with("dna_conc")) %>%
+  mutate(across(starts_with("dna_conc"), ~. + 3e-2)) %>%
+  mutate(across(starts_with("dna_conc"), log10)) %>%
+  ggplot(aes(x = .panel_x, y = .panel_y, 
+      fill = specimen_type, color = specimen_type)) +
+  geom_point() +
+  geom_autohistogram() +
+  # scale_x_log10() +
+  # scale_y_log10() +
+  scale_color_brewer(type = "qual") +
+  scale_fill_brewer(type = "qual") +
+  facet_matrix(vars(starts_with("dna_conc")), layer.diag = 2)
+```
+
+autohistogram and autodensity don't respect the axes transformations. They also
+fail if there are any Infs or NAs.
+
+## analysis 1
+
+Plot estimated fold-changes in bias between specimen types against fold-changes
+in proportions, and in absolute abundance.
+Example of such an analysis
+1. Estimate the FC in efficiency from fecal to inoculum of each taxon relative
+   to a fixed reference set (e.g. Bacteroides spp.)
+2. Estimate the FC in rel. abun. (ratio-based, and proportion-based) and abs.
+   abun. (from prop'n * DNA concentration). Can use the average over both
+   protocols as the estimate.
+3. Plot 1 against 2
+
+This is to see if the taxa with the largest changes in bias also had the
+largest changes in RA or AA, and if there is a consistent pattern (such as a
+large increase in RA corresponding to a large decrease in P1:P2 efficiency). A
+plot may also help get a sense of how stuck we are by confounding.
+
+While doing this, it would be useful to visualize RA vs. AA changes, to get a
+sense of which taxa are moving in the same or opposing directions from fecal to
+inoc.
+
+
+HERE - see if can do this with the above fido estimates.
+
+
+### What are the fold changes in abundance from fecal to inoculum?
+
+
+
+## Ordination
+
+```{r}
+ps2 <- ps %>%
+  subset_taxa(
+    strain_group == "Inoculum" & genus != "Faecalibacterium" &
+      genus != "Escherichia"
+  ) %>%
+  subset_samples(specimen_type %in% c("Fecal", "Inoculum")) # redundant
+sam2 <- sample_data(ps2) %>% as_tibble
+ps2.clr <- ps2 %>%
+  transform_sample_counts(~metacal::clr(.+1))
+```
+
+First, use lm to subtract out the specimen effect (based on its estimated comp
+in P1:A1).
+```{r}
+otu <- ps2.clr %>% otu_table %>% orient_taxa(as = "cols")
+fit <- lm(
+  otu ~ 0 + specimen_id + extraction_protocol*center_id,
+  data = sample_data(ps2.clr) %>% as_tibble
+)
+newdata <- sample_data(ps2.clr) %>% as_tibble %>%
+  transmute(specimen_id, extraction_protocol = "1", center_id = "A1")
+pred <- predict(fit, newdata)
+otu0 <- otu - pred
+```
+
+Then do PCA,
+```{r}
+pca <- prcomp(otu0)
+pcatb <- pca$x[,1:4] %>%
+  as_tibble(rownames = "sample") %>%
+  left_join(sam, by = "sample")
+pca %>% screeplot
+pca.summary <- pca %>% summary
+prop_var <- pca.summary$importance[2,] %>% round(2) * 100
+```
+
+```{r}
+pcatb %>%
+  ggplot(aes(PC1, PC2, color = specimen_type:extraction_protocol, 
+      shape = center_id)) +
+  geom_point() +
+  scale_color_brewer(type = "qual", palette = 6) +
+  # scale_color_brewer(type = "qual", palette = "Paired") +
+  scale_shape_manual(values = c(16, 1, 4)) +
+  labs(
+    x = str_glue('PC1 [{prop_var["PC1"]}%]'),
+    y = str_glue('PC2 [{prop_var["PC2"]}%]')
+  ) +
+  facet_wrap(~extraction_batch, ncol = 1, labeller = label_both)
+```
+
+```{r}
+pcatb %>%
+  ggplot(aes(PC1, PC2, color = extraction_protocol, 
+      shape = center_id)) +
+  geom_point() +
+  scale_color_brewer(type = "qual", palette = 2) +
+  scale_shape_manual(values = c(16, 1, 4)) +
+  labs(
+    x = str_glue('PC1 [{prop_var["PC1"]}%]'),
+    y = str_glue('PC2 [{prop_var["PC2"]}%]')
+  ) +
+  facet_grid(specimen_type~extraction_batch, labeller = label_both)
+```
+
+In the fecal samples:
+
+- consistent difference between protocols across sequencing centers
+- consistent difference between A1 and (S1, S2)
+- some structure; perhaps two groups of samples - could be cage effects
+
+
+In the inoculum samples:
+
+- Seem to keep the PC2 difference between P1:P2, but the difference between
+  protocols on PC1 goes away.
+- The difference between seq centers goes away, or is perhaps reversed on PC2
+
+The apparent increase in noise > bias may be partly real (the inoc measurements
+did seem noisier) but is also likely to be partly an artefact of looking at
+just the first two PCs - since there are many more fecal samples, we should
+expect these to be being driven mainly by the fecal samples. 
+
+Next: Do a weighted PCA, where all
+`specimen_type:extraction_protocol:center_id` are weighted equally.
+
+
+Weighted PCA with ade4
+```{r}
+sample_weights <- sam2 %>%
+  group_by(specimen_type, extraction_protocol, center_id) %>%
+  mutate(weight = 1 / n()) %>%
+  pull(weight)
+pca <- ade4::dudi.pca(otu0, row.w = sample_weights, scale = FALSE, 
+  scannf = FALSE, nf = 6)
+screeplot(pca)
+pcatb <- pca$li[,1:4] %>%
+  as_tibble(rownames = "sample") %>%
+  rename_with(str_replace, everything(), "Axis", "PC") %>%
+  left_join(sam, by = "sample")
+pca %>% screeplot
+pca %>% summary
+prop_var <- pca$eig %>% {. / sum(.)} %>% round(2) * 100
+```
+
+```{r}
+pcatb %>%
+  ggplot(aes(-PC1, -PC2, color = extraction_protocol, 
+      shape = center_id)) +
+  geom_point() +
+  scale_color_brewer(type = "qual", palette = 6) +
+  scale_shape_manual(values = c(16, 1, 4)) +
+  labs(
+    x = str_glue('PC1 [{prop_var[1]}%]'),
+    y = str_glue('PC2 [{prop_var[2]}%]')
+  ) +
+  facet_grid(specimen_type~extraction_batch, labeller = label_both) +
+  coord_fixed(ratio = prop_var %>% {.[2] / .[1]})
+```
+
+```{r}
+ggsave(here("output", "figures", "2020-11-10-bias-pca.pdf"), units = "in",
+  width = 8, height = 3.3, scale = 1.32)
+```
+
+
+```{r}
+pcatb %>%
+  ggplot(aes(PC3, -PC2, color = extraction_protocol, 
+      shape = center_id)) +
+  geom_point() +
+  scale_color_brewer(type = "qual", palette = 6) +
+  scale_shape_manual(values = c(16, 1, 4)) +
+  labs(
+    x = str_glue('PC3 [{prop_var[3]}%]'),
+    y = str_glue('PC2 [{prop_var[2]}%]')
+  ) +
+  facet_grid(specimen_type~extraction_batch, labeller = label_both)
+```
+
+Looks like PC3 is capturing some more of the A:S differences.

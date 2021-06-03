@@ -1,0 +1,200 @@
+```{r}
+library(tidyverse)
+library(here)
+library(speedyseq)
+
+library(data.table)
+
+library(kableExtra)
+
+library(cowplot)
+library(patchwork)
+theme_set(theme_cowplot())
+library(ggridges)
+library(ggbeeswarm)
+library(ggdist)
+
+library(generics)
+
+library(recipes)
+# library(mniw)
+library(fido)
+library(metacal)
+# devtools::load_all(here("rpkg"), export_all = FALSE, helpers = FALSE)
+```
+
+```{r}
+```
+
+TODO: Replace this with a function in the package
+
+```{r load-data, cache = TRUE}
+ps <- here("output/phyloseq/2020-11-28-phyloseq.Rds") %>% 
+  readRDS
+## Adjust sample data
+sample_data(ps) <- sample_data(ps) %>% as_tibble %>%
+  mutate(
+    sample_sum = sample_sums(ps),
+    across(extraction_batch, fct_relabel, ~str_c("B", .)),
+    across(extraction_protocol, fct_relabel, ~str_c("E", .)),
+    protocol = extraction_protocol:center_id,
+    batch_protocol = extraction_batch:protocol,
+    #> batch_protocol = fct_other(extraction_batch:extraction_protocol:center_id,
+    #>   drop = c("B1:E1:A1", "B2:E1:A1"), other_level = "Ref") %>%
+    #>   fct_relevel("Ref"),
+    # Center-id that combines A1 and S1 into a "Ref" level
+    #> center_id_ref = fct_other(center_id, drop = c("A1", "S1"), 
+    #>   other_level = "Ref") %>%
+    #>   fct_relevel("Ref")
+  ) %>%
+  sample_data
+assignments <- tax_table(ps) %>% 
+  as_tibble %>%
+  mutate(across(c(organism, strain_group), str_split, "; ")) %>%
+  unnest(c(organism, strain_group))
+focal_taxa <- assignments %>%
+  filter(
+    strain_group %in% c("Inoculum", "Mouse contaminant"),
+    species != "Faecalibacterium prausnitzii",
+    species != "Eubacterium rectale",
+  ) %>%
+  pull(.otu)
+ps0 <- ps %>%
+  prune_taxa(focal_taxa, .) %>%
+  prune_samples(sample_sums(.) > 1e3, .) %>%
+  subset_samples(specimen_type %in% c("Fecal", "Inoculum")) %>%
+  tax_glom("species")
+taxa_names(ps0) <- tax_table(ps0)[,"species"] %>% c
+taxa_names(ps0)
+tree <- here("output/strain-data/gtdb-representatives.tree") %>%
+  ape::read.tree()
+focal_id <- here("output/strain-data/focal-strains.csv") %>%
+  read_csv
+tree$tip.label <- focal_id$display_name[
+  match(
+    tree$tip.label,
+    focal_id$ref_assembly_accession
+  )] %>%
+  str_replace(" HS$", "")
+ps0 <- merge_phyloseq(ps0, tree)
+# Strain metadata (currently from v1 table)
+strains <- here("output/strain-data", "v1/strain-pheno-geno-tax.Rds") %>%
+  readRDS %>%
+  mutate(taxon = ncbi_species_display_name) %>%
+  filter(taxon %in% taxa_names(ps0)) %>%
+  left_join(tax_table(ps0) %>% as_tibble, by = c("taxon" = ".otu")) %>%
+  mutate(
+    across(taxon, factor, levels = taxa_names(ps0)),
+    across(gram_stain, str_replace, "Gram", "")
+  )
+# genome bias: 16s copy numbers and sizes
+genome_bias <- strains %>%
+  filter(taxon %in% taxa_names(ps0)) %>%
+  select(
+    taxon,
+    ssu_count,
+    reference_genome_size
+  ) %>%
+  mutate(
+    across(-c(taxon), center_elts)
+  )
+#> sam <- sample_data(ps0) %>% as_tibble
+#> tree <- phy_tree(ps0)
+```
+
+
+### See if more positive control reads in low-concentration samples
+
+
+```{r}
+sam <- sample_data(ps) %>% as_tibble
+tax <- ps %>% tax_table %>% as_tibble
+```
+
+```{r}
+sam %>%
+  ggplot(aes(y = fct_rev(row), x = column, fill = specimen_type)) +
+  geom_tile() +
+  facet_wrap(~center_id) +
+  scale_fill_brewer(type = "qual", palette = 2)
+```
+
+```{r}
+tax %>%
+  filter(strain_group == "Experimental control") %>%
+  select(.otu, organism)
+```
+
+For now, let's just look at rows C and F.
+Need to think a bit more about this, e.g. in A2 some of these samples are also in a column with more T. mob samples.)
+
+```{r}
+# ps1 <- ps %>%
+#   subset_samples(row %in% c("C", "F"))
+pstb <- ps %>%
+  subset_taxa(strain_group == "Experimental control") %>%
+  tax_glom("species") %>%
+  as_tibble %>%
+  rename(count = .abundance) %>%
+  mutate(fraction = count / sample_sum)
+pstb1 <- pstb %>%
+  filter(row %in% c("C", "F"))
+pstb1 %>% count(count == 0)
+```
+
+```{r}
+pstb1 %>%
+  mutate(count = count + 0.5, fraction = fraction + 1e-7) %>%
+  pivot_longer(c(count, fraction), names_to = "type", values_to = "abundance") %>%
+  ggplot(aes(dna_conc, abundance, color = specimen_type)) +
+  facet_wrap(~type, scales = "free_y", ncol = 1) +
+  scale_color_brewer(type = "qual", palette = 2) +
+  geom_point() +
+  scale_y_log10() +
+  scale_x_log10()
+```
+
+```{r}
+pstb1 %>%
+  # mutate(count = count + 0.5, fraction = fraction + 1e-7) %>%
+  ggplot(aes(dna_conc, fraction, color = specimen_type)) +
+  scale_color_brewer(type = "qual", palette = 2) +
+  facet_wrap(~center_id, ncol = 1) +
+  geom_point() +
+  scale_y_log10() +
+  scale_x_log10() +
+  labs(x = "DNA concentration", y = "Fraction of reads", color = "Specimen type")
+```
+
+There appears to be little to no association of T. mobilis read count or fraction with DNA concentration or specimen type.
+
+Similar but including all rows,
+```{r}
+pstb %>%
+  ggplot(aes(dna_conc, fraction, color = specimen_type)) +
+  scale_color_brewer(type = "qual", palette = 2) +
+  facet_wrap(~center_id, ncol = 1) +
+  geom_point() +
+  scale_y_log10() +
+  scale_x_log10() +
+  labs(x = "DNA concentration", y = "Fraction of reads", color = "Specimen type")
+```
+
+
+
+```{r}
+pstb %>%
+  mutate(count = count + 0.5, fraction = fraction + 1e-7) %>%
+  ggplot(aes(row, fraction, color = specimen_type)) +
+  facet_wrap(~center_id, ncol = 1) +
+  geom_quasirandom() +
+  scale_color_brewer(type = "qual", palette = 2) +
+  scale_y_log10()
+```
+
+Note the nominally Fecal sample in A2 that is ~100% T. mobilis; this might be the outlier I saw in the ordination.
+TODO: See what this sample is; mark it as problematic. Also consider if it might have been swapperd with something else?
+
+Need to think about the implications of this plot for my index-switching hypothesis.
+
+Try marking the three rows with T. mobilis, C F and H

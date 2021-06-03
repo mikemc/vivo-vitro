@@ -1,0 +1,180 @@
+
+```{r, include = FALSE, message = FALSE}
+# library(phyloseqpp)
+library(glue)
+library(tidyverse)
+library(here)
+library(cowplot)
+# library(ggridges)
+library(ggbeeswarm)
+# library(ggforce)
+theme_set(theme_cowplot(12))
+devtools::load_all("~/projects/phyloseqpp", helpers = FALSE)
+```
+
+```{r, include = FALSE, message = FALSE}
+# Abundance table, sample metadata, and Silva taxonomy assignments
+seqtab <- here("results", "dada2", "a1", "seqtab-nochim-clean.Rds") %>%
+  readRDS
+sam <- readRDS(here("sample-data", "sample-data.Rds")) %>%
+  rename(extraction_protocol = protocol) %>%
+  mutate_at("extraction_batch", as.factor)
+tax <- here("results", "dada2", "a1", "taxa-clean.Rds") %>%
+  readRDS %>%
+  as_tibble(rownames = "sequence")
+# Custom strain assignments
+assignments <- here("results", "a1-asv-strain-assignments.csv") %>%
+  read_csv %>%
+  select(-feature_id) %>%
+  rename_at(vars(-sequence), paste0, ".cust")
+# Put both in the tax table
+tax0 <- left_join(tax, assignments, by = "sequence")
+ps <- phyloseq(
+  sample_data(sam), 
+  otu_table(seqtab, taxa_are_rows = FALSE),
+  tax_table(tax0)
+  )
+# Save ASV sequences and use short names of the form ASV{#}
+dna <- Biostrings::DNAStringSet(taxa_names(ps))
+names(dna) <- taxa_names(ps)
+ps <- merge_phyloseq(ps, dna)
+sample_data(ps)$num_reads <- sample_sums(ps)
+taxa_names(ps) <- paste0("ASV", seq(ntaxa(ps)))
+# Check that all samples and taxa were imported
+expect_equal(c(nsamples(ps), ntaxa(ps)), c(nrow(seqtab), nrow(tax)))
+# Filter spurious ASVs
+ps0 <- ps %>% filter_taxa2(~sum(.) > 10)
+summary(sample_sums(ps0) / sample_sums(ps))
+ntaxa(ps0) / ntaxa(ps)
+ps0
+```
+
+From Chris at the MSMBL: "...we use the Zymo mock at a concentration of 2ng/uL.
+The last QC concentration I did of the 2ng/uL stock it was 2.25ng/uL."
+
+```{r}
+sample_data(ps0) <- sample_data(ps0) %>%
+  as_tibble %>%
+  mutate(dna_conc = case_when(
+      sample == "A1_water_negc" ~ min(dna_conc) / 10,
+      sample == "A1_zymo_posc" ~ 2.25,
+      TRUE ~ dna_conc
+    )
+  )
+```
+
+component data frames
+```{r}
+sam <- sample_data(ps0) %>% as_tibble
+tax <- tax_table(ps0) %>% as_tibble
+```
+
+## Inspect DNA concentrations
+
+NOTE: Consider redo this with T. mobilis included, using the original
+extraction metadata since that has the samples we didn't sequence.
+
+```{r}
+sam %>%
+  filter(specimen_type %in% c("fecal", "inoculum")) %>%
+  ggplot(aes(specimen_type, dna_conc, color = extraction_protocol)) +
+  geom_boxplot() +
+  geom_quasirandom(dodge.width = 0.75) +
+  # scale_y_sqrt(breaks = c(0.1, 1, 5, 10, 20, 30)) +
+  scale_y_log10() +
+  facet_wrap(~extraction_batch,
+    labeller = as_labeller(function(x) paste("Batch", x))
+  ) +
+  scale_color_brewer(type = "qual") +
+  labs(
+    x = "Specimen type", y = "DNA concentration (ng/uL)",
+    color = "Extraction Protocol",
+    title = "DNA concentration by protocol, specimen type, and batch"
+  ) +
+  theme(
+    legend.position = "bottom",
+    panel.spacing = unit(0.03, "npc")
+  )
+```
+
+```{r}
+ggsave(
+  here("figures", paste0(Sys.Date(), "-dna-concentrations.pdf")),
+  width = 5,
+  height = 4,
+  scale = 1.5
+)
+```
+
+This figure indicates that 
+
+* Protocol 1 gave higher DNA yields on fecal samples, but Protocol 2 gave
+  higher yields on inoculum samples. 
+* The extent of these differences varied between batches. In Batch 2, the
+  difference was less among fecal samples and greater among inoculum samples.
+
+Differences between batches are that in Batch 2 
+
+* there was an additional freeze thaw cycle for fecal and inoculum samples
+* we pooled multiple pellets for inoculum samples, which explains why the
+  overall yield of inoculum samples is higher in batch 2 
+* the reagents had been opened for some days
+
+```{r}
+sam %>%
+  filter(specimen_type == "inoculum") %>%
+  transmute(specimen_id, number_of_pellets / number_of_aliquots, 
+    extraction_batch, collection_week) %>%
+  distinct %>%
+  arrange(extraction_batch)
+```
+
+A possible explanation of the difference in pattern between batches is that the
+additional freeze-thaw cycle increased the yield more for Protocol 2 than for
+Protocol 1. It may even have decreased the yield of protocol 1 as indicated by
+its lower yield, though this could also be due to biologically lower host +
+bacterial load in the sample and/or a change in composition.
+
+Possible explanations for the difference between specimen types (Protocol 1
+higher on fecal, Protocol 2 on inoculum) include:
+
+1. Protocol 1 yields more host DNA than Protocol 2, which leads to higher
+   Protocol 1 yield in fecal samples only. We can test this hypothesis once we
+   have shotgun data and can compare host to bacterial sequencing reads.
+2. The bacterial taxonomic compositions vary substantially between fecal and
+   inoculum samples. It may be that Protocol 1 is better at extracting taxa
+   that are abundant in the fecal samples relative to taxa that are more
+   abundant in the inoculum samples and Protocol 2. We can test this hypothesis
+   by quantifying bias from the taxonomic profiles if we assume that the bias
+   we observe in the profiles is mainly due to extraction.
+
+### Compare to library size
+
+Note, I'm using the number of reads post DADA2, rather than the actual library
+depth.
+
+```{r}
+sam %>%
+  mutate_at("extraction_protocol", fct_explicit_na) %>%
+  ggplot(
+    aes(dna_conc, num_reads, 
+      color = extraction_protocol,
+      shape = specimen_type
+    )
+  ) +
+  geom_point() +
+  scale_x_log10() +
+  scale_color_brewer(type = "qual") +
+  labs(
+    y = "Number of reads", x = "DNA concentration (ng/uL)",
+    color = "Extraction Protocol",
+    title = "Read depth versus DNA concentration "
+  ) +
+  theme(
+    legend.position = "bottom",
+    panel.spacing = unit(0.03, "npc")
+  )
+```
+
+There does not seem to be much relationship, which is to be expected given the
+library normalization step.

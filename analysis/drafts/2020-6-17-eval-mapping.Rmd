@@ -1,0 +1,148 @@
+```{r}
+# library(conflicted)
+# conflict_prefer("first", "GenomicAlignments", "dplyr")
+# conflict_prefer("last", "GenomicAlignments", "dplyr")
+# conflict_prefer("filter", "dplyr")
+# conflict_prefer("path", "fs")
+# import::from(metacal, build_matrix, as_matrix, mutate_by, corner, 
+#   close_elts, clr)
+# ga <- modules::import_package("GenomicAlignments")
+library(tidyverse)
+library(here)
+library(fs)
+library(GenomicAlignments)
+```
+
+```{r}
+bam <- "/home/michael/projects-nodb/vivo-vitro-s1-dev/brc/out-3/17_1-mapped.bam"
+```
+
+```{r}
+gal <- readGAlignments(bam, use.names = FALSE)
+# gal <- readGAlignments(bam, use.names = FALSE, 
+# gal <- readGAlignments(bam, use.names = FALSE, 
+#   param = ScanBamParam(what = c("seq")))
+```
+
+
+## Compute coverage over references
+
+```{r}
+cvrg <- coverage(gal)
+```
+This gives us an RleList. Need to unpack that somehow.
+
+First, let's split the sequence names by accession / organism,
+```{r}
+ntb <- tibble(seqname = names(cvrg)) %>%
+  mutate(accession_species = str_extract(seqname, "^\\S+ \\S+ \\S+")) %>%
+  separate(accession_species, into = c("accession", "species"), sep = " ",
+    extra = "merge")
+```
+
+TODO - dk
+
+
+```{r}
+ntb0 <- ntb %>%
+  mutate(
+    coverage = map(seqname, ~cvrg[[.]] %>% as.integer),
+    position = map(coverage, seq_along)
+  )
+ptb <- ntb0 %>%
+  filter(species ==  "Bacteroides thetaiotaomicron") %>%
+  unnest(cols = c(coverage, position))
+```
+
+```{r}
+ggplot(ptb, aes(position, coverage)) +
+  geom_point()
+```
+
+it looks like some regions have much higher coverage - perhaps conserved
+genes? 
+
+Too much data - perhaps can reduce to 100 bp non-overlapping windows.
+
+```{r}
+sn <- ntb %>% filter(species == "Escherichia coli") %>% pull(seqname)
+cvrg0 <- cvrg[[sn]]
+
+ir <- IRanges(start = seq(1, length(cvrg0), by = 100), width = 100)
+# shorten  last window to not go past the sequence end
+end(ir)[length(ir)] <- length(cvrg0)
+cvrg1 <- aggregate(cvrg0, by = ir, mean)
+
+```
+
+```{r}
+ctb <- tibble(coverage = cvrg1) %>%
+  mutate(position = seq_along(coverage) * 100)
+ggplot(ctb, aes(position, coverage)) +
+  geom_line()
+```
+
+next - do this for a species w/ multiple contigs. perhaps compute the cvrg1
+vectors for each row of  the ntb,
+
+```{r}
+f <- function(x, width = 100) {
+  ir <- IRanges(start = seq(1, length(x), by = width), width = width)
+  end(ir)[length(ir)] <- length(x)
+  aggregate(x, by = ir, mean)
+}
+ntb1 <- ntb %>%
+  mutate(coverage = map(seqname, ~f(cvrg[[.]], width = 200)))
+```
+
+
+```{r}
+ctb <- tibble(coverage = ntb1[[1, "coverage"]] %>% unlist) %>%
+  mutate(position = 1 + (seq_along(coverage) - 1) * 200)
+ggplot(ctb, aes(position, coverage)) +
+  geom_line()
+```
+
+Questions for lab meeting
+
+what is a good way to inspect the results before deciding on pipeline to run on
+all samples? 
+
+- is the coverage bias consistent?
+- how are non-uniquely mapped reads handled?
+- E. coli?
+- contaminant reads?
+
+Should I include the plasmid reads? Guess no - in which case, if I want to use
+'refstats' as the basis for my abundance estimates, I'll need to split the
+B. thetaiotaomicron file first before building the reference database, or use
+the `scafstats` option instead. But with scafstats, I'm not sure what the
+ambiguously mapped reads will mean - across scaf, or across ref.
+
+
+To discuss - What I really want to use ambiguously mapped reads is a table with
+for each read, the number of  refs it mapped to _OR_ for each possible subset
+of strains, the number of reads that mapped to that subset; there are ~`2^14 =
+16384` subsets, but most of these won't have multiple mappings, so perhaps can
+do in a way that only includes rows with >0 read.
+
+
+## Check the fraction of non-uniquely-mapped reads
+
+should be a way to see this in the `gal` object, I think. Might have to load
+with the `usenames` arg.
+
+I also ran `samtools stats`, and that shows no "non-primary alignments"; same
+when bbsplit run with `ambiguous2=all`
+
+
+```{r}
+```
+
+
+
+## To (re)run on BRC
+
+- save scafstats as well
+- consider ambiguous2 option; not sure if works for SAM output
+

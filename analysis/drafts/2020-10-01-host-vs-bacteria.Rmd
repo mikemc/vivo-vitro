@@ -1,0 +1,84 @@
+
+```{r}
+library(tidyverse)
+library(here)
+library(cowplot)
+library(ggridges)
+library(ggbeeswarm)
+library(ggforce)
+library(speedyseq)
+import::from(metacal, mutate_by, close_elts)
+theme_set(theme_cowplot(12))
+```
+
+```{r}
+my_psmelt <- function(physeq) {
+  speedyseq::psmelt(physeq) %>%
+    as_tibble %>%
+    rename(taxon = OTU, sample = Sample, abundance = Abundance)
+}
+as_tibble.phyloseq <- function(x) {
+  x %>% my_psmelt
+}
+as_tibble.sample_data <- function(x) {
+  x %>% as("data.frame") %>% as_tibble(rownames = "sample")
+}
+as_tibble.taxonomyTable <- function(x) {
+  x %>% as("matrix") %>% as_tibble(rownames = "taxon")
+}
+as_tibble.XStringSet <- function(x) {
+  x %>% as.character %>% enframe("taxon", "sequence")
+}
+```
+
+Phyloseq object w/ the A1 sequencing data,
+```{r}
+ps <- readRDS(here("output", "a1", "a1-phyloseq-silva-v138.Rds"))
+tax <- tax_table(ps) %>% as_tibble
+sam <- sample_data(ps) %>% as_tibble
+sam %>%
+  pull(specimen_type) %>%
+  table
+```
+
+
+
+
+
+```{r}
+x <- ps %>%
+  subset_taxa(family == "Mitochondria")
+refseq(x) %>% Biostrings::writeXStringSet("/tmp/mitos.fasta")
+```
+
+From Blast, it seems that the most abundant of these is from the corn in the
+mouse diet.
+
+
+Mouse mitochondrial genome:
+https://www.ncbi.nlm.nih.gov/nuccore/NC_005089.1?report=fasta&from=1094&to=2675
+```{r}
+mouse_mito <- Biostrings::readDNAStringSet("/tmp/sequence.fasta")[[1]]
+```
+
+
+```{r}
+import::from(Biostrings, complement, reverse, reverseComplement, DNAStringSet)
+dna <- refseq(ps)
+res <- Biostrings::matchPDict(dna, mouse_mito)
+
+Biostrings::whichPDict(dna, mouse_mito, max.mismatch = 2, with.indels = TRUE)
+Biostrings::whichPDict(dna, reverse(mouse_mito), max.mismatch = 2, 
+  with.indels = TRUE)
+Biostrings::whichPDict(dna, complement(mouse_mito), max.mismatch = 2,
+  with.indels = TRUE)
+Biostrings::whichPDict(dna, reverseComplement(mouse_mito), max.mismatch = 2,
+  with.indels = TRUE)
+```
+
+
+Maybe mammalian mitochondria are too diverged to be amplified by the bacterial
+primers.
+
+
+

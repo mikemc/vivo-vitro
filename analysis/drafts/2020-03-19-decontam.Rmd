@@ -1,0 +1,222 @@
+```{r, include = FALSE, message = FALSE}
+# library(phyloseqpp)
+library(glue)
+library(tidyverse)
+library(here)
+library(cowplot)
+# library(ggridges)
+library(ggbeeswarm)
+# library(ggforce)
+theme_set(theme_cowplot(12))
+# theme_set(
+#   theme_minimal_grid(14) +
+#     theme(
+#       panel.grid = element_blank()
+#     )
+# )
+# devtools::load_all("~/research/metacal", helpers = FALSE)
+devtools::load_all("~/projects/phyloseqpp", helpers = FALSE)
+library(decontam); packageVersion("decontam")
+```
+
+```{r, include = FALSE, message = FALSE}
+# Abundance table, sample metadata, and Silva taxonomy assignments
+seqtab <- here("results", "dada2", "a1", "seqtab-nochim-clean.Rds") %>%
+  readRDS
+sam <- readRDS(here("sample-data", "sample-data.Rds")) %>%
+  rename(extraction_protocol = protocol) %>%
+  mutate_at("extraction_batch", as.factor)
+tax <- here("results", "dada2", "a1", "taxa-clean.Rds") %>%
+  readRDS %>%
+  as_tibble(rownames = "sequence")
+# Custom strain assignments
+assignments <- here("results", "a1-asv-strain-assignments.csv") %>%
+  read_csv %>%
+  select(-feature_id) %>%
+  rename_at(vars(-sequence), paste0, ".cust")
+# Put both in the tax table
+tax0 <- left_join(tax, assignments, by = "sequence")
+ps <- phyloseq(
+  sample_data(sam), 
+  otu_table(seqtab, taxa_are_rows = FALSE),
+  tax_table(tax0)
+  )
+# Save ASV sequences and use short names of the form ASV{#}
+dna <- Biostrings::DNAStringSet(taxa_names(ps))
+names(dna) <- taxa_names(ps)
+ps <- merge_phyloseq(ps, dna)
+sample_data(ps)$num_reads <- sample_sums(ps)
+taxa_names(ps) <- paste0("ASV", seq(ntaxa(ps)))
+# Check that all samples and taxa were imported
+expect_equal(c(nsamples(ps), ntaxa(ps)), c(nrow(seqtab), nrow(tax)))
+# Filter spurious ASVs
+ps0 <- ps %>% filter_taxa2(~sum(.) > 10)
+summary(sample_sums(ps0) / sample_sums(ps))
+ntaxa(ps0) / ntaxa(ps)
+ps0
+# Angie's test results
+pcr_results <- read_csv(here("strain-info", "colonization-test-results.csv"))
+```
+
+From Chris at the MSMBL: "...we use the Zymo mock at a concentration of 2ng/uL.
+The last QC concentration I did of the 2ng/uL stock it was 2.25ng/uL."
+
+Note, the negative control needs a positive concentration value if we are to
+use it.
+
+```{r}
+sample_data(ps0) <- sample_data(ps0) %>%
+  as_tibble %>%
+  mutate(dna_conc = case_when(
+      sample == "A1_water_negc" ~ min(dna_conc) / 10,
+      sample == "A1_zymo_posc" ~ 2.25,
+      TRUE ~ dna_conc
+    )
+  )
+```
+
+component data frames
+```{r}
+sam <- sample_data(ps0) %>% as_tibble
+tax <- tax_table(ps0) %>% as_tibble
+```
+
+# Inspect
+
+
+## Inspect library sizes
+
+Check distribution of read depths,
+```{r}
+sam %>%
+  ggplot(aes(num_reads, color = specimen_type)) +
+  stat_ecdf(geom = "step") +
+  scale_color_brewer(type = "qual", palette = 2)
+```
+
+As in the Decontam intro vignette,
+```{r}
+sam %>%
+  mutate(num_reads, index = min_rank(num_reads)) %>%
+  ggplot(aes(index, num_reads, color = specimen_type)) +
+  geom_point() +
+  scale_color_brewer(type = "qual", palette = 2)
+```
+
+## Inspect DNA concentrations
+
+```{r}
+sam %>%
+  filter(specimen_type %in% c("fecal", "inoculum", "T. mobilis")) %>%
+  ggplot(aes(specimen_type, dna_conc, color = extraction_protocol)) +
+  geom_boxplot() +
+  geom_quasirandom(dodge.width = 0.75) +
+  scale_y_sqrt(breaks = c(0.1, 1, 10, 20, 30))
+```
+
+```{r}
+sam %>%
+  filter(specimen_type %in% c("fecal", "inoculum")) %>%
+  ggplot(aes(specimen_type, dna_conc, color = extraction_protocol)) +
+  geom_boxplot() +
+  geom_quasirandom(dodge.width = 0.75) +
+  # scale_y_sqrt(breaks = c(0.1, 1, 5, 10, 20, 30)) +
+  scale_y_log10() +
+  facet_wrap(~extraction_batch) +
+  scale_color_brewer(type = "qual")
+```
+
+```{r}
+```
+
+
+This ^^ is an important figure to keep in mind.
+
+
+# Indentify contaminants - Frequency
+
+```{r}
+```
+
+```{r}
+contamdf.freq <- ps0 %>%
+  subset_samples(! specimen_type == "water") %>%
+  isContaminant(method = "frequency", conc = "dna_conc") %>%
+  print
+```
+
+I think that the model won't work well when I apply it to all of the samples at
+once b/c of the fact of the different sample types. E.g., if we have a
+contaminant in the inoculum, then it will tend to be seen in the inoculum
+samples and so may appear as a contaminant. We can tell it isn't b/c it's not
+in the T. mob samples (which are also low conc.), but since there are many more
+inoculum samples the decontam model might not be properly weighting this fact.
+
+```{r}
+contamdf.freq0 <- ps0 %>%
+  subset_samples(specimen_type %in% c("fecal", "inoculum")) %>%
+  isContaminant(
+    method = "frequency", conc = "dna_conc",
+    batch = "specimen_type"
+  )
+```
+
+```{r}
+ps0 %>%
+  subset_samples(specimen_type %in% c("fecal", "inoculum")) %>%
+  plot_frequency("ASV9", conc = "dna_conc")
+```
+
+I wonder if what is happening here is that the samples where ASV9 has a lower
+frequency and the dna conc is higher have to do with bias.
+
+
+```{r}
+# tax %>% print(n=Inf)
+# tax
+tb <- contamdf.freq0 %>%
+  as_tibble(rownames = "taxon") %>%
+  left_join(tax, by = "taxon")
+```
+
+# Indentify contaminants - Prevalence
+
+```{r}
+```
+
+```{r}
+contamdf.prev <- ps0 %>%
+  subset_samples(specimen_type %in% c("fecal", "T. mobilis", "inoculum")) %>%
+  isContaminant(., 
+    method = "prevalence", 
+    neg = sample_data(.)$specimen_type == "T. mobilis"
+  ) %>%
+  print
+```
+
+
+
+# Check sequences in the controls
+
+
+```{r}
+ps %>%
+  subset_samples(specimen_type %in% c("water")) %>%
+  as_tibble %>%
+  arrange(-abundance) %>%
+  select(taxon, abundance, phylum, genus, genus.cust, species.cust) %>%
+  filter(abundance > 0) %>%
+  print(n=30)
+```
+
+```{r}
+ps %>%
+  subset_samples(specimen_type %in% c("T. mobilis")) %>%
+  merge_samples("specimen_type") %>%
+  as_tibble %>%
+  arrange(-abundance) %>%
+  select(taxon, abundance, phylum, genus, genus.cust, species.cust) %>%
+  filter(abundance > 0) %>%
+  print(n=30)
+```
+

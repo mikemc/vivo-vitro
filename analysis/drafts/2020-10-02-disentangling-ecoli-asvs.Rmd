@@ -1,0 +1,142 @@
+
+```{r}
+library(tidyverse)
+library(here)
+library(fs)
+
+library(speedyseq)
+import::from(metacal, mutate_by, close_elts, clr)
+library(cowplot)
+library(ggbeeswarm)
+library(patchwork)
+theme_set(theme_cowplot())
+
+ps <- readRDS(here("output/a1", "a1-phyloseq-silva-v138.Rds"))
+dna.a1 <- ps %>% refseq
+# "/home/michael/ncsu-drive/research/vivo-vitro/main/output/a1/a1-asv-strain-assignments.csv"
+```
+
+## See if can find our A1 amplicons
+
+```{r}
+dna <- Biostrings::readDNAStringSet(
+  here("output", "strain-data", "reference-16s-genes.fasta")
+)
+```
+
+
+Get a pairwise distance matrix between all ASVs and reference sequences,
+```{r}
+dna.all <- c(dna, dna.a1)
+nproc <- 4
+aln <- DECIPHER::AlignSeqs(dna.all, processors = nproc, verbose = FALSE)
+d <- DECIPHER::DistanceMatrix(aln, processors = nproc, verbose = FALSE)
+dtb <- d %>%
+  as.dist(diag = FALSE, upper = TRUE) %>%
+  broom::tidy() %>%
+  mutate_at(vars(starts_with("item")), as.character)
+```
+
+```{r}
+dtb0 <- dtb %>%
+  filter(item1 %in% taxa_names(ps), distance < 0.02) %>%
+  arrange(distance)
+```
+
+Get the best hits among the ASVs to all 14 E. coli sequences,
+```{r}
+dtb0 %>%
+  filter(str_detect(item2, "Escherichia")) %>%
+  group_by(item2) %>%
+  slice_min(distance, n = 1) %>%
+  print(n=Inf)
+```
+
+This suggests the ratio of ASV2:ASV14 in Nissle is 5:2. Curiously, two of the
+HS copies don't match our ASVs; this may perhaps be errors in the assembly.
+
+
+Supposing the 5:2 ratio for Nissle, can we deconvolute the HS to Nissle ratio
+in the fecal samples? Let M be the map from species to ASVs. Let A be the
+(unobserved) S by T matrix of species genome counts and O be the S by T matrix
+of ASV counts. Then $O = A M$ and $A = O M^{-1}$. Therefore we can estimate A
+by right-multiplying O by M-inverse
+
+```{r}
+ps0 <- ps %>% prune_taxa(c("A1_ASV2", "A1_ASV14"), .)
+
+# Map from species to ASVs
+M <- matrix(c(7,0,5,2), nrow = 2, byrow = TRUE)
+rownames(M) <- c("HS", "Nissle")
+colnames(M) <- c("A1_ASV2", "A1_ASV14")
+M_inv <- solve(M)
+
+obs <- otu_table(ps0) %>% orient_taxa("cols")
+
+species <- otu_table(obs %*% M_inv, taxa_are_rows = FALSE)
+ps1 <- phyloseq(species, sample_data(ps0))
+```
+
+```{r}
+pstb <- ps1 %>%
+  # subset_samples(specimen_type %in% "fecal") %>%
+  psmelt("tibble") %>%
+  mutate_by(Sample, proportion = close_elts(Abundance))
+```
+
+```{r}
+pstb %>%
+  filter(specimen_type == "fecal") %>%
+  ggplot(aes(extraction_protocol, proportion, color = OTU)) +
+  geom_quasirandom()
+```
+
+
+```{r}
+pstb %>%
+  filter(specimen_type == "fecal") %>%
+  ggplot(aes(specimen_id, proportion, color = OTU, shape = extraction_protocol)) +
+  geom_quasirandom()
+```
+
+
+```{r}
+ratio <- ps1 %>%
+  psmelt("tibble") %>%
+  pivot_wider(names_from = OTU, values_from = Abundance) %>%
+  mutate(
+    ratio = Nissle / HS, 
+    across(specimen_id, as.factor)
+  )
+```
+
+```{r}
+ratio %>%
+  filter(specimen_type == "fecal") %>%
+  ggplot(aes(specimen_id, ratio, color = extraction_protocol)) +
+  geom_quasirandom(width = 0.2) +
+  # geom_text(aes(label = aliquot_number))+
+  scale_y_log10() +
+  facet_wrap(~extraction_batch + host_sex, scales = "free_x") +
+  plot_annotation(
+    title = "Ratio of E. coli Nissle to E. coli HS across fecal samples"
+  )
+```
+
+
+
+## Extract V4 amplicon sequences directly using DECIPHER
+
+Get the V4 sequences from the 16S references,
+```{r}
+import::from(Biostrings, complement, reverseComplement)
+import::from(DECIPHER, TrimDNA)
+
+# Primer sequences
+fwd <- "GTGCCAGCMGCCGCGGTAA" %>%
+  Biostrings::DNAString()
+rv <- "TAATCTWTGGGVHCATCAGG" %>%
+  Biostrings::DNAString()
+
+x <- TrimDNA(dna, fwd, rv %>% complement, type = "sequences")
+```
