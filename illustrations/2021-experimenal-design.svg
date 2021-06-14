@@ -1,20 +1,23 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg
-   xmlns:dc="http://purl.org/dc/elements/1.1/"
-   xmlns:cc="http://creativecommons.org/ns#"
-   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-   xmlns:svg="http://www.w3.org/2000/svg"
-   xmlns="http://www.w3.org/2000/svg"
-   xmlns:xlink="http://www.w3.org/1999/xlink"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    width="188.18741mm"
-   height="218.13562mm"
-   viewBox="0 0 188.18741 218.13562"
+   height="195.09158mm"
+   viewBox="0 0 188.18741 195.09158"
    version="1.1"
    id="SVGRoot"
-   sodipodi:docname="followup-design.svg"
-   inkscape:version="1.0.2 (e86c870879, 2021-01-15, custom)">
+   sodipodi:docname="2021-experimenal-design.svg"
+   inkscape:version="1.1 (c4e8f9ed74, 2021-05-24)"
+   inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+   inkscape:export-xdpi="400.09238"
+   inkscape:export-ydpi="400.09238"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
   <defs
      id="defs2902">
     <rect
@@ -1952,20 +1955,20 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="1"
-     inkscape:cx="638.29965"
-     inkscape:cy="491.84598"
+     inkscape:zoom="0.70710678"
+     inkscape:cx="543.76511"
+     inkscape:cy="368.40263"
      inkscape:document-units="mm"
-     inkscape:current-layer="layer1"
+     inkscape:current-layer="g30720"
      inkscape:document-rotation="0"
      showgrid="true"
      inkscape:window-width="1920"
-     inkscape:window-height="1061"
+     inkscape:window-height="1041"
      inkscape:window-x="0"
-     inkscape:window-y="19"
+     inkscape:window-y="39"
      inkscape:window-maximized="1"
      inkscape:snap-global="true"
-     inkscape:snap-grids="true"
+     inkscape:snap-grids="false"
      inkscape:snap-to-guides="false"
      inkscape:snap-midpoints="true"
      inkscape:snap-bbox="true"
@@ -1980,14 +1983,15 @@
      fit-margin-top="0"
      fit-margin-left="0"
      fit-margin-right="0"
-     fit-margin-bottom="0">
+     fit-margin-bottom="0"
+     inkscape:pagecheckerboard="0">
     <inkscape:grid
        type="xygrid"
        id="grid3476"
        units="mm"
        spacingx="1"
        spacingy="1"
-       originx="-4.9999983"
+       originx="-4.9999982"
        originy="-11.891148" />
   </sodipodi:namedview>
   <metadata
@@ -1998,7 +2002,6 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -2021,7 +2024,7 @@
     <text
        xml:space="preserve"
        id="text5144"
-       style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect5146);" />
+       style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect5146)" />
     <g
        inkscape:groupmode="layer"
        id="layer2"
@@ -2234,18 +2237,23 @@
     <text
        xml:space="preserve"
        id="text6708"
-       style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect6710);"
+       style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect6710)"
        transform="translate(45.363865,0.79733211)"><tspan
          x="160"
-         y="22.542127"><tspan>the second pellet of </tspan></tspan><tspan
+         y="22.542127"
+         id="tspan7079">the second pellet of </tspan><tspan
          x="160"
-         y="26.069902"><tspan>each mixture will be </tspan></tspan><tspan
+         y="26.069902"
+         id="tspan7081">each mixture will be </tspan><tspan
          x="160"
-         y="29.597677"><tspan>combined with a </tspan></tspan><tspan
+         y="29.597677"
+         id="tspan7083">combined with a </tspan><tspan
          x="160"
-         y="33.125452"><tspan>germ-free fecal pellet </tspan></tspan><tspan
+         y="33.125452"
+         id="tspan7085">germ-free fecal pellet </tspan><tspan
          x="160"
-         y="36.653226"><tspan>in the next phase</tspan></tspan></text>
+         y="36.653226"
+         id="tspan7087">in the next phase</tspan></text>
     <g
        id="g8406"
        transform="translate(45.363865,0.79733211)">
@@ -2255,15 +2263,19 @@
         <text
            xml:space="preserve"
            id="text8408"
-           style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect8410);"><tspan
+           style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect8410)"><tspan
              x="158.41602"
-             y="31.667127"><tspan>Note: At some point I think </tspan></tspan><tspan
+             y="31.667127"
+             id="tspan7089">Note: At some point I think </tspan><tspan
              x="158.41602"
-             y="35.194902"><tspan>we want to downsize from </tspan></tspan><tspan
+             y="35.194902"
+             id="tspan7091">we want to downsize from </tspan><tspan
              x="158.41602"
-             y="38.722677"><tspan>~50mL tubes to </tspan></tspan><tspan
+             y="38.722677"
+             id="tspan7093">~50mL tubes to </tspan><tspan
              x="158.41602"
-             y="42.250452"><tspan>microcentrifuge tubes </tspan></tspan></text>
+             y="42.250452"
+             id="tspan7095">microcentrifuge tubes </tspan></text>
       </g>
     </g>
     <path
@@ -2334,12 +2346,12 @@
     <text
        xml:space="preserve"
        id="text8605"
-       style="font-size:2.60106px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect8607);"
+       style="font-size:2.60106px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect8607)"
        transform="matrix(1.0850269,0,0,1.0850269,128.07977,135.62459)" />
     <g
        id="g30567"
        transform="translate(-5,-11.891153)"
-       inkscape:export-filename="/tmp/experiment.png"
+       inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
        inkscape:export-xdpi="400.09238"
        inkscape:export-ydpi="400.09238">
       <path
@@ -2467,28 +2479,33 @@
       <text
          xml:space="preserve"
          id="text8611"
-         style="font-size:2.60106px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect8613);"
+         style="font-size:2.60106px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect8613)"
          transform="matrix(1.0850269,0,0,1.0850269,136.72593,136.78874)"><tspan
            x="-116.83203"
-           y="7.3956506"><tspan>gnotobiotic </tspan></tspan><tspan
+           y="7.3956506"
+           id="tspan7097">gnotobiotic </tspan><tspan
            x="-116.83203"
-           y="10.646975"><tspan>feces</tspan></tspan></text>
+           y="10.646975"
+           id="tspan7099">feces</tspan></text>
       <text
          xml:space="preserve"
          id="text8617"
-         style="font-size:2.60106px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect8619);"
+         style="font-size:2.60106px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect8619)"
          transform="matrix(1.0850269,0,0,1.0850269,136.18643,138.12889)"><tspan
            x="-116.4707"
-           y="30.063619"><tspan>mock</tspan></tspan></text>
+           y="30.063619"
+           id="tspan7101">mock</tspan></text>
       <text
          xml:space="preserve"
          id="text8623"
-         style="font-size:2.60106px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect8625);"
+         style="font-size:2.60106px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect8625)"
          transform="matrix(1.0850269,0,0,1.0850269,135.31243,136.74853)"><tspan
            x="-115.5293"
-           y="52.516744"><tspan>mock + germ-</tspan></tspan><tspan
+           y="52.516744"
+           id="tspan7103">mock + germ-</tspan><tspan
            x="-115.5293"
-           y="55.768068"><tspan>free feces</tspan></tspan></text>
+           y="55.768068"
+           id="tspan7105">free feces</tspan></text>
       <g
          id="g8597"
          transform="matrix(1.0850269,0,0,1.0850269,135.31424,180.62117)">
@@ -2550,41 +2567,53 @@
     <text
        xml:space="preserve"
        id="text8713"
-       style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect8715);"
+       style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect8715)"
        transform="translate(45.363865,0.79733211)"><tspan
          x="160.14062"
-         y="67.45033"><tspan>actually I see that the </tspan></tspan><tspan
+         y="67.45033"
+         id="tspan7107">actually I see that the </tspan><tspan
          x="160.14062"
-         y="70.978109"><tspan>inoculum samples were </tspan></tspan><tspan
+         y="70.978109"
+         id="tspan7109">inoculum samples were </tspan><tspan
          x="160.14062"
-         y="74.505888"><tspan>frozen in the media and </tspan></tspan><tspan
+         y="74.505888"
+         id="tspan7111">frozen in the media and </tspan><tspan
          x="160.14062"
-         y="78.033666"><tspan>had to be spun down </tspan></tspan><tspan
+         y="78.033666"
+         id="tspan7113">had to be spun down </tspan><tspan
          x="160.14062"
-         y="81.561445"><tspan>and washed at the start </tspan></tspan><tspan
+         y="81.561445"
+         id="tspan7115">and washed at the start </tspan><tspan
          x="160.14062"
-         y="85.089223"><tspan>of the extraction </tspan></tspan><tspan
+         y="85.089223"
+         id="tspan7117">of the extraction </tspan><tspan
          x="160.14062"
-         y="88.617002"><tspan>experiment.</tspan></tspan></text>
+         y="88.617002"
+         id="tspan7119">experiment.</tspan></text>
     <text
        xml:space="preserve"
        id="text8727"
-       style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect8729);"
+       style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect8729)"
        transform="translate(30.794458,1.2026553)"><tspan
          x="209.85742"
-         y="40.087049"><tspan>perhaps we will want to wash </tspan></tspan><tspan
+         y="40.087049"
+         id="tspan7121">perhaps we will want to wash </tspan><tspan
          x="209.85742"
-         y="43.614824"><tspan>in PBS anyways; can use a </tspan></tspan><tspan
+         y="43.614824"
+         id="tspan7123">in PBS anyways; can use a </tspan><tspan
          x="209.85742"
-         y="47.142599"><tspan>smaller volume (1mL) of PBS </tspan></tspan><tspan
+         y="47.142599"
+         id="tspan7125">smaller volume (1mL) of PBS </tspan><tspan
          x="209.85742"
-         y="50.670374"><tspan>and transfer to Eppendorf </tspan></tspan><tspan
+         y="50.670374"
+         id="tspan7127">and transfer to Eppendorf </tspan><tspan
          x="209.85742"
-         y="54.198148"><tspan>tubes at that point.</tspan></tspan></text>
+         y="54.198148"
+         id="tspan7129">tubes at that point.</tspan></text>
     <text
        xml:space="preserve"
        id="text8733"
-       style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect8735);" />
+       style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect8735)" />
     <g
        id="g30720"
        transform="translate(-20.58318,-11.891153)"
@@ -2594,14 +2623,22 @@
       <text
          xml:space="preserve"
          id="text6714"
-         style="font-size:4.23333px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect6716);"
-         transform="translate(75.368206,126.14547)"><tspan
+         style="font-size:4.23333px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect6716)"
+         transform="translate(75.368206,126.14547)"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238"><tspan
            x="0"
-           y="3.8131905"><tspan
-             style="shape-inside:url(#rect6716)">Create dilution series and replicate the diluted samples</tspan></tspan></text>
+           y="3.8131905"
+           id="tspan7133"><tspan
+             style="shape-inside:url(#rect6716)"
+             id="tspan7131">Create dilution series and replicate the diluted samples</tspan></tspan></text>
       <g
          id="g11916"
-         transform="translate(0.60174608,-0.14542101)">
+         transform="translate(0.60174608,-0.14542101)"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238">
         <path
            style="fill:#d7e3f4;fill-opacity:1;stroke:none;stroke-width:0.179999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
            d="m 75.64659,142.12531 v 4.30619 c 0,1.43539 2.01308,8.61237 2.875827,8.61237 0.862748,0 2.875827,-7.17698 2.875827,-8.61237 v -4.30619 z"
@@ -2669,22 +2706,35 @@
          style="fill:none;stroke:#000000;stroke-width:0.2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker10280)"
          d="m 84,144.99615 h 19"
          id="path10270"
-         sodipodi:nodetypes="cc" />
+         sodipodi:nodetypes="cc"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238" />
       <text
          xml:space="preserve"
          id="text10274"
-         style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect10276);"
-         transform="translate(50.927974,131.86065)"><tspan
+         style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect10276)"
+         transform="translate(50.927974,131.86065)"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238"><tspan
            x="35"
-           y="22.542127"><tspan>homogenize</tspan></tspan></text>
+           y="22.542127"
+           id="tspan7135">homogenize</tspan></text>
       <path
          style="fill:#deaa87;fill-opacity:1;stroke:none;stroke-width:0.179999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
          d="m 105,141.97989 v 4.30619 c 0,1.43539 2.01308,8.61237 2.87583,8.61237 0.86275,0 2.87583,-7.17698 2.87583,-8.61237 v -4.30619 z"
          id="path10492"
-         sodipodi:nodetypes="cssscc" />
+         sodipodi:nodetypes="cssscc"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238" />
       <g
          id="g10516"
-         transform="matrix(1.0850269,0,0,1.0850269,210.15587,131.12962)">
+         transform="matrix(1.0850269,0,0,1.0850269,210.15587,131.12962)"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238">
         <path
            style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
            d="m -96.915423,4.70836 v 9.26038 c 0,1.32291 1.855327,7.93747 2.650466,7.93747 0.79514,0 2.650466,-6.61456 2.650466,-7.93747 V 4.70836 Z"
@@ -2729,10 +2779,16 @@
          style="fill:none;stroke:#000000;stroke-width:0.2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker10530)"
          d="m 113,144.99615 h 19.00001"
          id="path10526"
-         sodipodi:nodetypes="cc" />
+         sodipodi:nodetypes="cc"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238" />
       <g
          id="g10915"
-         transform="translate(-20.021649,-0.14542101)">
+         transform="translate(-20.021649,-0.14542101)"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238">
         <path
            style="fill:#deaa87;fill-opacity:1;stroke:none;stroke-width:0.179999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
            d="m 155.02162,142.12531 v 4.30619 c 0,1.43539 2.01308,8.61237 2.87583,8.61237 0.86275,0 2.87583,-7.17698 2.87583,-8.61237 v -4.30619 z"
@@ -2784,7 +2840,10 @@
       </g>
       <g
          id="g10939"
-         transform="translate(-20.021649,23.0633)">
+         transform="translate(-20.021649,23.0633)"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238">
         <path
            style="fill:#deaa87;fill-opacity:0.5;stroke:none;stroke-width:0.179999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
            d="m 155.02162,142.12531 v 4.30619 c 0,1.43539 2.01308,8.61237 2.87583,8.61237 0.86275,0 2.87583,-7.17698 2.87583,-8.61237 v -4.30619 z"
@@ -2835,59 +2894,11 @@
         </g>
       </g>
       <g
-         id="g34875">
-        <path
-           style="fill:#deaa87;fill-opacity:0.12;stroke:none;stroke-width:0.179999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-           d="m 134.99997,211.60603 v 4.30619 c 0,1.43539 2.01308,8.61237 2.87583,8.61237 0.86275,0 2.87583,-7.17698 2.87583,-8.61237 v -4.30619 z"
-           id="path10941"
-           sodipodi:nodetypes="cssscc" />
-        <g
-           id="g10961"
-           transform="matrix(1.0850269,0,0,1.0850269,240.15584,200.75576)">
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -96.915423,4.70836 v 9.26038 c 0,1.32291 1.855327,7.93747 2.650466,7.93747 0.79514,0 2.650466,-6.61456 2.650466,-7.93747 V 4.70836 Z"
-             id="path10943"
-             sodipodi:nodetypes="cssscc" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -97.180468,4.70836 h 5.831024 V 4.17919 h -5.831024 z"
-             id="path10945" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -97.445516,4.17919 h 6.361119 V 3.65003 h -6.361119 z"
-             id="path10947" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.614491,7.32751 h -1.855326"
-             id="path10949" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.61449,10 h -1.855326"
-             id="path10951" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.61449,12.64583 h -1.855326"
-             id="path10953" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.934028,15.82081 h -1.535788"
-             id="path10955" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.110596;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.084397,3.65003 c 0,0 1.123275,-3.579e-4 1.123275,0.49955 0,0.5216283 -1.388322,0.55878 -1.388322,0.55878"
-             id="path10957"
-             sodipodi:nodetypes="csc" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.110596;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.084397,3.91461 c 0,0 0.804957,-0.012727 0.804957,0.23868 0,0.2883616 -1.070004,0.290485 -1.070004,0.290485"
-             id="path10959"
-             sodipodi:nodetypes="csc" />
-        </g>
-      </g>
-      <g
          id="g10987"
-         transform="translate(-20.021649,46.27201)">
+         transform="translate(-20.021649,46.27201)"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238">
         <path
            style="fill:#deaa87;fill-opacity:0.25;stroke:none;stroke-width:0.179999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
            d="m 155.02162,142.12531 v 4.30619 c 0,1.43539 2.01308,8.61237 2.87583,8.61237 0.86275,0 2.87583,-7.17698 2.87583,-8.61237 v -4.30619 z"
@@ -2941,26 +2952,33 @@
          style="fill:none;stroke:#000000;stroke-width:0.200001;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker10999)"
          d="m 118.00002,168.20487 h 14.01136"
          id="path10995"
-         sodipodi:nodetypes="cc" />
+         sodipodi:nodetypes="cc"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238" />
       <path
          style="fill:none;stroke:#000000;stroke-width:0.200001;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker11231)"
-         d="m 118.00002,191.41358 h 14.01136"
+         d="m 117.86771,191.4136 h 14.14088"
          id="path11227"
-         sodipodi:nodetypes="cc" />
-      <path
-         style="fill:none;stroke:#000000;stroke-width:0.200001;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker11471)"
-         d="m 118.00002,214.62229 h 14.01136"
-         id="path11467"
-         sodipodi:nodetypes="cc" />
+         sodipodi:nodetypes="cc"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238" />
       <path
          style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-         d="m 118,144.99615 v 69.62614"
-         id="path11757" />
+         d="m 118,144.99614 v 46.41745"
+         id="path11757"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238" />
       <g
          inkscape:label=""
          transform="matrix(0.59049,0,0,0.59049,64.84525,94.456249)"
          id="g18050"
-         style="stroke-width:1.69351">
+         style="stroke-width:1.69351"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238">
         <g
            id="g4760"
            style="stroke-width:1.69351">
@@ -2994,7 +3012,10 @@
          inkscape:label=""
          transform="matrix(0.59049,0,0,0.59049,64.84525,115.42791)"
          id="g19131"
-         style="stroke-width:1.69351">
+         style="stroke-width:1.69351"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238">
         <g
            id="g3428"
            style="stroke-width:1.69351">
@@ -3045,7 +3066,10 @@
          inkscape:label=""
          transform="matrix(0.59049,0,0,0.59049,64.84525,138.42791)"
          id="g20247"
-         style="stroke-width:1.69351">
+         style="stroke-width:1.69351"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238">
         <g
            id="g2480"
            style="stroke-width:1.69351">
@@ -3105,71 +3129,11 @@
         </g>
       </g>
       <g
-         inkscape:label=""
-         transform="matrix(0.59049,0,0,0.59049,64.84525,162.42791)"
-         id="g21396"
-         style="stroke-width:1.69351">
-        <g
-           id="g9808"
-           style="stroke-width:1.69351">
-          <g
-             style="fill:#000000;fill-opacity:1;stroke-width:1.69351"
-             id="g1160">
-            <use
-               xlink:href="#symbol532"
-               x="91.925003"
-               y="81.962997"
-               id="use9740"
-               width="100%"
-               height="100%"
-               style="stroke-width:1.69351" />
-          </g>
-          <g
-             style="fill:#000000;fill-opacity:1;stroke-width:1.69351"
-             id="g6976">
-            <use
-               xlink:href="#symbol2567"
-               x="103.891"
-               y="78.040001"
-               id="use21387"
-               width="100%"
-               height="100%"
-               style="stroke-width:1.69351" />
-          </g>
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.674016;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-opacity:1"
-             d="M 0.00109375,-6.5625e-4 H 10.012813"
-             transform="matrix(1,0,0,-1,100.87,79.472)"
-             id="path3514" />
-          <g
-             style="fill:#000000;fill-opacity:1;stroke-width:1.69351"
-             id="g9992">
-            <use
-               xlink:href="#symbol9977"
-               x="100.87"
-               y="85.398003"
-               id="use640"
-               width="100%"
-               height="100%"
-               style="stroke-width:1.69351" />
-          </g>
-          <g
-             style="fill:#000000;fill-opacity:1;stroke-width:1.69351"
-             id="g8602">
-            <use
-               xlink:href="#symbol2779"
-               x="106.995"
-               y="83.405998"
-               id="use1092"
-               width="100%"
-               height="100%"
-               style="stroke-width:1.69351" />
-          </g>
-        </g>
-      </g>
-      <g
          id="g33060"
-         transform="translate(9.2266959,-0.14542101)">
+         transform="translate(9.2266959,-0.14542101)"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238">
         <path
            id="path33533"
            style="fill:#deaa87;fill-opacity:1;stroke:none;stroke-width:0.179999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
@@ -3222,10 +3186,16 @@
          style="fill:none;stroke:#000000;stroke-width:0.2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker33144)"
          d="m 142.58318,144.99615 h 19.00001"
          id="path33140"
-         sodipodi:nodetypes="cc" />
+         sodipodi:nodetypes="cc"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238" />
       <g
          id="g33698"
-         transform="translate(19.81003,-0.14542101)">
+         transform="translate(19.81003,-0.14542101)"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238">
         <path
            id="path33676"
            style="fill:#deaa87;fill-opacity:1;stroke:none;stroke-width:0.179999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
@@ -3276,7 +3246,10 @@
       </g>
       <g
          id="g33722"
-         transform="translate(30.393364,-0.14542101)">
+         transform="translate(30.393364,-0.14542101)"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238">
         <path
            id="path33700"
            style="fill:#deaa87;fill-opacity:1;stroke:none;stroke-width:0.179999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
@@ -3327,7 +3300,10 @@
       </g>
       <g
          id="g33746"
-         transform="translate(40.976698,-0.14542101)">
+         transform="translate(40.976698,-0.14542101)"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238">
         <path
            id="path33724"
            style="fill:#deaa87;fill-opacity:1;stroke:none;stroke-width:0.179999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
@@ -3378,7 +3354,10 @@
       </g>
       <g
          id="g33776"
-         transform="translate(9.2266959,23.0633)">
+         transform="translate(9.2266959,23.0633)"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238">
         <path
            id="path33754"
            style="fill:#dda985;fill-opacity:0.501961;stroke:none;stroke-width:0.179999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
@@ -3431,10 +3410,16 @@
          style="fill:none;stroke:#000000;stroke-width:0.2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker33854)"
          d="m 142.58318,168.20487 h 19.00001"
          id="path33778"
-         sodipodi:nodetypes="cc" />
+         sodipodi:nodetypes="cc"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238" />
       <g
          id="g33802"
-         transform="translate(19.81003,23.0633)">
+         transform="translate(19.81003,23.0633)"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238">
         <path
            id="path33780"
            style="fill:#dda985;fill-opacity:0.501961;stroke:none;stroke-width:0.179999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
@@ -3485,7 +3470,10 @@
       </g>
       <g
          id="g33826"
-         transform="translate(30.393364,23.0633)">
+         transform="translate(30.393364,23.0633)"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238">
         <path
            id="path33804"
            style="fill:#dda985;fill-opacity:0.501961;stroke:none;stroke-width:0.179999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
@@ -3536,7 +3524,10 @@
       </g>
       <g
          id="g33850"
-         transform="translate(40.976698,23.0633)">
+         transform="translate(40.976698,23.0633)"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238">
         <path
            id="path33828"
            style="fill:#dda985;fill-opacity:0.501961;stroke:none;stroke-width:0.179999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
@@ -3587,7 +3578,10 @@
       </g>
       <g
          id="g34136"
-         transform="translate(9.2266959,46.27201)">
+         transform="translate(9.2266959,46.27201)"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238">
         <path
            id="path34114"
            style="fill:#dba783;fill-opacity:0.25098;stroke:none;stroke-width:0.179999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
@@ -3640,10 +3634,16 @@
          style="fill:none;stroke:#000000;stroke-width:0.2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker34214)"
          d="m 142.58318,191.41358 h 19.00001"
          id="path34138"
-         sodipodi:nodetypes="cc" />
+         sodipodi:nodetypes="cc"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238" />
       <g
          id="g34162"
-         transform="translate(19.81003,46.27201)">
+         transform="translate(19.81003,46.27201)"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238">
         <path
            id="path34140"
            style="fill:#dba783;fill-opacity:0.25098;stroke:none;stroke-width:0.179999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
@@ -3694,7 +3694,10 @@
       </g>
       <g
          id="g34186"
-         transform="translate(30.393364,46.27201)">
+         transform="translate(30.393364,46.27201)"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238">
         <path
            id="path34164"
            style="fill:#dba783;fill-opacity:0.25098;stroke:none;stroke-width:0.179999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
@@ -3745,7 +3748,10 @@
       </g>
       <g
          id="g34210"
-         transform="translate(40.976698,46.27201)">
+         transform="translate(40.976698,46.27201)"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238">
         <path
            id="path34188"
            style="fill:#dba783;fill-opacity:0.25098;stroke:none;stroke-width:0.179999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
@@ -3794,280 +3800,99 @@
              sodipodi:nodetypes="csc" />
         </g>
       </g>
-      <g
-         id="g34504"
-         transform="translate(9.2266959,69.48072)">
-        <path
-           id="path34482"
-           style="fill:#ddaa88;fill-opacity:0.117647;stroke:none;stroke-width:0.179999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-           d="m 155.49975,149.00485 c 0.65003,2.59382 1.79998,6.03902 2.39773,6.03902 0.59775,0 1.7477,-3.4452 2.39773,-6.03902" />
-        <g
-           id="g34502"
-           transform="matrix(1.0850269,0,0,1.0850269,260.17749,131.27504)">
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -96.915423,4.70836 v 9.26038 c 0,1.32291 1.855327,7.93747 2.650466,7.93747 0.79514,0 2.650466,-6.61456 2.650466,-7.93747 V 4.70836 Z"
-             id="path34484"
-             sodipodi:nodetypes="cssscc" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -97.180468,4.70836 h 5.831024 V 4.17919 h -5.831024 z"
-             id="path34486" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -97.445516,4.17919 h 6.361119 V 3.65003 h -6.361119 z"
-             id="path34488" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.614491,7.32751 h -1.855326"
-             id="path34490" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.61449,10 h -1.855326"
-             id="path34492" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.61449,12.64583 h -1.855326"
-             id="path34494" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.934028,15.82081 h -1.535788"
-             id="path34496" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.110596;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.084397,3.65003 c 0,0 1.123275,-3.579e-4 1.123275,0.49955 0,0.5216283 -1.388322,0.55878 -1.388322,0.55878"
-             id="path34498"
-             sodipodi:nodetypes="csc" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.110596;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.084397,3.91461 c 0,0 0.804957,-0.012727 0.804957,0.23868 0,0.2883616 -1.070004,0.290485 -1.070004,0.290485"
-             id="path34500"
-             sodipodi:nodetypes="csc" />
-        </g>
-      </g>
-      <path
-         style="fill:none;stroke:#000000;stroke-width:0.2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker34582)"
-         d="m 142.58318,214.62229 h 19.00001"
-         id="path34506"
-         sodipodi:nodetypes="cc" />
-      <g
-         id="g34530"
-         transform="translate(19.81003,69.48072)">
-        <path
-           id="path34508"
-           style="fill:#ddaa88;fill-opacity:0.117647;stroke:none;stroke-width:0.179999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-           d="m 155.49975,149.00485 c 0.65003,2.59382 1.79998,6.03902 2.39773,6.03902 0.59775,0 1.7477,-3.4452 2.39773,-6.03902" />
-        <g
-           id="g34528"
-           transform="matrix(1.0850269,0,0,1.0850269,260.17749,131.27504)">
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -96.915423,4.70836 v 9.26038 c 0,1.32291 1.855327,7.93747 2.650466,7.93747 0.79514,0 2.650466,-6.61456 2.650466,-7.93747 V 4.70836 Z"
-             id="path34510"
-             sodipodi:nodetypes="cssscc" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -97.180468,4.70836 h 5.831024 V 4.17919 h -5.831024 z"
-             id="path34512" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -97.445516,4.17919 h 6.361119 V 3.65003 h -6.361119 z"
-             id="path34514" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.614491,7.32751 h -1.855326"
-             id="path34516" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.61449,10 h -1.855326"
-             id="path34518" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.61449,12.64583 h -1.855326"
-             id="path34520" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.934028,15.82081 h -1.535788"
-             id="path34522" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.110596;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.084397,3.65003 c 0,0 1.123275,-3.579e-4 1.123275,0.49955 0,0.5216283 -1.388322,0.55878 -1.388322,0.55878"
-             id="path34524"
-             sodipodi:nodetypes="csc" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.110596;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.084397,3.91461 c 0,0 0.804957,-0.012727 0.804957,0.23868 0,0.2883616 -1.070004,0.290485 -1.070004,0.290485"
-             id="path34526"
-             sodipodi:nodetypes="csc" />
-        </g>
-      </g>
-      <g
-         id="g34554"
-         transform="translate(30.393364,69.48072)">
-        <path
-           id="path34532"
-           style="fill:#ddaa88;fill-opacity:0.117647;stroke:none;stroke-width:0.179999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-           d="m 155.49975,149.00485 c 0.65003,2.59382 1.79998,6.03902 2.39773,6.03902 0.59775,0 1.7477,-3.4452 2.39773,-6.03902" />
-        <g
-           id="g34552"
-           transform="matrix(1.0850269,0,0,1.0850269,260.17749,131.27504)">
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -96.915423,4.70836 v 9.26038 c 0,1.32291 1.855327,7.93747 2.650466,7.93747 0.79514,0 2.650466,-6.61456 2.650466,-7.93747 V 4.70836 Z"
-             id="path34534"
-             sodipodi:nodetypes="cssscc" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -97.180468,4.70836 h 5.831024 V 4.17919 h -5.831024 z"
-             id="path34536" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -97.445516,4.17919 h 6.361119 V 3.65003 h -6.361119 z"
-             id="path34538" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.614491,7.32751 h -1.855326"
-             id="path34540" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.61449,10 h -1.855326"
-             id="path34542" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.61449,12.64583 h -1.855326"
-             id="path34544" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.934028,15.82081 h -1.535788"
-             id="path34546" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.110596;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.084397,3.65003 c 0,0 1.123275,-3.579e-4 1.123275,0.49955 0,0.5216283 -1.388322,0.55878 -1.388322,0.55878"
-             id="path34548"
-             sodipodi:nodetypes="csc" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.110596;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.084397,3.91461 c 0,0 0.804957,-0.012727 0.804957,0.23868 0,0.2883616 -1.070004,0.290485 -1.070004,0.290485"
-             id="path34550"
-             sodipodi:nodetypes="csc" />
-        </g>
-      </g>
-      <g
-         id="g34578"
-         transform="translate(37.801696,69.48072)">
-        <path
-           id="path34556"
-           style="fill:#ddaa88;fill-opacity:0.117647;stroke:none;stroke-width:0.179999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-           d="m 158.67477,149.00485 c 0.65003,2.59382 1.79998,6.03902 2.39773,6.03902 0.59775,0 1.7477,-3.4452 2.39773,-6.03902" />
-        <g
-           id="g34576"
-           transform="matrix(1.0850269,0,0,1.0850269,263.35251,131.27504)">
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -96.915423,4.70836 v 9.26038 c 0,1.32291 1.855327,7.93747 2.650466,7.93747 0.79514,0 2.650466,-6.61456 2.650466,-7.93747 V 4.70836 Z"
-             id="path34558"
-             sodipodi:nodetypes="cssscc" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -97.180468,4.70836 h 5.831024 V 4.17919 h -5.831024 z"
-             id="path34560" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -97.445516,4.17919 h 6.361119 V 3.65003 h -6.361119 z"
-             id="path34562" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.614491,7.32751 h -1.855326"
-             id="path34564" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.61449,10 h -1.855326"
-             id="path34566" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.61449,12.64583 h -1.855326"
-             id="path34568" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.165894;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.934028,15.82081 h -1.535788"
-             id="path34570" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.110596;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.084397,3.65003 c 0,0 1.123275,-3.579e-4 1.123275,0.49955 0,0.5216283 -1.388322,0.55878 -1.388322,0.55878"
-             id="path34572"
-             sodipodi:nodetypes="csc" />
-          <path
-             style="fill:none;stroke:#000000;stroke-width:0.110596;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-             d="m -91.084397,3.91461 c 0,0 0.804957,-0.012727 0.804957,0.23868 0,0.2883616 -1.070004,0.290485 -1.070004,0.290485"
-             id="path34574"
-             sodipodi:nodetypes="csc" />
-        </g>
-      </g>
       <path
          style="fill:none;stroke:#000000;stroke-width:0.2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker35223)"
-         d="m 167.64852,225.04961 9.41031,9.42537"
+         d="m 167.64852,202.00557 9.41031,9.42537"
          id="path35219"
-         sodipodi:nodetypes="cc" />
+         sodipodi:nodetypes="cc"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238" />
       <path
          style="fill:none;stroke:#000000;stroke-width:0.2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker35511)"
-         d="m 187.76663,225.04974 -9.41058,9.42511"
+         d="m 187.76663,202.0057 -9.41058,9.42511"
          id="path35507"
-         sodipodi:nodetypes="cc" />
+         sodipodi:nodetypes="cc"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238" />
       <path
          style="fill:none;stroke:#000000;stroke-width:0.2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker35897)"
-         d="m 178.23192,225.04961 9.41031,9.42537"
+         d="m 178.23192,202.00557 9.41031,9.42537"
          id="path35881"
-         sodipodi:nodetypes="cc" />
+         sodipodi:nodetypes="cc"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238" />
       <path
          style="fill:none;stroke:#000000;stroke-width:0.2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker35887)"
-         d="m 198.35003,225.04974 -9.41058,9.42511"
+         d="m 198.35003,202.0057 -9.41058,9.42511"
          id="path35883"
-         sodipodi:nodetypes="cc" />
+         sodipodi:nodetypes="cc"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238" />
       <text
          xml:space="preserve"
          id="text36229"
-         style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect36231);"
-         transform="translate(-2.5326312,-0.74022393)"><tspan
+         style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect36231)"
+         transform="translate(-2.5326312,-23.784264)"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238"><tspan
            x="171.04883"
-           y="238.54213"><tspan>extraction </tspan></tspan><tspan
+           y="238.54213"
+           id="tspan7137">extraction </tspan><tspan
            x="171.04883"
-           y="242.0699"><tspan>protocol 1</tspan></tspan></text>
+           y="242.0699"
+           id="tspan7139">protocol 1</tspan></text>
       <text
          xml:space="preserve"
          id="text36235"
-         style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect36237);"
-         transform="translate(-5.5244323,-0.70053443)"><tspan
+         style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect36237)"
+         transform="translate(-5.5244323,-23.744574)"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238"><tspan
            x="190.63477"
-           y="238.50502"><tspan>extraction </tspan></tspan><tspan
+           y="238.50502"
+           id="tspan7141">extraction </tspan><tspan
            x="190.63477"
-           y="242.03279"><tspan>protocol 2</tspan></tspan></text>
+           y="242.03279"
+           id="tspan7143">protocol 2</tspan></text>
       <text
          xml:space="preserve"
          style="font-size:2.82223px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;stroke-width:0.264583"
          x="149.69601"
-         y="224.02892"
-         id="text36243"><tspan
+         y="200.98486"
+         id="text36243"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238"><tspan
            sodipodi:role="line"
            id="tspan36241"
            x="149.69601"
-           y="224.02892"
+           y="200.98486"
            style="stroke-width:0.264583">split</tspan></text>
       <text
          xml:space="preserve"
          style="font-size:2.82223px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;stroke-width:0.264583"
          x="119.28119"
-         y="224.02892"
-         id="text36253"><tspan
+         y="200.98486"
+         id="text36253"
+         inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
+         inkscape:export-xdpi="400.09238"
+         inkscape:export-ydpi="400.09238"><tspan
            sodipodi:role="line"
            id="tspan36251"
            x="119.28119"
-           y="224.02892"
+           y="200.98486"
            style="stroke-width:0.264583">dilute</tspan></text>
     </g>
     <g
        id="g31275"
        transform="translate(-8.4910448)"
-       inkscape:export-filename="/tmp/experiment.png"
+       inkscape:export-filename="/home/michael/research/vivo-vitro/main/illustrations/2021-experimenal-design.png"
        inkscape:export-xdpi="400.09238"
        inkscape:export-ydpi="400.09238">
       <g
@@ -4303,39 +4128,47 @@
       <text
          xml:space="preserve"
          id="text5128"
-         style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect5130);"
+         style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect5130)"
          transform="translate(9.8801108,88.260032)"><tspan
            x="15"
-           y="12.542127"><tspan>pure </tspan></tspan><tspan
+           y="12.542127"
+           id="tspan7145">pure </tspan><tspan
            x="15"
-           y="16.069902"><tspan>cultures</tspan></tspan></text>
+           y="16.069902"
+           id="tspan7147">cultures</tspan></text>
       <text
          xml:space="preserve"
          id="text5150"
-         style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect5152);"
+         style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect5152)"
          transform="translate(6.8801108,93.260033)"><tspan
            x="65"
-           y="7.5421272"><tspan>mixed </tspan></tspan><tspan
+           y="7.5421272"
+           id="tspan7149">mixed </tspan><tspan
            x="65"
-           y="11.069902"><tspan>cultures</tspan></tspan></text>
+           y="11.069902"
+           id="tspan7151">cultures</tspan></text>
       <text
          xml:space="preserve"
          id="text5156"
-         style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect5158);"
+         style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect5158)"
          transform="translate(35.818099,93.260033)"><tspan
            x="100"
-           y="7.5421272"><tspan>duplicate </tspan></tspan><tspan
+           y="7.5421272"
+           id="tspan7153">duplicate </tspan><tspan
            x="100"
-           y="11.069902"><tspan>pellets</tspan></tspan></text>
+           y="11.069902"
+           id="tspan7155">pellets</tspan></text>
       <text
          xml:space="preserve"
          id="text5162"
-         style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect5164);"
+         style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect5164)"
          transform="translate(-50.118511,88.260032)"><tspan
            x="150"
-           y="12.542127"><tspan>duplicate </tspan></tspan><tspan
+           y="12.542127"
+           id="tspan7157">duplicate </tspan><tspan
            x="150"
-           y="16.069902"><tspan>aliquots</tspan></tspan></text>
+           y="16.069902"
+           id="tspan7159">aliquots</tspan></text>
       <g
          id="g5294"
          transform="translate(1)">
@@ -4699,32 +4532,37 @@
       <text
          xml:space="preserve"
          id="text6612"
-         style="font-size:4.23333px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect6614);"
+         style="font-size:4.23333px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect6614)"
          transform="translate(13.276071,11.145468)"><tspan
            x="0"
-           y="3.8131905"><tspan
-             style="shape-inside:url(#rect6614)">Create mock communities</tspan></tspan></text>
+           y="3.8131905"
+           id="tspan7163"><tspan
+             style="shape-inside:url(#rect6614)"
+             id="tspan7161">Create mock communities</tspan></tspan></text>
       <text
          xml:space="preserve"
          id="text6718"
-         style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect6720);"
+         style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect6720)"
          transform="translate(6.9966558,71.465239)"><tspan
            x="35"
-           y="22.542127"><tspan>create mixtures</tspan></tspan></text>
+           y="22.542127"
+           id="tspan7165">create mixtures</tspan></text>
       <text
          xml:space="preserve"
          id="text6748"
-         style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect6750);"
+         style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect6750)"
          transform="translate(51.11284,70.907134)"><tspan
            x="35"
-           y="22.542127"><tspan>split</tspan></tspan></text>
+           y="22.542127"
+           id="tspan7167">split</tspan></text>
       <text
          xml:space="preserve"
          id="text6754"
-         style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect6756);"
+         style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect6756)"
          transform="translate(84.391105,70.907134)"><tspan
            x="35"
-           y="22.542127"><tspan>spin down</tspan></tspan></text>
+           y="22.542127"
+           id="tspan7169">spin down</tspan></text>
       <g
          id="g8981"
          transform="translate(2.2871842)">
@@ -5049,21 +4887,25 @@
       <text
          xml:space="preserve"
          id="text9481"
-         style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect9483);"
+         style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect9483)"
          transform="translate(-4.3873702,-12.06254)"><tspan
            x="160"
-           y="102.54213"><tspan>wash and </tspan></tspan><tspan
+           y="102.54213"
+           id="tspan7171">wash and </tspan><tspan
            x="160"
-           y="106.06991"><tspan>transfer</tspan></tspan></text>
+           y="106.06991"
+           id="tspan7173">transfer</tspan></text>
       <text
          xml:space="preserve"
          id="text9495"
-         style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect9497);"
+         style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect9497)"
          transform="translate(72.362912,93.260033)"><tspan
            x="100"
-           y="7.5421272"><tspan>washed </tspan></tspan><tspan
+           y="7.5421272"
+           id="tspan7175">washed </tspan><tspan
            x="100"
-           y="11.069902"><tspan>pellets</tspan></tspan></text>
+           y="11.069902"
+           id="tspan7177">pellets</tspan></text>
       <text
          xml:space="preserve"
          style="font-size:2.82223px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;stroke-width:0.264583"
@@ -5902,21 +5744,28 @@
     <text
        xml:space="preserve"
        id="text6079"
-       style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect6081);"><tspan
+       style="font-size:2.82222px;line-height:1.25;font-family:Arimo;-inkscape-font-specification:Arimo;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;white-space:pre;shape-inside:url(#rect6081)"><tspan
          x="205"
-         y="112.54213"><tspan>* Ask Angie what tubes we do the </tspan></tspan><tspan
+         y="112.54213"
+         id="tspan7179">* Ask Angie what tubes we do the </tspan><tspan
          x="205"
-         y="116.06991"><tspan>homgenization in; can we really use </tspan></tspan><tspan
+         y="116.06991"
+         id="tspan7181">homgenization in; can we really use </tspan><tspan
          x="205"
-         y="119.59768"><tspan>Eppendorf tubes?
-</tspan></tspan><tspan
+         y="119.59768"
+         id="tspan7183">Eppendorf tubes?
+</tspan><tspan
          x="205"
-         y="123.12546"><tspan>* Consider increasing the volumesin the </tspan></tspan><tspan
+         y="123.12546"
+         id="tspan7185">* Consider increasing the volumesin the </tspan><tspan
          x="205"
-         y="126.65324"><tspan>lower half so that we have up the the 4th </tspan></tspan><tspan
+         y="126.65324"
+         id="tspan7187">lower half so that we have up the the 4th </tspan><tspan
          x="205"
-         y="130.18102"><tspan>tick mark in the presplit and the first tick </tspan></tspan><tspan
+         y="130.18102"
+         id="tspan7189">tick mark in the presplit and the first tick </tspan><tspan
          x="205"
-         y="133.7088"><tspan>mark in post split; then the math adds up</tspan></tspan></text>
+         y="133.7088"
+         id="tspan7191">mark in post split; then the math adds up</tspan></text>
   </g>
 </svg>
