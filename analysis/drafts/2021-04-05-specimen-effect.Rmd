@@ -181,7 +181,13 @@ lbls <- strains %>%
 tree0 <- tree
 tree0$tip.label <- lbls
 plot(tree0)
-rm(lbls, tree0)
+# rm(lbls, tree0)
+```
+
+```{r, eval = F}
+pdf("/tmp/tree.pdf")
+plot(tree0)
+dev.off()
 ```
 
 TODO: Think about whether it is really ok to aggregate the E. coli given the potential bioinformatics bias.
@@ -401,6 +407,16 @@ p2 +
   expand_limits(x = c(-1.5, 2)) +
   plot_annotation(title = "Differential extraction bias (E2/E1) in fecal and inoculum samples")
 ggsave("/tmp/plot.png", units = "in", width = 8, height = 5)
+# ggsave("/tmp/variation-in-.pdf", units = "in", width = 8, height = 5)
+```
+
+```{r}
+p1 +
+  labs(title = NULL, color = "Specimen type", y = NULL) +
+  expand_limits(x = c(-1.5, 2)) +
+  plot_annotation(title = "Differential extraction bias (E2/E1) in fecal and inoculum samples")
+# ggsave("/tmp/plot.png", units = "in", width = 8, height = 5)
+ggsave("/tmp/differential-bias-by-specimen-type.pdf", units = "in", width = 8, height = 5)
 ```
 
 
