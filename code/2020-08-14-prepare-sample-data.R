@@ -1,6 +1,9 @@
 library(tidyverse)
 library(here)
 
+# NOTE: Edited on 2021-06-20 to add the columns `volume_pbs` and
+# `volume_per_aliquot`
+
 # Data for the DNA samples ----------------------------------------------------
 
 # One "dna sample" corresponds to one DNA extraction (before aliquoting onto
@@ -14,13 +17,15 @@ dna_sample_map <- read_csv(here("data/sample-data", "dna-sample-map.csv"),
   mutate(across(where(is.factor), fct_inseq)) %>%
   glimpse
   
-# information about individual specimens (FACTORS)
+# information about individual specimens
 specimen_data <- read_csv(here("data/sample-data", "specimen-data.csv"),
   col_types = cols(
     .default = col_factor(),
     collection_date = col_date(),
     number_of_pellets = col_integer(),
-    number_of_aliquots = col_integer()
+    number_of_aliquots = col_integer(),
+    volume_pbs = col_double(),
+    volume_per_aliquot = col_double()
   )
 ) %>%
   mutate(

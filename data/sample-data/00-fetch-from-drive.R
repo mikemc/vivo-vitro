@@ -15,7 +15,7 @@ dna_sample_map <- read_sheet(sheet_url, sheet = 1, na = "NA",
   rename(dna_sample_id = sample_id)
 # information about individual specimens
 specimen_data <- read_sheet(sheet_url, sheet = 2, na = "NA",
-  col_types = "iciiDcciDii")
+  col_types = "iciiDcciDiidd")
 # aliquot_number to protocol used
 aliquot_data <- read_sheet(sheet_url, sheet = 3, na = "NA",
   col_types = "ic")
