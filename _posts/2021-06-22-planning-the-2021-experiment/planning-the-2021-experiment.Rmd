@@ -1,0 +1,429 @@
+---
+title: "Planning the 2021 experiment"
+description: |
+  Analysis and calculations in service of planning the 2021 follow-up experiment.
+author:
+  - name: Michael R. McLaren
+date: 2021-06-22
+output:
+  distill::distill_article:
+    dev: svg
+---
+
+```{r, include = FALSE}
+# knitr chunk options
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  cache = TRUE,
+  autodep = TRUE,
+  cache.comments = FALSE
+)
+```
+
+```{r}
+library(tidyverse)
+library(here)
+library(speedyseq)
+
+library(kableExtra)
+
+library(cowplot)
+library(patchwork)
+theme_set(theme_cowplot())
+# library(ggridges)
+library(ggbeeswarm)
+# library(ggdist)
+
+library(metacal)
+
+import::from(scales, pseudo_log_trans)
+
+options(digits = 3)
+```
+
+# Exploring DNA yields in the 2019 experiment
+
+Load the DNA sample data and compute the concentration of input material for each aliquot in terms of pellets per aliquot, accounting for different homogenization volumes. 
+Here I approximate the homogenization volume by the amount of PBS added; this is likely an ok approximation for getting relative concentration differences within sample types, which is the main purpose here.
+
+```{r}
+dna <- here("output", "sample-data", "dna-sample-data.Rds") %>%
+  readRDS %>%
+  mutate(
+    pellets_per_aliquot = number_of_pellets / volume_pbs * volume_per_aliquot
+  ) %>%
+  glimpse
+```
+
+```{r}
+dna %>%
+  count(specimen_type, number_of_aliquots, number_of_pellets, 
+    pellets_per_aliquot
+  ) %>%
+  kable()
+```
+
+In the second extraction batch, Angie pooled pellets of the inoculum and T. mobilis, and also added less PBS, in order to increase the biomass.
+
+## Compare DNA concentration estimates
+
+We have three different DNA concentration measurements for most samples: 
+Our own Qubit measurements, the Picogreen measurements from center S1, and the Qubit measurements from center S2.
+Let's take a quick look at how they compare.
+
+```{r, fig.dim = c(8,7)}
+dna %>%
+  mutate(across(starts_with("dna_conc"), ~log10(. + 1e-2))) %>%
+  ggplot(aes(x = .panel_x, y = .panel_y, 
+      color = specimen_type, fill = specimen_type)) +
+  geom_point(alpha = 0.5) + 
+  ggforce::geom_autodensity(alpha = 0.5, na.rm = TRUE) +
+  ggforce::facet_matrix(vars(starts_with("dna_conc")), layer.diag = 2) +
+  theme_minimal_grid() +
+  scale_color_brewer(type = "qual") +
+  scale_fill_brewer(type = "qual")
+```
+
+What does this imply about where certain measurements might be over/under-estimating changes in yield?
+
+## Compare normalized DNA yields
+
+Given the general agreement between the three measurement types, let's do some exploration using our measurements (which we have for a larger set of samples).
+Let's consider yield vs expected biomass as determined by the number of pellets per aliquot.
+
+```{r, fig.dim = c(7, 8)}
+p0 <- dna %>%
+  ggplot(aes(pellets_per_aliquot, dna_conc,
+      color = specimen_type, shape = extraction_batch)) +
+  scale_x_log10() +
+  scale_y_log10() +
+  scale_color_brewer(type = "qual", palette = 2) +
+  scale_shape_manual(values = c(1, 3)) +
+  theme_minimal_grid() +
+  coord_fixed() +
+  facet_wrap(~extraction_protocol, labeller = "label_both")
+p1 <- p0 + 
+  geom_quasirandom(groupOnX = TRUE, width = 0.2)
+p2 <- p0 + 
+  geom_text(aes(label = specimen_id), 
+    position = position_quasirandom(groupOnX = TRUE, width = 0.2))
+p1 / p2
+```
+
+The bottom panel is the same as the top but with points labeled by specimen id.
+
+Some discussion taken from
+[Section "Differences in DNA yields" in the planning doc](https://docs.google.com/document/d/1C0r_uoNqIIknjt8MeyMr6VI6A159qjryvDFE3GOeG4k/edit#heading=h.drchvt5c8bpz):
+
+| Much greater in fecal than inoculum samples; Greater yield from protocol 1 on fecal; from protocol 2 on inoculum + T. mobilis; Angie commented that it might make sense we got more DNA from the FastDNA on fecal since that protocol was meant for stool. A possibly relevant note from the experiment is that for the DNeasy protocol, the fibrous fecal particles got stuck on the filter of the spin column; could that reduce yield in fecal samples? Batch 2 inoculum samples have larger yields due to pooling of multiple pellets.
+
+Some other observations:
+
+- Protocol 1 generally gives higher yield than Protocol 2 on the same fecal samples, but lower yield on the inoculum samples.
+- The net effect is that, in the first batch where the pellets per aliquot are all 0.2, Protocol 1 gives a ~100X increased DNA yield in the fecal samples while Protocol 2 gives a less than 10X increase.
+- For Protocol 2, it looks like 1.5 pellets per aliquot is sufficient to to reach fecal yields; yet for Protocol 1 the inoculum yields remain 10-30X lower.
+
+For Protocol 2, the relationship between pellets per aliquot (PPA) and yield looks roughly proportional across the two batches. For Protocol 1, it looks somewhat less than proportional for the inoculum samples, but greater than proportional for the high PPA T.mob sample. 
+Possibly of note is that the second batch went through a further freeze-thaw cycle (all sample types) and suspension and pelleting (inoculum and T. mobilis types) (CHECK); this might be expected to increase yields though this is unclear.
+
+Might be worth looking at the other DNA concentration measurements, which might give some evidence as to whether our concentration measurements themselves are linear at the low end.
+
+## Compute biomass increase needed to obtain fecal-like yield
+
+```{r}
+y <- dna %>%
+  pivot_longer(starts_with("dna_conc")) %>%
+  filter(!is.na(value)) %>%
+  mutate(
+    value = value / pellets_per_aliquot
+  ) %>%
+  with_groups(
+    c(specimen_type, extraction_protocol, extraction_batch, name),
+    # geometric median
+    summarize, across(value, ~exp(median(log(.))))
+  ) %>%
+  pivot_wider(names_from = specimen_type) %>%
+  mutate(across(c(Inoculum, `T. mobilis`), ~ Fecal / .)) %>%
+  pivot_longer(c(Inoculum, `T. mobilis`), names_to = "specimen_type")
+```
+
+```{r, fig.width = 7, fig.height = 7}
+y %>%
+  ggplot(aes(extraction_batch, value, color = specimen_type)) +
+  geom_quasirandom() +
+  scale_y_log10(breaks = 10^seq(-2, 4)) +
+  facet_grid(name~extraction_protocol, labeller = "label_both") +
+  expand_limits(y = 1) +
+  theme_minimal_hgrid() +
+  scale_color_brewer(type = "qual", palette = 1) +
+  theme(
+    legend.position = "bottom",
+    panel.spacing.y = unit(10, "mm")
+  )
+```
+
+Can see that extraction protocol 2 consistent results indicate a multiplier of around 10X is needed, while extraction protocol 1 indicates a factor of 100X or more is needed, depending on which concentration measurements we use.
+Splitting the difference and aiming for 30X increase in input biomass per aliquot is a reasonable compromise, but shooting for 100X is a safer bet if we want to ensure that the dilution window overlaps the fecal composition in the original experiment.
+
+
+# Choosing mixing volumes for the mock communities
+
+Goal is to choose mock compositions (in terms of volume of pure culture) for the 2021 experiment using the abundance profiles from the 2019 experiment.
+
+The aim is to have three mock communities with the following properties:
+
+- M1: Inoculum-like: Equal volume of each inoculum strain, to recapitulate inoculum composition of the original experiment (minus contaminants)
+- M2: Fecal-like: Increased relative abundance of strains that were more abundant in the fecal than inoculum samples
+- M3: Even 16S reads: Adjust abundances to favor taxa that were rarer in the amplicon (A1) measurements of the inoculum samples
+
+
+I will use the measurements from all four sequencing centers to help determine mixing volumes for mocks M2 and M3.
+
+```{r load-data, cache = TRUE}
+ps <- here("output/phyloseq/2020-11-28-phyloseq.Rds") %>% 
+  readRDS %>%
+  mutate_sample_data(., sample_sum = sample_sums(.))
+tree <- here("output/strain-data/gtdb-representatives.tree") %>%
+  ape::read.tree()
+```
+
+Let's filter to the inoculum strains and E. coli Nissle, and aggregate to species level.
+
+Note that for the amplicon ASVs that match E. coli HS and E. coli Nissle 1917, we have multiple entries in organism and strain_group. 
+This is important to keep in mind when working with the amplicon data and doing taxonomic filtering or merging. 
+
+```{r}
+tax <- tax_table(ps) %>% ps_tibble
+tax.ec <- tax %>% filter(str_detect(organism, "Esch"))
+tax.ec %>% select(.otu, species:source)
+tax0 <- tax %>%
+  filter(
+    strain_group == "Inoculum" | species == "Escherichia coli",
+    str_detect(organism, "Esch")
+  )
+all.equal(tax.ec, tax0)
+rm(tax.ec, tax0)
+```
+
+I also filter to the primary sample types and removal of the low-count samples from A2,
+
+```{r}
+ps1 <- ps %>%
+  filter_sample_data(
+    specimen_type %in% c("Fecal", "Inoculum"),
+    sample_sum >= 1e4 
+  ) %>%
+  filter_tax_table(
+    strain_group == "Inoculum" | species == "Escherichia coli",
+  ) %>%
+  tax_glom("species") %>%
+  mutate_tax_table(.otu = species)
+ps1 %>% tax_table %>% ps_tibble %>% select(phylum, species) %>%
+  arrange(phylum) %>% kable
+```
+
+I will work with the abundances as compositional vectors, with a pseudo-proportion of 1e-3 added to account for detection limits and to moderate the extreme log-fold differences that can arise due to some organisms not being present or detectable in all samples.
+
+```{r}
+ps1.1 <- ps1 %>%
+  transform_sample_counts(close_elts) %>%
+  transform_sample_counts(~center_elts(. + 3e-3))
+```
+
+Let's take a look at all the data,
+
+```{r, fig.dim = c(7, 10)}
+p <- ps1.1 %>% ps_tibble %>%
+  ggplot(aes(y = abbreviate(.otu), x = .abundance, color = specimen_type, 
+      shape = extraction_protocol:center_id)
+  ) +
+  facet_wrap(~extraction_batch,
+    labeller = label_both) +
+  scale_x_log10() +
+  scale_color_brewer(type = "qual") +
+  scale_shape_manual(values = c(1, 16, 2, 17, 5, 18, 3, 8)) +
+  theme_minimal_hgrid() +
+  theme(axis.title.y = element_blank())
+p +
+  geom_quasirandom(groupOnX = FALSE)
+```
+
+Note, I think the shotgun bioinformatics protocol is expected to be biased against E. coli, and we see that here for the inoculum samples but not in the fecal samples.
+
+```{r, fig.dim = c(6, 6)}
+ps1.1 %>% 
+  filter_tax_table(species == "Escherichia coli") %>%
+  ps_tibble %>%
+  ggplot(aes(y = .otu, x = .abundance, color = specimen_type, 
+      shape = extraction_protocol)
+  ) +
+  facet_grid(center_id~extraction_batch, labeller = label_both) +
+  scale_x_log10() +
+  scale_color_brewer(type = "qual") +
+  scale_shape_manual(values = c(1, 16)) +
+  theme_minimal_hgrid() +
+  theme(
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank()
+  ) +
+  geom_quasirandom(groupOnX = FALSE) +
+  plot_annotation(
+    title = "E. coli abundance relative to geometric mean"
+  )
+```
+
+Let's try to compute the compositional difference between fecal and inoculum for each batch, protocol, center combination.
+
+```{r}
+#> Order by the phylogeny,
+lvls <- tax %>%
+  filter(.otu %in% tree$tip.label) %>%
+  mutate(across(.otu, factor, levels = tree$tip.label)) %>%
+  arrange(.otu) %>%
+  pull(species) %>%
+  unique
+
+x <- ps1.1 %>%
+  ps_tibble %>%
+  group_by(.otu, specimen_type, extraction_protocol, center_id,
+    extraction_batch, specimen_id
+  ) %>%
+  summarise(across(.abundance, gm_mean), .groups = "drop_last") %>%
+  summarise(across(.abundance, gm_mean), .groups = "drop") %>%
+  mutate(across(.otu, factor, levels = lvls)) %>%
+  arrange(.otu)
+y <- x %>% 
+  pivot_wider(names_from = specimen_type, values_from = .abundance) %>%
+  mutate(diff = Fecal / Inoculum)
+```
+
+```{r, fig.dim = c(7, 9)}
+y %>%
+  mutate(across(.otu, fct_reorder, diff)) %>%
+  ggplot(aes(y = abbreviate(.otu), x = diff, 
+      color = center_id:extraction_protocol)
+  ) +
+  facet_grid(~extraction_batch, labeller = label_both) +
+  scale_x_log10() +
+  scale_color_brewer(type = "qual", palette = 2) +
+  theme_minimal_hgrid() +
+  geom_quasirandom(groupOnX = F, width = 0.2) +
+  theme(axis.title.y = element_blank())
+  # geom_vline(xintercept = c(0.1, 1, 10))
+```
+
+This graph indicates that the compositional difference between fecal and inoculum samples is fairly consistent across extraction and sequencing protocol, which is a nice confirmation of our expectation from the MWC model.
+There are, however, some interesting modest exceptions.
+For example, Ec and Clss are reduced in S{1,2}:E1 protocols.
+
+Something notable is that Clss is reduced in the second experiment relative to the first.
+Angie reported a much lower OD for Clss in the second inoculum batch, so this makes some sense.
+
+## Mock volumes
+
+Let's use the geometric average to choose the mixing ratios,
+
+```{r}
+m2 <- y %>%
+  with_groups(.otu, summarize, 
+    across(c(Fecal, Inoculum), gm_mean)) %>%
+  mutate(
+    diff = Fecal / Inoculum,
+    diff_sqrt = sqrt(diff)
+  ) %>%
+  arrange(diff)
+m2 %>% kable
+```
+
+Simple option: make the ratios 1 for the first 6, for the next 6, and 4 for the final (Bcto).
+
+```{r}
+m2 <- m2 %>%
+  mutate(
+    rank = rank(diff),
+    ratio = case_when(
+      rank <= 6 ~ 1,
+      between(rank, 7, 12) ~ 2,
+      rank == 13 ~ 4,
+    )
+  )
+```
+
+For the third mock, aim to make the percentage of 16S reads (more) even.
+Similar to Mock 2, I will use just three rounded ratio values for simplicity of pipetting.
+
+```{r}
+m3 <- y %>%
+  filter(center_id %in% c("A1", "A2")) %>%
+  with_groups(.otu, summarize, 
+    across(c(Fecal, Inoculum), gm_mean)) %>%
+  mutate(
+    target = 1 / Inoculum,
+    target_sqrt = sqrt(target)
+  ) %>%
+  arrange(target)
+m3 %>% kable
+m3 <- m3 %>%
+  mutate(
+    rank = rank(target),
+    ratio = case_when(
+      rank <= 1 ~ 1,
+      between(rank, 2, 11) ~ 1.5,
+      rank >= 12 ~ 3,
+    )
+  )
+m3 %>% kable
+```
+
+Create a table with the ratios for all three mocks, and check the total volumes
+
+```{r}
+m <- bind_rows(
+  M1 = m2 %>% transmute(.otu, ratio = 1),
+  M2 = m2 %>% select(.otu, ratio),
+  M3 = m3 %>% select(.otu, ratio),
+  .id = "mock"
+) %>%
+  arrange(.otu)
+m %>% pivot_wider(names_from = mock, values_from = ratio) %>% kable
+m %>% with_groups(mock, summarize, across(ratio, sum)) %>% kable
+```
+
+Let's adjust the final volumes so that the mocks all sum to ~66 mL while still having round numbers,
+
+```{r}
+m_vol <- m %>% 
+  mutate(
+    mult = case_when(
+      mock == "M1" ~ 5,
+      mock != "M1" ~ 3
+    ),
+    # across(mult, ~ . * 2), # double for two bottle option
+    volume = ratio * mult,
+  )
+m_vol %>% with_groups(mock, summarize, across(volume, sum)) %>% kable
+m_vol %>% with_groups(.otu, summarize, across(volume, sum)) %>% kable
+```
+
+```{r}
+m_vol_wide <- m_vol %>% 
+  select(.otu, mock, volume) %>%
+  pivot_wider(names_from = mock, values_from = volume)
+m_vol_wide %>% kable
+```
+
+```{r, eval = FALSE}
+ss <- "https://docs.google.com/spreadsheets/d/1mqrCoBj7y2lajEY3VyiPOy98S9HAY-YRKyQLEKI4LOs"
+m_vol_wide %>%
+  googlesheets4::sheet_write(ss, sheet = "Mixing volumes")
+```
+
+## Session info {.appendix}
+
+<details><summary>Click for session info</summary>
+```{r, R.options = list(width = 83)}
+sessioninfo::session_info()
+```
+</details>
+
