@@ -1,0 +1,294 @@
+---
+title: "Explore bias in the E. coli strains"
+description: |
+  Explore bias in the E. coli strains.
+author:
+  - name: Michael R. McLaren
+date: "2021-06-23"
+output:
+  distill::distill_article:
+    dev: svg
+---
+
+```{r, include = FALSE}
+# knitr chunk options
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  cache = TRUE,
+  autodep = TRUE,
+  cache.comments = FALSE
+)
+```
+
+This analysis doc takes a cursory look at bias in the E. coli strains—the relative efficiency between the two strains, as well how the efficiency of E. coli to other taxa varies from fecal to inoculum samples.
+Currently it only uses the shotgun data, to simplify the ability to distinguish abundances of the two strains.
+
+```{r}
+library(tidyverse)
+library(here)
+library(speedyseq)
+
+library(cowplot)
+library(patchwork)
+theme_set(theme_cowplot())
+library(ggbeeswarm)
+
+library(ggdist)
+
+library(metacal)
+
+import::from(scales, pseudo_log_trans)
+```
+
+```{r load-data, cache = TRUE}
+ps <- here("output/phyloseq/2020-11-28-phyloseq.Rds") %>% 
+  readRDS
+tree <- here("output/strain-data/gtdb-representatives.tree") %>%
+  ape::read.tree()
+```
+
+## Check for differential bias between the E. coli strains
+
+Nissle is just only in the fecal samples, so we'll just look at those.
+
+First let's just do this in the shotgun measurements, for which we already have OTUs corresponding to the two.
+
+Something to keep in mind: There may be some expected bias due to differences in how much of the corresponding reference genomes are uniquely mappable.
+We can estimate compute this percentage using simulated reads and mapping.
+This percentage in principle depends on the sequencing and mapping strategy, so the previous simulations I've done might not be perfectly representative, but are a reasonable start.
+However, this expected bias depends only on the genomes and sequencing, and so as a main effect should not affect the differential bias between extraction protocols.
+
+```{r}
+ps1 <- ps %>%
+  subset_samples(
+    library_strategy == "Shotgun" &
+    specimen_type %in% c("Fecal")
+  ) %>%
+  subset_taxa(species %in% c("Escherichia coli")) %>%
+  filter_taxa2(~sum(.) > 0) # to drop the ASVs
+taxa_names(ps1) <- tax_table(ps1) %>% ps_tibble %>% pull(organism) %>% abbreviate
+stopifnot(identical(ntaxa(ps1), 2L))
+ps1 %>% sample_sums %>% summary
+```
+
+```{r}
+ps1 %>% ps_tibble %>%
+  ggplot(aes(x = .abundance, y = .otu, 
+      color = extraction_protocol, fill = extraction_protocol)) +
+  # stat_histinterval(alpha = 0.5) +
+  stat_dots(alpha = 0.5) +
+  scale_x_log10() +
+  expand_limits(x = 1e3)
+```
+
+Note that the read counts for each strain are always quite high and so multinomial/counting error can be ignored.
+
+Get a tibble with the sample data and columns with the read counts for the two strains.
+
+```{r}
+x <- ps1 %>%
+  ps_tibble %>%
+  select(-.otu, -setdiff(rank_names(ps1), "organism")) %>%
+  mutate(across(organism, abbreviate)) %>%
+  pivot_wider(names_from = organism, values_from = .abundance) %>%
+  glimpse
+```
+
+
+First let's just get a sense of the relative abundances across samples,
+
+```{r}
+x %>%
+  ggplot(aes(x = EcN1 / EcHS, y = extraction_protocol, color = center_id)) +
+  geom_text(aes(label = specimen_id), 
+    position = position_quasirandom(groupOnX = FALSE)
+  ) +
+  scale_x_log10() +
+  facet_wrap(~extraction_batch)
+```
+
+- The two sequencing centers are giving very similar mesaurements
+- There is grouping by specimen and, in batch 2, by sex/cage
+- Protocol 2 gives lower ratios than Protocol 1 for the same specimen, indicating a small but clear differential bias.
+
+Now let's look at the differential bias.
+
+Let's first do it with the simple method of computing the ratio-of-ratios from the counts,
+
+```{r}
+pw <- ps1 %>%
+  metacal::pairwise_ratios("samples", filter = FALSE) %>%
+  metacal::pairwise_ratios("taxa", filter = FALSE) %>%
+  subset_samples(
+    specimen_id.1 == specimen_id.2 &
+      center_id.1 == center_id.2 &
+      extraction_protocol.1 == 2 &
+      extraction_protocol.2 == 1
+    ) %>%
+  prune_taxa("EcN1:EcHS", .) %>%
+  ps_tibble
+```
+
+```{r}
+pw %>%
+  ggplot(aes(x = .abundance, y = extraction_batch.1, color = center_id.1)) +
+  # geom_quasirandom(groupOnX = FALSE) +
+  geom_text(aes(label = specimen_id.1), 
+    position = position_quasirandom(groupOnX = FALSE)
+  ) +
+  scale_x_log10() +
+  labs(x = "Ratio", y = "Batch", color = "Center ID") +
+  scale_color_brewer(type = "qual")
+```
+
+There are clearly batch and specimen effects
+
+
+```{r}
+pw %>%
+  ggplot(aes(x = .abundance, y = extraction_batch.1, color = host_sex.1)) +
+  # geom_quasirandom(groupOnX = FALSE) +
+  geom_text(aes(label = specimen_id.1), 
+    position = position_quasirandom(groupOnX = FALSE)
+  ) +
+  scale_x_log10() +
+  labs(x = "Ratio", y = "Batch", color = "Center ID") +
+  scale_color_brewer(type = "qual")
+```
+
+But no sex/cage effect.
+
+To highlight the specimen effects, would be nice to color by specimen; but have too many across both batches.
+Can do the coloring separately for each batch, just be aware that 
+
+
+```{r, fig.height = 5, preview = TRUE}
+pw %>%
+  with_groups(extraction_batch.1, mutate, 
+    spc = as.integer(specimen_id.1),
+    spc_first = min(spc),
+    spc_adj = as.factor(spc - spc_first),
+    extraction_batch = str_c("Batch ", extraction_batch.1)
+  ) %>%
+  ggplot(aes(x = .abundance, y = center_id.1, color = spc_adj)) +
+  geom_vline(xintercept = 1, color = "grey") +
+  geom_text(aes(label = specimen_id.1), 
+    position = position_quasirandom(groupOnX = FALSE)
+  ) +
+  scale_x_log10() +
+  labs(x = "Ratio", y = "Sequencing center") +
+  scale_color_brewer(type = "qual", guide = "none", palette = 2) +
+  facet_wrap(~extraction_batch, ncol = 1,
+  )
+```
+
+
+Will be interesting to see if the specimen effect is associated with any particular changes in specimen composition (either in the Ec ratio, or proportion, or other)
+
+Methods for this figure
+
+- note that these ratio-of-ratios are fixing the specimen_id (hence batch, sex, cage), but also fixing the center_id, so we are getting rid of sequencing bias except through its effect on extraction bias
+- colors do not match across facets / batches.
+
+Summary of observations
+
+- The (EcN1:EcHS, E2:E1) efficiency is generally < 1, with a median of around 0.55 in batch 1 and 0.8 in batch 2.
+- There is a substantial batch effect, and there is also substantial specimen effects within batches
+- There is little overall effect of sequencing center, though there is a noticeable effect for certain specimens, e.g. 11 and 19 and 17. And it appears a general reduction in the relative efficiency in S1 relative to S2 in Batch 2, but the opposite if anything in Batch 1.
+
+
+
+## Check E. coli HS specimen effect
+
+
+```{r}
+ps2 <- ps %>%
+  subset_samples(library_strategy == "Shotgun") %>%
+  filter_taxa2(~sum(.) > 0) %>%
+  subset_taxa(
+    # genus %in% c("Escherichia-Shigella", "Bacteroides")
+    genus %in% c("Bacteroides") |
+      organism == "Escherichia coli HS"
+    ) %>%
+  subset_samples(
+    specimen_type %in% c("Fecal", "Inoculum")
+  )
+sample_sums(ps2) %>% summary
+taxa_names(ps2) <- tax_table(ps2) %>%
+  ps_tibble %>%
+  pull(organism) %>%
+  abbreviate(named = FALSE)
+taxa_names(ps2)
+```
+
+```{r}
+sample_data(ps2) %>% ps_tibble %>% count(specimen_type)
+```
+
+
+```{r}
+pw <- ps2 %>%
+  metacal::pairwise_ratios("samples", filter = FALSE) %>%
+  metacal::pairwise_ratios("taxa", filter = FALSE) %>%
+  subset_samples(
+    specimen_id.1 == specimen_id.2 &
+      center_id.1 == center_id.2 &
+      extraction_protocol.1 == 2 &
+      extraction_protocol.2 == 1
+  ) %>%
+  ps_tibble %>%
+  filter(str_detect(.otu, "^EcHS:Bc"))
+```
+
+
+```{r, fig.dim = c(8, 6)}
+pw %>%
+  with_groups(c(specimen_type.1, extraction_batch.1), mutate, 
+    extraction_batch = str_c("Batch ", extraction_batch.1),
+    spc = specimen_id.1 %>% fct_drop %>% as.integer %>% as.factor
+  ) %>%
+  ggplot(aes(x = .abundance, y = specimen_type.1, color = spc)) +
+  facet_grid(extraction_batch~.otu) +
+  geom_vline(xintercept = 1, color = "grey") +
+  # geom_quasirandom(groupOnX = FALSE) +
+  geom_text(aes(label = specimen_id.1), 
+    position = position_quasirandom(groupOnX = FALSE)
+  ) +
+  scale_x_log10() +
+  labs(x = "Differential relative efficiency") +
+  scale_color_brewer(type = "qual", guide = "none", palette = 2) +
+  theme(
+    panel.spacing = unit(10, "mm"),
+    axis.title.y = element_blank()
+  )
+```
+
+Note, the apparent duplication is coming from there being 2 sequencing centers.
+
+```{r}
+pw %>%
+  with_groups(c(specimen_type.1, extraction_batch.1), mutate, 
+    spc = as.integer(specimen_id.1),
+    spc_first = min(spc),
+    spc_adj = as.factor(spc - spc_first),
+    extraction_batch = str_c("Batch ", extraction_batch.1)
+  ) %>%
+  count(spc_adj)
+
+```
+
+Notably, the specimen effect - change of (EcHS:Bct, E2:E1) bias across specimen types - is larger than the 2X differential bias associated with EcHS:EcN1.
+
+As a proportion of the inoculum strains, E. coli is highly abundant in the inoculum, much more so than the fecal samples. This proportion should decrease when we account for the large amount of Staph in the inoculum.
+
+
+
+## Session info {.appendix}
+
+<details><summary>Click for session info</summary>
+```{r, R.options = list(width = 83)}
+sessioninfo::session_info()
+```
+</details>
+
