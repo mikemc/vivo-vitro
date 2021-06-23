@@ -16,11 +16,12 @@ knitr::opts_chunk$set(
 
 ## 2020-09-12 Simplified phyloseq object for bias analysis
 
-The phyloseq object stored in "2020-09-12-phyloseq-focal-strains.Rds" was created by "code/2020-09-12-import-to-phyloseq.R". It contains a phyloseq object with the current abundance data from A1, S1, and S2 for a simplified feature set corresponding to just the main experimental strains: the inoculum strains and the _T. mobilis_ control.
+The phyloseq object stored in "2020-09-12-phyloseq-focal-strains.Rds" was created by "/code/2020-09-12-import-to-phyloseq.R". It contains a phyloseq object with the current abundance data from A1, S1, and S2 for a simplified feature set corresponding to just the main experimental strains: the inoculum strains and the _T. mobilis_ control.
 
 ```{r}
 library(here)
 library(speedyseq)
+library(tidyverse)
 
 ps <- readRDS(here("output/phyloseq", "2020-09-12-phyloseq-focal-strains.Rds"))
 ps
@@ -45,5 +46,52 @@ sample_data(ps1)$specimen_type %>% table
 taxa_names(ps1)
 ```
 
+## 2020-11-28 Full results except host reads for the v2 pipeline
 
+The phyloseq object in "2020-11-28-phyloseq.Rds" contains lightly filtered results from bacterial profiling by the v2 amplicon and shotgun pipelines for all sequencing centers.
+This file was created by the script "/analysis/2020-11-11-assign-strains/2020-11-28-phyloseq-import.Rmd".
+Counts of host reads are not included but will be in subsequent versions.
 
+```{r}
+ps <- readRDS(here("output/phyloseq", "2020-11-28-phyloseq.Rds"))
+ps
+```
+
+Taxonomic features are ASVs (amplicon data) or reference accessions (shotgun data).
+The taxonomy table includes Silva assignments for both the ASVs and reference accessions (to genus level).
+It also includes additional columns with information for the experimental, control, and contaminant strains.
+
+```{r}
+ps %>% tax_table %>% ps_tibble %>% glimpse
+ps %>% tax_table %>% ps_tibble %>% count(source)
+ps %>% tax_table %>% ps_tibble %>% count(strain_group)
+```
+
+The strain_group and source columns can be used to filter to specific strains, while the species and organism columns are useful for filtering as well as taxonomic merging.
+For example, the following code chunk restricts to the inoculum strains and other *E. coli* strains, merges taxonomic features from both amplicon and shotgun measurements to the species level, and names the new taxa by species; it also restricts to the non-control samples.
+
+```{r}
+ps0 <- ps %>%
+  filter_sample_data(
+    specimen_type %in% c("Fecal", "Inoculum"),
+  ) %>%
+  filter_tax_table(
+    strain_group == "Inoculum" | species == "Escherichia coli",
+  ) %>%
+  tax_glom("species") %>%
+  mutate_tax_table(.otu = species)
+ps0 %>% taxa_names
+```
+
+This simplified phyloseq object is a natural starting point for analyzing bias across all 4 sequencing centers, keeping in mind that
+
+- It lumps together reads from the two *E. coli* strains (HS and Nissle 1917)
+- It includes *Faecalibacterium prausnitzii*, which apparently did not colonize the mice and so we suspect any presence in the fecal samples is due to cross contamination
+
+Thus depending on aims it can also make sense to remove one or both of these species prior to analysis.
+
+As noted, some light sample and taxonomic filtering of the has already been done in the base phyloseq object; in particular,
+
+- Only samples with more than 1000 reads are included; this primarily removed samples from Center A2
+- ASVs whose phylum could not be assigned or were unexpectedly short were removed
+- Taxa (ASVs or reference genomes) with 100 or fewer reads were removed
