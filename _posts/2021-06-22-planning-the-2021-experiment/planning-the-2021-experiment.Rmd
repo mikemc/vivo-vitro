@@ -8,6 +8,7 @@ date: 2021-06-22
 output:
   distill::distill_article:
     dev: svg
+    toc: true
 ---
 
 ```{r, include = FALSE}
@@ -31,9 +32,7 @@ library(kableExtra)
 library(cowplot)
 library(patchwork)
 theme_set(theme_cowplot())
-# library(ggridges)
 library(ggbeeswarm)
-# library(ggdist)
 
 library(metacal)
 
@@ -166,7 +165,6 @@ y %>%
 Can see that extraction protocol 2 consistent results indicate a multiplier of around 10X is needed, while extraction protocol 1 indicates a factor of 100X or more is needed, depending on which concentration measurements we use.
 Splitting the difference and aiming for 30X increase in input biomass per aliquot is a reasonable compromise, but shooting for 100X is a safer bet if we want to ensure that the dilution window overlaps the fecal composition in the original experiment.
 
-
 # Choosing mixing volumes for the mock communities
 
 Goal is to choose mock compositions (in terms of volume of pure culture) for the 2021 experiment using the abundance profiles from the 2019 experiment.
@@ -194,7 +192,7 @@ Note that for the amplicon ASVs that match E. coli HS and E. coli Nissle 1917, w
 This is important to keep in mind when working with the amplicon data and doing taxonomic filtering or merging. 
 
 ```{r}
-tax <- tax_table(ps) %>% ps_tibble
+tax <- tax_table(ps) %>% as_tibble
 tax.ec <- tax %>% filter(str_detect(organism, "Esch"))
 tax.ec %>% select(.otu, species:source)
 tax0 <- tax %>%
@@ -219,7 +217,7 @@ ps1 <- ps %>%
   ) %>%
   tax_glom("species") %>%
   mutate_tax_table(.otu = species)
-ps1 %>% tax_table %>% ps_tibble %>% select(phylum, species) %>%
+ps1 %>% tax_table %>% as_tibble %>% select(phylum, species) %>%
   arrange(phylum) %>% kable
 ```
 
@@ -234,7 +232,7 @@ ps1.1 <- ps1 %>%
 Let's take a look at all the data,
 
 ```{r, fig.dim = c(7, 10)}
-p <- ps1.1 %>% ps_tibble %>%
+p <- ps1.1 %>% as_tibble %>%
   ggplot(aes(y = abbreviate(.otu), x = .abundance, color = specimen_type, 
       shape = extraction_protocol:center_id)
   ) +
@@ -254,7 +252,7 @@ Note, I think the shotgun bioinformatics protocol is expected to be biased again
 ```{r, fig.dim = c(6, 6)}
 ps1.1 %>% 
   filter_tax_table(species == "Escherichia coli") %>%
-  ps_tibble %>%
+  as_tibble %>%
   ggplot(aes(y = .otu, x = .abundance, color = specimen_type, 
       shape = extraction_protocol)
   ) +
@@ -285,7 +283,7 @@ lvls <- tax %>%
   unique
 
 x <- ps1.1 %>%
-  ps_tibble %>%
+  as_tibble %>%
   group_by(.otu, specimen_type, extraction_protocol, center_id,
     extraction_batch, specimen_id
   ) %>%
@@ -416,7 +414,239 @@ m_vol_wide %>% kable
 ```{r, eval = FALSE}
 ss <- "https://docs.google.com/spreadsheets/d/1mqrCoBj7y2lajEY3VyiPOy98S9HAY-YRKyQLEKI4LOs"
 m_vol_wide %>%
-  googlesheets4::sheet_write(ss, sheet = "Mixing volumes")
+  googlesheets4::sheet_write(ss, sheet = "[R export] Mixing volumes")
+```
+
+# Inspecting impact of sample splitting
+
+In the fecal samples, aliquots 1 and 3 were extrated by protocol 1, and aliquots 2 and 4 by protocol 2.
+Our analysis assumes that all four aliquots are equivelent prior to DNA extraction.
+Is there any evidence to the contrary, in which case we might want to randomize the protocol treatment across aliquots in the new experiment?
+
+## Effect of aliquot number on DNA yield in fecal samples
+
+Did our homogenization and aliquot-assignment procedure led to any systematic differences in the DNA yield between the first and second aliquot for a given specimen-protocol combination?
+
+```{r}
+z <- dna %>%
+  filter(specimen_type == "Fecal") %>%
+  with_groups(c(specimen_id, extraction_protocol), mutate,
+    aliquot_rank = rank(aliquot_number) %>% factor)
+z %>%
+  ggplot(aes(y = aliquot_rank, x = dna_conc)) +
+  facet_grid(extraction_batch ~ extraction_protocol) +
+  geom_quasirandom(groupOnX = FALSE) +
+  scale_x_log10()
+```
+
+Let's plot the concentration from the second aliquot against the first,
+
+```{r}
+z %>%
+  select(specimen_id, starts_with("extraction"), dna_conc, aliquot_rank) %>%
+  mutate(across(aliquot_rank, fct_recode, first = "1", second = "2")) %>%
+  pivot_wider(names_from = aliquot_rank, values_from = dna_conc) %>%
+  ggplot(aes(y = second, x = first, 
+      color = extraction_protocol:extraction_batch)) +
+  scale_x_log10() + scale_y_log10() + coord_fixed() +
+  scale_color_brewer(type = "qual", palette = "Paired") +
+  theme(
+    legend.position = "bottom"
+  ) +
+  geom_abline(color = "grey") +
+  geom_point()
+```
+
+There appears to be a 1:1 relationship between yields from the first to second aliquot of a given specimen-protocol set.
+This result suggests that the homogenization procedure successfully homogenized aliquots 1 and 3, and aliquots 2 and 4.
+
+## Effect of aliquot number on composition in fecal samples
+
+I looked at this question in the pilot data (A1 data, v1 pipeline) in analysis/2020-02-29-homogenization.html, and will take another look here using all the data.
+
+One simple thing we can try is to compare the CLR values between the first and second aliquots of a given specimen-protocol combination, as with DNA yield above.
+
+```{r}
+x <- ps1.1 %>%
+  as_tibble %>%
+  mutate(
+    aliquot_rank = case_when(
+      aliquot_number %in% 1:2 ~ "First",
+      aliquot_number %in% 3:4 ~ "Second",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  filter(!is.na(aliquot_rank)) %>%
+  select(.otu, .abundance, center_id, specimen_id, starts_with("extraction"),
+    aliquot_rank) %>%
+  pivot_wider(names_from = aliquot_rank, values_from = .abundance)
+
+```
+
+```{r}
+x %>%
+  filter(.otu == "Bacteroides ovatus") %>%
+  count(is.na(First), is.na(Second))
+```
+
+A number of cases do not have both First and Second values; perhaps this is due to the samples that were filtered from low read counts or left out of the centers that received fewer than 96 samples?
+
+```{r}
+x %>%
+  filter(.otu == "Bacteroides ovatus") %>%
+  count(center_id, is.na(First), is.na(Second))
+```
+
+<details><summary>Click for figure</summary>
+```{r, fig.dim = c(6, 15)}
+x %>%
+  ggplot(aes(First, Second, color = extraction_protocol:extraction_batch)) +
+  facet_grid(abbreviate(.otu) ~ center_id) +
+  scale_x_log10() + scale_y_log10() + coord_fixed() +
+  scale_color_brewer(type = "qual", palette = "Paired") +
+  theme(
+    legend.position = "bottom"
+  ) +
+  geom_abline(color = "grey") +
+  geom_point()
+```
+</details>
+
+We see a strong 1:1 relationship across taxa, suggesting that our procedure led to replicate aliquots that behaved approximately the same in the experiment.
+
+# Generate sample data and plate layout
+
+First, get a table with the basic info for each specimen
+
+```{r}
+mocks <- tibble(mixture = str_c("M", 1:3)) %>%
+  crossing(feces_added = c(TRUE, FALSE)) %>%
+  mutate(
+    specimen_base_id = str_c(mixture, ifelse(feces_added, "F", "N")),
+    specimen_type = ifelse(feces_added, "Mock in feces", "Mock only")
+  )
+gnot <- tibble(
+  specimen_base_id = str_c("F", 1:3),
+  specimen_type = "Fecal"
+)
+tmob <- tibble(
+  specimen_base_id = "T1",
+  specimen_type = "T. mobilis",
+  dilution_power = 0L,
+  feces_added = FALSE
+)
+all_specimens <- bind_rows(mocks, gnot) %>%
+  crossing(
+    dilution_power = 0:2
+  ) %>%
+  bind_rows(tmob) %>%
+  mutate(
+    dilution_label = str_c("D", dilution_power),
+    dilution_factor = 10^dilution_power,
+    specimen_name = str_c(sep = "-",
+      specimen_base_id,
+      dilution_label
+    )
+  ) %>%
+  relocate(specimen_name) %>%
+  glimpse
+```
+
+The DNA samples correspond to the four aliquots obtained from each specimen (with the last two aliquots not used for specimens derived from M3 and F3),
+
+```{r}
+dna_samples <- all_specimens %>%
+  crossing(aliquot_number = 1:4) %>%
+  # Remove aliquots 3 and 4 from specimens not getting replicates (M3, F3)
+  filter(
+    ! (specimen_base_id %in% c("M3N", "M3F", "F3") & aliquot_number %in% 3:4)
+  ) %>%
+  mutate(
+    dna_sample_id = str_c(sep = "-", specimen_name, aliquot_number),
+    extraction_protocol = ifelse(aliquot_number %in% c(1, 3), 1, 2) %>% factor
+  ) %>%
+  relocate(dna_sample_id)
+```
+
+Well assignment is simplified this time since we are using all 94 samples for all sequencing centers.
+Wells H11 and H12 are reserved for A1 controls and will be left blank in all plates.
+I will manually assign the T. mobilis samples, then randomly assign others.
+This time, I will put T. mobilis controls in distinct rows and columns, roughly evenly spaced across the plate.
+Rows: A, C, E, G; Cols: 1, 4, 7, 10.
+In A1, the Zymo control will be in H11 or H12; I'll put the T. mobilis samples going from lower left (A1) to upper right (G10) to space away from the Zymo sample.
+
+```{r}
+set.seed(4)
+
+reserved_wells <- str_c("H", 11:12)
+tmob_wells <- dna_samples %>%
+  filter(specimen_type == "T. mobilis") %>%
+  arrange(aliquot_number) %>%
+  mutate(
+    row = LETTERS[c(1, 3, 5, 7)],
+    column = seq(1, 12, by = 3) %>% as.integer %>% rev,
+    well = str_c(row, column)
+  )
+other_samples <- dna_samples %>% 
+  filter(specimen_type != "T. mobilis") %>%
+  pull(dna_sample_id)
+other_wells <- crossing(row = LETTERS[1:8], column = 1:12) %>%
+  mutate(well = str_c(row, column)) %>%
+  filter(!(well %in% c(tmob_wells$well, reserved_wells))) %>%
+  mutate(dna_sample_id = sample(other_samples)) %>%
+  left_join(dna_samples, by = "dna_sample_id")
+plate_layout <- bind_rows(other_wells, tmob_wells) %>%
+  arrange(dna_sample_id) %>%
+  mutate(
+    across(row, ordered, levels = LETTERS[1:8]),
+    across(column, ordered, levels = seq(12))
+  )
+```
+
+```{r, fig.dim = c(8, 6)}
+plate_layout %>%
+  mutate(across(row, fct_rev)) %>%
+  ggplot(aes(y = row, x = column, fill = specimen_type)) +
+  coord_fixed() +
+  geom_tile() +
+  geom_text(aes(label = specimen_base_id), size = 3) +
+  scale_fill_brewer(type = "qual", palette = 2) + 
+  labs(title = "Plate layout") +
+  theme(
+    legend.position = "bottom"
+  )
+```
+
+Looks good!
+
+Let's save the DNA sample data with well assignments in a Google Sheet.
+I'll also save the well assignments in the form of a 12 by 8 grid with the full DNA sample names, to refer to during the actual plating.
+
+```{r}
+ss <- "https://docs.google.com/spreadsheets/d/10DNhnhE17lPOSIvzbhYxDTG--9KDMkM9Eum9Psb9B10"
+plate_layout %>%
+  googlesheets4::sheet_write(ss, sheet = "[R export] DNA sample names and wells")
+plate_layout %>%
+  select(dna_sample_id, row, column) %>%
+  pivot_wider(names_from = column, values_from = dna_sample_id,
+    names_sort = TRUE) %>% 
+  arrange(row) %>%
+  rename(`row//column` = row) %>%
+  googlesheets4::sheet_write(ss, sheet = "[R export] Plate layout")
+```
+
+```{r, include = FALSE, eval = FALSE}
+# if were to print the well assignments as a ggplot figure:
+plate_layout %>%
+  mutate(across(row, fct_rev)) %>%
+  ggplot(aes(y = row, x = column)) +
+  coord_fixed() +
+  geom_tile(fill = "lightgrey") +
+  geom_text(aes(label = dna_sample_id), size = 3) +
+  labs(title = "Plate layout") +
+  theme(
+    legend.position = "bottom"
+  )
 ```
 
 ## Session info {.appendix}
