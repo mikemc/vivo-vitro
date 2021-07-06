@@ -1,0 +1,204 @@
+#+title: Materials and Methods
+* 2019 experiment
+** Overview
+/Note: Some or all of this may go in the R&D/
+
+Our aim is to compare bias in natural fecal communities with that in artificially constructed (or "mock") communities.
+Taxonomic bias cannot be directly measured from natural samples for which we lack a ground truth measurement of composition.
+To circumvent this issue, we developed an approach whereby we measured each community using multiple protocols, which allowed us to estimate the differential bias between protocols. Variation in differential bias across samples implies variation in the bias of individual protocols, whereas consistency in differential bias suggests (though does not logically imply) consistency (will have an additional Methods or R&D section that explains the logic).
+We used a total of 8 measurement protocols, given by the all combinations of 2 extraction protocols and 4 sequencing protocols (2 amplicon and 2 shotgun); this factorial design further allows us to compare interactions between extraction and downstream steps and how these interactions might vary by sample type.
+(Note: We use "sequencing protocol" to include everything post extraction: PCR amplification, library prep, sequencing, and bioinformatics to create taxonomic profiles.)
+To facilitate taxonomic assignment and ensure that the observed variation in bias was not due to unresolved taxonomic variation among samples, we chose to use a gnotobiotic mouse system for which the identify of strains were known in advance and shared between the fecal and mock communities.
+The 2019 and 2021 experiments each leveraged gnotobiotic mouse experiments that were already planned or had been carried out for a separate purpose, in which germ-free mice were inoculated with a 13-species consortium of strains from the human gut.
+Fecal pellets collected from these mice after stable colonization were used as the natural community type.
+For artificial communities, the 2019 study used replicate aliquots of the mixed-culture inoculum that was used to inoculate the mice; the 2021 follow-up study used deliberately constructed mock communities containing the same strains.
+
+/TODO: Create and ref a schematic of the overall study design./
+** Gnotobiotic mouse experiment and experimental specimens
+The mouse study aimed to determine how different dietary components are taken up by specific members of the gut community.
+Mice were inoculated with a consortium of bacterial species, fed a diet that varied on a weekly basis, and had stool collected for metaproteomic analysis.
+Replicate aliquots of the inoculum mixture and additional fecal samples were collected for use in the present study.
+8 mice (4 males and 4 females) were grouped by sex in two cages.
+Mice were gavaged with inoculum on three consecutive days during Week 1 of the experiment, and monitored for colonization of individual strains by PCR with strain-specific primers. After dietary intervention, several strains appeared to die out from PCR monitoring. Mice were therefore put back on standard chow and re-inoculated during Week 5, and allowed to remain on standard chow for Week 6 before continuing dietary interventions.
+
+The consortium consisted of 13 bacterial species (5 each from the phyla Bacteroidetes and Firmicutes; 1 each from the phyla Actinobacteria, Proteobacteria, and Verrucomicrobia; OR ref table) were used, originally used in ref:desai2016adie and obtained from the lab of Eric Martens (ref table and phylogeny).
+The strains were cultured in Hungate tubes, mixed in equal volumes, and split into 1 mL aliquots, which were used to gavage the mice; spare 1 mL aliquots were frozen (in -80?) and later used as the inoculum samples in the present study.
+
+Due to concerns over low strain presence, we used fecal pellets from Week 2 and Week 6, while mice were on the standard diet and just several days post a recent gavage, for which PCR testing showed presence of all strains except /F. prausnitzii/ and /E. rectale/ (CONFIRM).
+Analysis of sequencing data later confirmed the presence of all strains except /F. prausnitzii/, including /E. rectale/, in most or all fecal samples.
+It additionally revealed that mice were also colonized by a second strain of /E. coli/, /E. coli Nissle 1917/, in addition to the /E. coli HS/ strain that was included in the inoculum.
+/E. coli Nissle 1917/ was not found in the inoculum samples.
+Sequencing analysis detected additional contaminants in the inoculum samples; these strains were not found in the fecal samples, suggesting this contamination either occurred after inoculation or that these contaminant strains were unable to colonize the mice.
+(See Bioinformatics methods below for a description of this analysis.)
+On Weeks 2 and 6, fecal pellets (one from each of the 8 mice) were collected 8 days after the most recent gavage, ensuring that fecal communities consisted (primarily? overwhelmingly?) of bacteria that had colonized and been growing in the mice for several days.
+Pellets were collected (or placed?) in empty tubes and immediately frozen at -80C at the mouse facility and later transported on dry ice to the lab for DNA extraction.
+
+To facilitate the assessment of internal and external contamination during extraction and sequencing, we also prepared control samples from pure culture of an extraneous organism, /Thermophilus mobilis/.
+1 mL aliquots of /T. mobilis/ liquid culture were collected, pelleted, and frozen (at ??) (see Extraction and Contamination Analysis sections below).
+
+To allow for splitting the extractions over two days, specimens were grouped into two batches.
+Batch 1 consisted of Week-2 fecal pellets (8), Week-1 inoculum pellets (3), and a /T. mobilis/ pellet (1).
+Batch 2 consisted of Week-6 fecal pellets (8), Week-5 inoculum pellets (3), additional Week-1 inoculum pellets (2), and a /T. mobilis/ pellet (1).
+Inoculum pellets were prepared from the spare frozen 1 mL aliquots of mixed culture inoculum, as follows.
+In Batch 1, prior to DNA extraction, mixed cultures were thawed, pelleted to remove media, washed in PBS, and resuspended in 1 mL PBS.
+Quantification of DNA yields from Batch 1 indicated substantially lower bacterial biomass in inoculum samples compared to fecal samples.
+In order to increase the biomass in inoculum samples in Batch 2, multiple inoculum aliquots from the same day were combined, pelleted, washed in PBS, and refrozen the day before the extractions (Ref Rmd or SI with details).
+These samples therefore were subjected to an additional freeze-thaw cycle.
+In order to match freeze-thaw cycles between inoculum and fecal specimens, we subjected the fecal pellets to a short thawing (~20m on ice) and refreeze (at -80 for an unknown time....maybe also ~20m?).
+
+/Note on freeze-thaw: The fecal samples may have gone through an additional thaw-freeze during transport from the CVM germ-free facility; perhaps depends on whether they were transported on ice or dry ice. Need to confirm/discuss with AM and MK./
+
+*** notes
+- Refer to strains by their species name except when multiple strains present in the experiment (e.g. for E. coli)
+- perhaps have a phylogeny with just the focal strains in the main text, and the broader phylogeny in the SI
+- give mouse info - most relevant is perhaps inbreeding?
+  + monitored on a weekly basis? cite elsewhere for details
+- (DETAILS; NOT SURE IF NEEDED) PCR with strain-specific primers detected all strains except /F. prausnitzii/ and /E. rectale/ in Week 2, (X days after last gavage), indicating successful colonization by most strains. However, after the diet was varied from the standard chow in Week 3 to (INSERT), several additional strains could no longer be detected.
+- From Angie: "For specimen 5 through 15, the pellets were collected at ~10am on Thursday September 19th. it is 10days from the first gavage (experiment started 9Sep19). Specimen 17 through 24, those were collected at ~10am on Thursday October 17th"
+** DNA extraction and quantification
+To enable measuring the differential bias between extraction protocols, DNA was extracted from each specimen by two extraction protocols.
+All 16 fecal specimens and 7 of 8 inoculum specimens were extracted in two technical replicates by each protocol (yielding 4 total extractions for these specimens).
+Extraction Protocol 1 used Qiagen's QIAamp Fast DNA Stool Mini Kit (Cat. 51604) following a protocol developed by ref:knudsen2016impa.
+Extraction Protocol 2 used Qiagen's DNeasy Blood & Tissue Kit (Cat. 69504), following the kit's Quick Start Protocol with no pre-treatment steps.
+(See Experiment Details for detailed protocol information.)
+Prior to the extractions, each specimen was homogenized in PBS and split into 4 replicate aliquots, two of which were designated for each extraction protocol.
+Inoculum specimens were homogenized by vortexing and fecal specimens were homogenized using a handheld tissue homogenizer (see Experiment Details).
+(Might also mention some subtle differences in effort to concentrate the samples in Batch 2.)
+We observed that fibrous material from the feces was unevenly distributed among the four aliquots; we therefore staggered the extractions for fecal specimens so that the 1st and 3rd aliquots received Protocol 1 and the 2nd and 4th aliquots received Protocol 2.
+(Note to self: Inoculum extractions were also split by aliquots 1 and 3, and 2 and 4, but the order wasn't carefully tracked.)
+Subsequent analysis of the taxonomic profiles derived from the sequencing data confirmed that replicates yielded highly similar taxonomic profiles and there was not significant bias associated with aliquot number.
+
+For each extraction batch, /T. mobilis/ aliquots were derived from a single specimen of pelleted pure culture that was treated like the inoculum specimens and extracted by the two protocols (in two replicates each or 4 total samples in Batch 1, and one replicate each or two total samples in Batch 2).
+
+After extraction, each DNA sample was quantified by Qubit dsDNA HS Assay and then aliquoted into four 96-well plates to be sent to the four sequencing centers.
+Additional florescence-based DNA concentration measurements were obtained from two of the sequencing centers (see below).
+
+/TODO: Confirm homogenization worked well in all sample types, in both experiments (currently I've just looked at the fecal samples from the 2019 experiment since that was the primary concern)./
+
+/TODO: Confirm these summaries of the protocols; in particular, there may be other options I should re stating e.g. with P1, for pathogen identification versus human ./
+** WAIT Sequencing
+To enable measuring the differential bias between sequencing methodolodies and look for interactions between extraction and sequencing methods, we sent extracted DNA to be sequenced at four sequencing centers. Two academic sequencing centers performed 16S amplicon sequencing (centers A1 and A2) and two commercial sequencing companies performed shotgun sequencing (centers S1 and S2).
+
+- TODO: Insert info about each sequencing center's methods
+- Qubit measurements from S2 and Picogreen measurements from S1
+
+Several post-extraction controls were used depending on sequencing center.
+- A1: They supplied Zymo community DNA standard; negative control (water? PBS?)
+- A2: I think: we included two additional T. mobilis control samples (Not a post-extraction controls)
+- S1: In house controls, information and data not shared.
+- S2: None
+
+** WAIT Bioinformatic analysis
+(Cut from above; maybe useful when writing about taxonomic identification from sequence data.)
+Sequencing detected several contaminant strains (mainly Staphylococcus, Cutibacterium, and Bacillus) in the inoculum samples, with Staphylococcus making up a substantial fraction of all reads (CHECK). We are unable to determine at which point during the inoculum preparation and/or metagenomics measurement; however, based on sequencing data it appears that none of these other strains colonized the mice. (Ref SI Rmd analysis or bioinformatics analysis below; more specifically, do not appear in read counts higher than what can be explained by cross contamination.)
+** WAIT Exploratory and statistical analysis
+* 2021 experiment
+/Note: Can give a fairly cursory description of the methods, focusing on the differences from the 2019 experiment and deferring to the above where the same./
+
+/Note: Need to determine what language to use regarding the pre and post homogenized and diluted cellular samples. In the initial experiment, 'specimen' refers to the biological material prior to the addition of and homogenization in PBS./
+
+/Note: When integrating into the complete manuscript, may add/remove observations from the 2019 experiment that helped motivate these choices./
+** Overview
+We performed a follow-up experiment in order to verify our original findings and investigate several potential explanations for them ([[fig:2021-experiment]]).
+In particular, we wished to investigate the extent to which differences in microbial biomass, community composition, and the presence of a fecal matrix could explain the differences in bias observed between the fecal and inoculum samples in the 2019 experiment.
+To do so, we included three groups of specimens ([[fig:2021-experiment]] B): 1) three fecal pellets from gnotobiotic mice previously inoculated with the inoculum strains; 2) three mock communities created by mixed cultures of the inoculum strains; 3) the same three mock communities mixed with feces collected from germ-free mice.
+The selection of gnotobiotic pellets and construction of mock communities was chosen so as to balance comparability with the initial experiment (by having a subset of samples with similar taxonomic compositions to the previous inoculum and fecal samples) with increasing the robustness of our conclusions through the introduction of more community variation across samples (by sampling pellets from mice on more than one diet and by deliberately varying composition across mock communities).
+Each specimen was then subjected to a 3-step 10X serial dilution, yielding samples with 1X, 1/10X, and 1/100X concentration, and then extracted by both DNA extraction and sequencing protocols as previously ([[fig:2021-experiment]] C), allowing us to study the impact of specimen type and dilution factor on differential bias.
+
+#+name: fig:2021-experiment
+#+caption: *Overview of the 2021 follow-up experiment.* Three mock communities were created in duplicate, each containing the 13 inoculum strains in varying ratios (Panel A). Germ-free feces was added to the second duplicate; gnotobiotic pellets were also collected, yielding three distinct specimen types (Panel B). Each specimen was homogenized, serially diluted, and split into four aliquots for extraction in duplicate by each of the two extraction protocols. Note, this figure is only a schematic representation; see Methods for a more detailed and accurate description.
+[[~/research/vivo-vitro/main/illustrations/2021-experimental-design.svg]]
+
+** Specimens
+*** Fecal specimens
+Fecal pellets were obtained from a gnotobiotic mouse experiment similar to that from the 2019 experiment.
+Mice (in this case, all female) were gavaged with the same 13-species consortium, given a period on standard chow to facilitate stable colonization, then given a weekly rotating diet.
+Fecal pellets were collected and added to tubes with RNAlater and briefly homogenized with a sterile pestle to ensure even contact with RNAlater, then frozen at -80C at the germ-free mouse facility.
+They were later transported on dry ice to the lab for metaproteomic analysis.
+We used three extra pellets for our experiment, from three different mice in three different weeks; hence in contrast to the 2021 experiment, these pellets were stored in RNAlater.
+We selected three pellets for our experiment: Pellet F1 was collected while the mice were on the standard chow diet at the start of the experiment; Pellet F2 was collected following week when the mice were on the Cellulose/Corn Oil diet; and Pellet F3 was collected while the mice were on the standard chow diet in the last week of the experiment.
+The two standard chow pellets were chosen to maximize comparability with the initial experiment, while the Cellulose/Corn Oil pellet was chosen to test sensitivity of bias to variation in taxonomic composition, as metaproteomics profiles suggested a significant impact of this diet on taxonomic composition. (TODO: Ref figure or describe)
+Sequencing and metaproteomic analysis of previous experiments suggested stable colonization of strains except for /F. prausnitzii/ across diets despite previous negative PCR results, such that we expected the presence of nearly all strains in all three pellets.
+
+notes
+- Fecal-pellet collection info taken from [[https://docs.google.com/document/d/1ZiGrWGuokPgGK9LblrQ-FtCnUaI8gxfP/edit][2019 mouse experiment doc]] and needs to be confirmed
+*** Mock communities
+We constructed three mock communities using the same 13 inoculum strains from the initial experiment with a modified procedure designed to allow testing the impact of biomass, taxonomic composition, and fecal matrix.
+
+We sought to increase bacterial biomass by a factor of roughly $\sqrt(100) \approx 30$, the geometric mean of the approximate 10X and 100X higher DNA concentrations in fecal samples over inoculum samples observed by the two protocols in the 2019 experiment.
+We predicted that this increase would put bacterial biomass in the full-concentration mock samples on par with that in fecal samples or at least ensure overlap in biomass concentration in the serial dilutions.
+To this end, we used larger volumes of each strain and concentrating the mixtures by centrifugation.
+Each undiluted mock sample derived from approximately 33 mL of mixed culture, compared to 1 mL in the 2019 experiment, for a predicted increase of roughly 33X assuming similar culture densities.
+/As a rough check on culture densities, we measured OD600 as previously and compared results. (not sure if worth mentioning yet.)/
+/Can ref the 2021-06-22-planning-the-2021-experiment analysis and/or an SI figure to support the mentioned concentration differences./
+
+We further sought to systematically vary the taxonomic composition of the three communities by using distinct mixing ratios for each strain, while holding the total volume roughly fixed (ref Table w/ volumes).
+The first two communities were specified to capture the compositional differences between the fecal and inoculum communities in the initial experiment.
+Mock community M1 contained equal volumes of all strains, to recapitulate the composition of the inoculum specimens in the initial experiment (minus the later-detected contaminants).
+Mock community M2 contained increased relative abundance of strains that our analysis of the 2019 experiment found to be more abundant in the fecal samples than inoculum samples.
+As a further way to determine the effect of composition on differential bias, we included a third community, M3, constructed to have increased relative abundance of strains that were relative rare in the A1 measurements of the 2019 inoculum samples.
+
+Mocks were constructed by combining mono-cultures in the specified volumes ([[fig:2021-experiment]] A and Table of mixing volumes) [giving approximately 66 mL total].
+Each mixture was then split into two duplicate aliquots [of roughly 33 mL each], spun down to remove the media, washed in PBS, then pelleted and frozen at -80C (or -20C? CHECK).
+Prior to homogenization and serial dilution (see below), the second pellet from each mock was combined with germ-free feces, which had been collected in RNAlater similar to the gnotobiotic pellets (CONFIRM).
+Mocks experienced one freeze-thaw cycle prior to homogenization and serial dilution.
+**** notes / details
+- did not include contaminants found in the fecal or inoculum samples. (Ref table w/ mixing volumes? perhaps add strain identifiers to all taxa)
+- Cultured strains in larger volume serum bottles than previously to support the construction of higher biomass communities.
+- Created 3 distinct mixtures (ref Table w/ volumes).
+  - M1 (Inoculum-like): Equal volumes of all strains, to recapitulate the composition of the inoculum specimens in the initial experiment (minus contaminants)
+  - M2 (Fecal-like): Increased relative abundance of strains that were measured to be more abundant in the fecal samples than inoculum samples
+  - M3 (Even 16S reads): Increased relative abundance of strains that were rarer in the inoculum A1 measurements
+  - The ratios in M2 and M3 were chosen to give a closer resemblance to the fecal and an even-16S-read communities without trying to precisely match them; we used discrete volumes and avoided extreme ratios to simplify the experiment and minimize the opportunity for construction and measurement error.
+  - Note to self: See [[file:~/research/vivo-vitro/_posts/2021-06-22-planning-the-2021-experiment/planning-the-2021-experiment.html#choosing-mixing-volumes-for-the-mock-communities][Planning analysis doc]] for more specific info on how the ratios were picked
+  - Mixture volume was 65 mL for M1 and 66 mL for M2 and M3. (Can perhaps just say approx 65 or approx 66 for all three)
+    + 66/2 = 33 -> 33X volume compared to the original inoculum pellets
+  - The ratios in M2 and M3 were chosen to give a closer resemblance to the fecal and an even-16S-read communities without trying to precisely match them; we used discrete volumes and avoided extreme ratios to simplify the experiment and minimize the opportunity for construction and measurement error.
+- Each mixture was split into two duplicate aliquots of roughly 33 mL each, spun down to remove the media, washed in PBS, then pelleted and frozen at -80C.
+- Each mock pellet therefore derived from approximately 33 mL of mixed culture, corresponding to a 33X increased volume from the initial experiment.
+- PBS wash was still done
+- Only one freeze-thaw prior to homogenization and serial dilution
+*** Controls
+We prepared included a /T. mobilis/ mono-culture control as previously. 20mL of liquid culture was pelleted and washed with PBS, then re-pelleted and frozen (at -20 or -80?) for
+This culture volume (similar to Batch 2 of the 2019 experiment) was chosen in order to increase the biomass to levels comparable to the full-concentration fecal and mock samples.
+The /T. mobilis/ pellet was used to create four aliquots prior to DNA extraction, two extracted by each extraction protocol.
+** Preparing the replicated dilution-series samples
+/NOTE: What I mean is the process in Panel C of the figure, from homogenization to creating the replicate aliquots that will be extracted. I need to determine terminology for these samples./
+
+To prepare serially-diluted samples for extraction ([[fig:2021-experiment]] C), each mock or fecal specimen was homogenized and subjected to a 3-point 10X serial dilution, after which each dilution sample was split into 4 aliquots for extraction in duplicate by the two extraction protocols.
+Each specimen was homogenized in 1000 uL PBS and serially diluted to yield samples with 1X, 1/10X, and 1/100X of the initial homogenized sample.
+Prior to homogenization, gnotobiotic and germ-free feces were pelleted to remove RNAlater, then resuspended in PBS.
+Germ-free feces were suspended in half-volume and added to the designated mock pellets such that a total of 1000 uL PBS was used.
+For consistency across sample types (and in contrast to the initial experiment), all sample types were subject to homogenization by hand-held tissue homogenizer for a similar time period.
+After serial dilution, samples were then split into 4 aliquots of 200 uL for DNA extraction in 2X replication by the each of the two protocols.
+
+- Consider noting that the material was resuspended prior to homogenization
+** DNA extraction, quantification, and sequencing
+DNA extraction by two protocols and sequencing by four sequencing centers (two amplicon services and two shotgun services) were performed as previously.
+To verify our extractions were successful, we used a NanoDrop 2000 (CHECK) to measure DNA concentrations with a subset of 6 full-concentration samples spanning each extraction protocol and primary sample type.
+More accurate florescence-based DNA concentration measurements were obtained from three of the sequencing centers (Qubit measurements from Centers A1 and S2 and Picogreen measurements from S1; TODO: confirm once have).
+An additional measurement of 16S concentration in the extracted DNA was made by Center S1 using broad-range 16S qPCR.
+
+94 DNA samples were selected for sequencing; these included two extractions with technical replicates (4 DNA samples each) for mock specimens M1N and M2N, mock + fecal specimens M1F and M2F, fecal specimens F1 and F2, and the /T. mobilis/ control, and two extractions without technical replicates (2 DNA samples each) for the remaining specimens M3N, M3F, and F3.
+DNA samples were shipped on dry ice in 96-well plates.
+Control samples were manually assigned wells and remaining samples were given random assignments.
+Centers A1, A2, and S2 received a single plate; whereas Center S1 required the samples to be split over two plates.
+(Ref Experimental Details for more info)
+
+As previously, several post-extraction controls were used depending on sequencing center (see above). We also included two PBS negative controls in spare wells for Center A2.
+* Notes
+** 2021 sample name interpretation
+3 distinct mock community mixtures (M1, M2, M3; see table with mixing volumes)
+Each split in two, M1N and M1F; N for “no feces” and F for “feces”; the “F” sample gets a germ-free fecal pellet added prior to homogenization and dilution
+
+Perhaps should include a table with this info
+* Captured tasks
+** TODO Give a table or schematic with sample breakdown
+** TODO Confer about freeze-thaw cycles, esp. regarding transportation
+** TODO Confirm homogenization worked well in all sample types, in both experiments
+(currently I've just looked at the fecal samples from the 2019 experiment since that was the primary concern).
+** TODO Add in info about how many days post gavage for the 2021 mice
+** TODO Confirm that the three 2021 mouse pellets come from three distinct but cohoused mice
+** TODO Edit figure or use caption to clarify that feces and mock pellets were already suspended prior to homogenization.
+** WAIT Confirm that each center's protocol hasn't changed, and note diffs
+** TODO Write 2019 sequencing section
