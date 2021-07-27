@@ -1,0 +1,70 @@
+---
+---
+
+Goal: Create the sample data in format for submission forms for the sequencing centers.
+
+```{r}
+library(tidyverse)
+library(here)
+```
+
+Load the "plate layout" sample metadata table that was created in `/_site/posts/2021-06-22-planning-the-2021-experiment/`,
+```{r}
+ss <- "https://docs.google.com/spreadsheets/d/10DNhnhE17lPOSIvzbhYxDTG--9KDMkM9Eum9Psb9B10"
+plate_layout <- googlesheets4::read_sheet(
+  ss, 
+  sheet = "[R export] DNA sample names and wells"
+)
+```
+
+Note, I will replace the dashes with underscores in the sample ids, per Illumina requirements.
+
+```{r}
+sam <- plate_layout %>%
+  add_row(row = "H", column = "11", well = "H11", dna_sample_id = "N1") %>%
+  add_row(row = "H", column = "12", well = "H12", dna_sample_id = "N2") %>%
+  mutate(
+    row = row %>% as.ordered,
+    column = column %>% as.integer %>% as.ordered,
+    across(dna_sample_id, str_replace_all, "-", "_")
+  )
+```
+
+Check layout
+```{r}
+sam %>%
+  select(dna_sample_id, row, column) %>%
+  pivot_wider(names_from = column, values_from = dna_sample_id) %>%
+  arrange(row) %>%
+  select(row, as.character(1:12)) %>%
+  print
+```
+looks good.
+
+
+## A1
+
+A1 required the plate layout in rectangular format; this format was created in `/_site/posts/2021-06-22-planning-the-2021-experiment/`.
+The submitted form is in Google Drive.
+
+## A2
+
+```{r}
+sam.a2 <- sam %>%
+  arrange(column, row) %>%
+  transmute(
+    `Well` = well,
+    `Row` = row,
+    `Column` = column,
+    `Sample Name` = dna_sample_id,
+    # `ng/uL` = dna_conc
+  ) %>%
+  glimpse
+write_csv(sam.a2, here("experiment", "2021", "a2-sample-data.csv"))
+```
+
+## S1
+
+
+## S2
+
