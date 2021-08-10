@@ -1,0 +1,97 @@
+well,submission_type,plate_id,sample_id,sample_type,sample_source,specimen_name,mixture,feces_added,specimen_base_id,specimen_type,dilution_label,aliquot_number,extraction_protocol
+A01,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+B01,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+C01,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+D01,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+E01,DNA in Plate,2,F1_D1_4,DNA,Mouse,F1-D1,NA,NA,F1,Fecal,D1,4,2
+F01,DNA in Plate,2,M2F_D1_1,DNA,Bacterial culture and mouse,M2F-D1,M2,TRUE,M2F,Mock in feces,D1,1,1
+G01,DNA in Plate,2,T1_D0_4,DNA,Bacterial culture,T1-D0,NA,FALSE,T1,T. mobilis,D0,4,2
+H01,DNA in Plate,2,M1F_D1_3,DNA,Bacterial culture and mouse,M1F-D1,M1,TRUE,M1F,Mock in feces,D1,3,1
+A02,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+B02,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+C02,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+D02,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+E02,DNA in Plate,2,F1_D2_2,DNA,Mouse,F1-D2,NA,NA,F1,Fecal,D2,2,2
+F02,DNA in Plate,2,M2F_D0_1,DNA,Bacterial culture and mouse,M2F-D0,M2,TRUE,M2F,Mock in feces,D0,1,1
+G02,DNA in Plate,2,F3_D0_1,DNA,Mouse,F3-D0,NA,NA,F3,Fecal,D0,1,1
+H02,DNA in Plate,2,M1F_D0_3,DNA,Bacterial culture and mouse,M1F-D0,M1,TRUE,M1F,Mock in feces,D0,3,1
+A03,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+B03,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+C03,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+D03,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+E03,DNA in Plate,2,M1F_D0_4,DNA,Bacterial culture and mouse,M1F-D0,M1,TRUE,M1F,Mock in feces,D0,4,2
+F03,DNA in Plate,2,M3F_D2_1,DNA,Bacterial culture and mouse,M3F-D2,M3,TRUE,M3F,Mock in feces,D2,1,1
+G03,DNA in Plate,2,M1N_D1_4,DNA,Bacterial culture,M1N-D1,M1,FALSE,M1N,Mock only,D1,4,2
+H03,DNA in Plate,2,M1F_D1_4,DNA,Bacterial culture and mouse,M1F-D1,M1,TRUE,M1F,Mock in feces,D1,4,2
+A04,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+B04,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+C04,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+D04,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+E04,DNA in Plate,2,T1_D0_3,DNA,Bacterial culture,T1-D0,NA,FALSE,T1,T. mobilis,D0,3,1
+F04,DNA in Plate,2,M2N_D0_4,DNA,Bacterial culture,M2N-D0,M2,FALSE,M2N,Mock only,D0,4,2
+G04,DNA in Plate,2,M1N_D0_3,DNA,Bacterial culture,M1N-D0,M1,FALSE,M1N,Mock only,D0,3,1
+H04,DNA in Plate,2,F1_D1_3,DNA,Mouse,F1-D1,NA,NA,F1,Fecal,D1,3,1
+A05,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+B05,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+C05,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+D05,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+E05,DNA in Plate,2,M3F_D1_2,DNA,Bacterial culture and mouse,M3F-D1,M3,TRUE,M3F,Mock in feces,D1,2,2
+F05,DNA in Plate,2,M3F_D2_2,DNA,Bacterial culture and mouse,M3F-D2,M3,TRUE,M3F,Mock in feces,D2,2,2
+G05,DNA in Plate,2,F1_D0_4,DNA,Mouse,F1-D0,NA,NA,F1,Fecal,D0,4,2
+H05,DNA in Plate,2,M3N_D1_2,DNA,Bacterial culture,M3N-D1,M3,FALSE,M3N,Mock only,D1,2,2
+A06,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+B06,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+C06,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+D06,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+E06,DNA in Plate,2,M2N_D0_1,DNA,Bacterial culture,M2N-D0,M2,FALSE,M2N,Mock only,D0,1,1
+F06,DNA in Plate,2,M1N_D0_1,DNA,Bacterial culture,M1N-D0,M1,FALSE,M1N,Mock only,D0,1,1
+G06,DNA in Plate,2,M1F_D1_2,DNA,Bacterial culture and mouse,M1F-D1,M1,TRUE,M1F,Mock in feces,D1,2,2
+H06,DNA in Plate,2,F1_D2_1,DNA,Mouse,F1-D2,NA,NA,F1,Fecal,D2,1,1
+A07,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+B07,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+C07,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+D07,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+E07,DNA in Plate,2,M3F_D1_1,DNA,Bacterial culture and mouse,M3F-D1,M3,TRUE,M3F,Mock in feces,D1,1,1
+F07,DNA in Plate,2,M2F_D0_3,DNA,Bacterial culture and mouse,M2F-D0,M2,TRUE,M2F,Mock in feces,D0,3,1
+G07,DNA in Plate,2,M2N_D2_3,DNA,Bacterial culture,M2N-D2,M2,FALSE,M2N,Mock only,D2,3,1
+H07,DNA in Plate,2,F1_D1_2,DNA,Mouse,F1-D1,NA,NA,F1,Fecal,D1,2,2
+A08,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+B08,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+C08,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+D08,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+E08,DNA in Plate,2,F3_D0_2,DNA,Mouse,F3-D0,NA,NA,F3,Fecal,D0,2,2
+F08,DNA in Plate,2,M3N_D1_1,DNA,Bacterial culture,M3N-D1,M3,FALSE,M3N,Mock only,D1,1,1
+G08,DNA in Plate,2,M1F_D0_1,DNA,Bacterial culture and mouse,M1F-D0,M1,TRUE,M1F,Mock in feces,D0,1,1
+H08,DNA in Plate,2,F2_D1_3,DNA,Mouse,F2-D1,NA,NA,F2,Fecal,D1,3,1
+A09,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+B09,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+C09,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+D09,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+E09,DNA in Plate,2,M1F_D2_2,DNA,Bacterial culture and mouse,M1F-D2,M1,TRUE,M1F,Mock in feces,D2,2,2
+F09,DNA in Plate,2,M2N_D2_2,DNA,Bacterial culture,M2N-D2,M2,FALSE,M2N,Mock only,D2,2,2
+G09,DNA in Plate,2,F2_D1_1,DNA,Mouse,F2-D1,NA,NA,F2,Fecal,D1,1,1
+H09,DNA in Plate,2,M1N_D0_4,DNA,Bacterial culture,M1N-D0,M1,FALSE,M1N,Mock only,D0,4,2
+A10,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+B10,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+C10,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+D10,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+E10,DNA in Plate,2,M3N_D0_1,DNA,Bacterial culture,M3N-D0,M3,FALSE,M3N,Mock only,D0,1,1
+F10,DNA in Plate,2,M2F_D1_3,DNA,Bacterial culture and mouse,M2F-D1,M2,TRUE,M2F,Mock in feces,D1,3,1
+G10,DNA in Plate,2,M1F_D2_1,DNA,Bacterial culture and mouse,M1F-D2,M1,TRUE,M1F,Mock in feces,D2,1,1
+H10,DNA in Plate,2,F2_D1_2,DNA,Mouse,F2-D1,NA,NA,F2,Fecal,D1,2,2
+A11,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+B11,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+C11,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+D11,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+E11,DNA in Plate,2,M2N_D1_3,DNA,Bacterial culture,M2N-D1,M2,FALSE,M2N,Mock only,D1,3,1
+F11,DNA in Plate,2,M2F_D2_3,DNA,Bacterial culture and mouse,M2F-D2,M2,TRUE,M2F,Mock in feces,D2,3,1
+G11,DNA in Plate,2,F3_D1_2,DNA,Mouse,F3-D1,NA,NA,F3,Fecal,D1,2,2
+H11,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+A12,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+B12,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+C12,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+D12,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+E12,DNA in Plate,2,F2_D2_3,DNA,Mouse,F2-D2,NA,NA,F2,Fecal,D2,3,1
+F12,DNA in Plate,2,M2N_D0_2,DNA,Bacterial culture,M2N-D0,M2,FALSE,M2N,Mock only,D0,2,2
+G12,DNA in Plate,2,M1N_D2_3,DNA,Bacterial culture,M1N-D2,M1,FALSE,M1N,Mock only,D2,3,1
+H12,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA

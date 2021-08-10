@@ -1,5 +1,8 @@
 ---
+title: Forms for sequencing centers for the 2021 experiment
 ---
+
+## Setup
 
 Goal: Create the sample data in format for submission forms for the sequencing centers.
 
@@ -65,6 +68,102 @@ write_csv(sam.a2, here("experiment", "2021", "a2-sample-data.csv"))
 
 ## S1
 
+<!-- Submission Type	Plate ID	Plate ID Validation	Sample #	Sample ID	Sample ID Validation	Well	Sample Type	Sample Source	Metadata 1 ... -->
+
+These samples were split over two plates, with the first four rows (A-D) on plate 1 and the second four rows (E-H) on plate 2.
+
+Note, remove the negative controls since these are only in the A2 plate.
+
+```{r}
+sam.s1 <- sam %>%
+  filter(! dna_sample_id %in% c("N1", "N2")) %>% 
+  arrange(column, row) %>%
+  transmute(
+    submission_type = "DNA in Plate",
+    plate_id = case_when(
+      row %in% LETTERS[1:4] ~ "1",
+      row %in% LETTERS[5:8] ~ "2",
+    ),
+    sample_id = dna_sample_id,
+    sample_type = "DNA",
+    sample_source = case_when(
+      specimen_type == "Fecal" ~ "Mouse",
+      specimen_type == "Mock only" ~ "Bacterial culture",
+      specimen_type == "Mock in feces" ~ "Bacterial culture and mouse",
+      specimen_type == "T. mobilis" ~ "Bacterial culture",
+      ),
+    well = str_c(row, str_pad(column, 2, "left", 0)),
+    # Add any metadata that we want to provide to them.
+    specimen_name, mixture, feces_added, specimen_base_id, specimen_type,
+    dilution_label, aliquot_number, extraction_protocol,
+    row, column
+  ) %>%
+  arrange(plate_id, column, row) %>%
+  select(-row, -column) %>%
+  glimpse
+```
+
+Make sure I match the row order exactly
+```{r}
+ss.p1 <- here("experiment", "2021", "s1 - Plate_Sample_Submission_Sheet_V7.xlsx") %>%
+  readxl::read_excel(sheet = 1, range = "B13:J109")
+```
+
+```{r}
+sam.s1.p1 <- ss.p1 %>%
+  select(well = Well) %>%
+  left_join(sam.s1 %>% filter(plate_id == "1"), by = "well")
+sam.s1.p2 <- ss.p1 %>%
+  select(well = Well) %>%
+  left_join(sam.s1 %>% filter(plate_id == "2"), by = "well")
+```
+
+```{r}
+write_csv(sam.s1.p1, here("experiment", "2021", "s1-sample-data-plate1.csv"))
+write_csv(sam.s1.p2, here("experiment", "2021", "s1-sample-data-plate2.csv"))
+```
 
 ## S2
+
+
+First prepare the sample data
+```{r}
+sam.s2 <- sam %>%
+  filter(! dna_sample_id %in% c("N1", "N2")) %>% 
+  arrange(column, row) %>%
+  transmute(
+    sample_name = dna_sample_id,
+    sample_type = "DNA",
+    plate = "1",
+    well = str_c(row, str_pad(column, 2, "left", 0)),
+    concentration_ng_per_ul = NA,
+    volume_ul = 20,
+    amount_ng = NA,
+    extraction_method = case_when(
+      extraction_protocol == "1" ~ "Qiagen QIAamp Fast DNA",
+      extraction_protocol == "2" ~ "Qiagen DNeasy"
+    ),
+    sample_source = case_when(
+      specimen_type == "Fecal" ~ "Mouse",
+      specimen_type == "Mock only" ~ "Bacterial culture",
+      specimen_type == "Mock in feces" ~ "Bacterial culture and mouse",
+      specimen_type == "T. mobilis" ~ "Bacterial culture",
+      ),
+    sample_source = case_when(
+      specimen_type == "Fecal" ~ "Mouse gut",
+    ),
+    host = case_when(
+      specimen_type == "Fecal" ~ "Mouse",
+    ),
+    sample_description = specimen_type,
+    origin_of_sample_collection = "NCSU",
+    sample_mo_yr = "2021-07-01",
+    sequencing_type_requested = "WGS",
+    study_objectives = "Characterize microbiome measurement bias"
+  )
+```
+
+```{r}
+write_csv(sam.s2, here("experiment", "2021", "s2-sample-data.csv"))
+```
 
