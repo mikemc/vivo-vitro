@@ -1,0 +1,2822 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1"/>
+  <meta name="generator" content="distill" />
+
+  <style type="text/css">
+  /* Hide doc at startup (prevent jankiness while JS renders/transforms) */
+  body {
+    visibility: hidden;
+  }
+  </style>
+
+ <!--radix_placeholder_import_source-->
+ <!--/radix_placeholder_import_source-->
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ad0000; } /* Alert */
+code span.an { color: #5e5e5e; } /* Annotation */
+code span.at { color: #20794d; } /* Attribute */
+code span.bn { color: #ad0000; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007ba5; } /* ControlFlow */
+code span.ch { color: #20794d; } /* Char */
+code span.cn { color: #8f5902; } /* Constant */
+code span.co { color: #5e5e5e; } /* Comment */
+code span.cv { color: #5e5e5e; font-style: italic; } /* CommentVar */
+code span.do { color: #5e5e5e; font-style: italic; } /* Documentation */
+code span.dt { color: #ad0000; } /* DataType */
+code span.dv { color: #ad0000; } /* DecVal */
+code span.er { color: #ad0000; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #ad0000; } /* Float */
+code span.fu { color: #4758ab; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #5e5e5e; } /* Information */
+code span.kw { color: #007ba5; } /* Keyword */
+code span.op { color: #5e5e5e; } /* Operator */
+code span.ot { color: #007ba5; } /* Other */
+code span.pp { color: #ad0000; } /* Preprocessor */
+code span.sc { color: #20794d; } /* SpecialChar */
+code span.ss { color: #20794d; } /* SpecialString */
+code span.st { color: #20794d; } /* String */
+code span.va { color: #111111; } /* Variable */
+code span.vs { color: #20794d; } /* VerbatimString */
+code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
+</style>
+
+  <!--radix_placeholder_meta_tags-->
+  <title>DADA2 pipeline on the A1 data for the 2021 experiment</title>
+
+  <meta property="description" itemprop="description" content="This document analyzes the amplicon data from the A1 sequencing center for the 2021 experiment following the workflow used for the 2019 experiment."/>
+
+
+  <!--  https://schema.org/Article -->
+  <meta property="article:published" itemprop="datePublished" content="2021-09-18"/>
+  <meta property="article:created" itemprop="dateCreated" content="2021-09-18"/>
+  <meta name="article:author" content="Michael R. McLaren"/>
+
+  <!--  https://developers.facebook.com/docs/sharing/webmasters#markup -->
+  <meta property="og:title" content="DADA2 pipeline on the A1 data for the 2021 experiment"/>
+  <meta property="og:type" content="article"/>
+  <meta property="og:description" content="This document analyzes the amplicon data from the A1 sequencing center for the 2021 experiment following the workflow used for the 2019 experiment."/>
+  <meta property="og:locale" content="en_US"/>
+
+  <!--  https://dev.twitter.com/cards/types/summary -->
+  <meta property="twitter:card" content="summary"/>
+  <meta property="twitter:title" content="DADA2 pipeline on the A1 data for the 2021 experiment"/>
+  <meta property="twitter:description" content="This document analyzes the amplicon data from the A1 sequencing center for the 2021 experiment following the workflow used for the 2019 experiment."/>
+
+  <!--/radix_placeholder_meta_tags-->
+  <!--radix_placeholder_rmarkdown_metadata-->
+
+  <script type="text/json" id="radix-rmarkdown-metadata">
+  {"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["title","description","author","categories","date","output"]}},"value":[{"type":"character","attributes":{},"value":["DADA2 pipeline on the A1 data for the 2021 experiment"]},{"type":"character","attributes":{},"value":["This document analyzes the amplicon data from the A1 sequencing center for the 2021 experiment following the workflow used for the 2019 experiment.\n"]},{"type":"list","attributes":{},"value":[{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name"]}},"value":[{"type":"character","attributes":{},"value":["Michael R. McLaren"]}]}]},{"type":"character","attributes":{},"value":["2021 experiment","bioinformatics"]},{"type":"character","attributes":{},"value":["2021-09-18"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["distill::distill_article"]}},"value":[{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["self_contained","toc"]}},"value":[{"type":"logical","attributes":{},"value":[false]},{"type":"logical","attributes":{},"value":[true]}]}]}]}
+  </script>
+  <!--/radix_placeholder_rmarkdown_metadata-->
+  
+  <script type="text/json" id="radix-resource-manifest">
+  {"type":"character","attributes":{},"value":["dada2-pipeline-on-a1-data-for-the-2021-experiment_files/figure-html5/unnamed-chunk-13-1.png","dada2-pipeline-on-a1-data-for-the-2021-experiment_files/figure-html5/unnamed-chunk-14-1.png","dada2-pipeline-on-a1-data-for-the-2021-experiment_files/figure-html5/unnamed-chunk-20-1.png","dada2-pipeline-on-a1-data-for-the-2021-experiment_files/figure-html5/unnamed-chunk-20-2.png","distill-preview.png"]}
+  </script>
+  <!--radix_placeholder_navigation_in_header-->
+  <!--/radix_placeholder_navigation_in_header-->
+  <!--radix_placeholder_distill-->
+
+  <style type="text/css">
+
+  body {
+    background-color: white;
+  }
+
+  .pandoc-table {
+    width: 100%;
+  }
+
+  .pandoc-table>caption {
+    margin-bottom: 10px;
+  }
+
+  .pandoc-table th:not([align]) {
+    text-align: left;
+  }
+
+  .pagedtable-footer {
+    font-size: 15px;
+  }
+
+  d-byline .byline {
+    grid-template-columns: 2fr 2fr;
+  }
+
+  d-byline .byline h3 {
+    margin-block-start: 1.5em;
+  }
+
+  d-byline .byline .authors-affiliations h3 {
+    margin-block-start: 0.5em;
+  }
+
+  .authors-affiliations .orcid-id {
+    width: 16px;
+    height:16px;
+    margin-left: 4px;
+    margin-right: 4px;
+    vertical-align: middle;
+    padding-bottom: 2px;
+  }
+
+  d-title .dt-tags {
+    margin-top: 1em;
+    grid-column: text;
+  }
+
+  .dt-tags .dt-tag {
+    text-decoration: none;
+    display: inline-block;
+    color: rgba(0,0,0,0.6);
+    padding: 0em 0.4em;
+    margin-right: 0.5em;
+    margin-bottom: 0.4em;
+    font-size: 70%;
+    border: 1px solid rgba(0,0,0,0.2);
+    border-radius: 3px;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  d-article table.gt_table td,
+  d-article table.gt_table th {
+    border-bottom: none;
+  }
+
+  .html-widget {
+    margin-bottom: 2.0em;
+  }
+
+  .l-screen-inset {
+    padding-right: 16px;
+  }
+
+  .l-screen .caption {
+    margin-left: 10px;
+  }
+
+  .shaded {
+    background: rgb(247, 247, 247);
+    padding-top: 20px;
+    padding-bottom: 20px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  }
+
+  .shaded .html-widget {
+    margin-bottom: 0;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+  }
+
+  .shaded .shaded-content {
+    background: white;
+  }
+
+  .text-output {
+    margin-top: 0;
+    line-height: 1.5em;
+  }
+
+  .hidden {
+    display: none !important;
+  }
+
+  d-article {
+    padding-top: 2.5rem;
+    padding-bottom: 30px;
+  }
+
+  d-appendix {
+    padding-top: 30px;
+  }
+
+  d-article>p>img {
+    width: 100%;
+  }
+
+  d-article h2 {
+    margin: 1rem 0 1.5rem 0;
+  }
+
+  d-article h3 {
+    margin-top: 1.5rem;
+  }
+
+  d-article iframe {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    margin-bottom: 2.0em;
+    width: 100%;
+  }
+
+  /* Tweak code blocks */
+
+  d-article div.sourceCode code,
+  d-article pre code {
+    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+  }
+
+  d-article pre,
+  d-article div.sourceCode,
+  d-article div.sourceCode pre {
+    overflow: auto;
+  }
+
+  d-article div.sourceCode {
+    background-color: white;
+  }
+
+  d-article div.sourceCode pre {
+    padding-left: 10px;
+    font-size: 12px;
+    border-left: 2px solid rgba(0,0,0,0.1);
+  }
+
+  d-article pre {
+    font-size: 12px;
+    color: black;
+    background: none;
+    margin-top: 0;
+    text-align: left;
+    white-space: pre;
+    word-spacing: normal;
+    word-break: normal;
+    word-wrap: normal;
+    line-height: 1.5;
+
+    -moz-tab-size: 4;
+    -o-tab-size: 4;
+    tab-size: 4;
+
+    -webkit-hyphens: none;
+    -moz-hyphens: none;
+    -ms-hyphens: none;
+    hyphens: none;
+  }
+
+  d-article pre a {
+    border-bottom: none;
+  }
+
+  d-article pre a:hover {
+    border-bottom: none;
+    text-decoration: underline;
+  }
+
+  d-article details {
+    grid-column: text;
+    margin-bottom: 0.8em;
+  }
+
+  @media(min-width: 768px) {
+
+  d-article pre,
+  d-article div.sourceCode,
+  d-article div.sourceCode pre {
+    overflow: visible !important;
+  }
+
+  d-article div.sourceCode pre {
+    padding-left: 18px;
+    font-size: 14px;
+  }
+
+  d-article pre {
+    font-size: 14px;
+  }
+
+  }
+
+  figure img.external {
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.1);
+    padding: 18px;
+    box-sizing: border-box;
+  }
+
+  /* CSS for d-contents */
+
+  .d-contents {
+    grid-column: text;
+    color: rgba(0,0,0,0.8);
+    font-size: 0.9em;
+    padding-bottom: 1em;
+    margin-bottom: 1em;
+    padding-bottom: 0.5em;
+    margin-bottom: 1em;
+    padding-left: 0.25em;
+    justify-self: start;
+  }
+
+  @media(min-width: 1000px) {
+    .d-contents.d-contents-float {
+      height: 0;
+      grid-column-start: 1;
+      grid-column-end: 4;
+      justify-self: center;
+      padding-right: 3em;
+      padding-left: 2em;
+    }
+  }
+
+  .d-contents nav h3 {
+    font-size: 18px;
+    margin-top: 0;
+    margin-bottom: 1em;
+  }
+
+  .d-contents li {
+    list-style-type: none
+  }
+
+  .d-contents nav > ul {
+    padding-left: 0;
+  }
+
+  .d-contents ul {
+    padding-left: 1em
+  }
+
+  .d-contents nav ul li {
+    margin-top: 0.6em;
+    margin-bottom: 0.2em;
+  }
+
+  .d-contents nav a {
+    font-size: 13px;
+    border-bottom: none;
+    text-decoration: none
+    color: rgba(0, 0, 0, 0.8);
+  }
+
+  .d-contents nav a:hover {
+    text-decoration: underline solid rgba(0, 0, 0, 0.6)
+  }
+
+  .d-contents nav > ul > li > a {
+    font-weight: 600;
+  }
+
+  .d-contents nav > ul > li > ul {
+    font-weight: inherit;
+  }
+
+  .d-contents nav > ul > li > ul > li {
+    margin-top: 0.2em;
+  }
+
+
+  .d-contents nav ul {
+    margin-top: 0;
+    margin-bottom: 0.25em;
+  }
+
+  .d-article-with-toc h2:nth-child(2) {
+    margin-top: 0;
+  }
+
+
+  /* Figure */
+
+  .figure {
+    position: relative;
+    margin-bottom: 2.5em;
+    margin-top: 1.5em;
+  }
+
+  .figure img {
+    width: 100%;
+  }
+
+  .figure .caption {
+    color: rgba(0, 0, 0, 0.6);
+    font-size: 12px;
+    line-height: 1.5em;
+  }
+
+  .figure img.external {
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.1);
+    padding: 18px;
+    box-sizing: border-box;
+  }
+
+  .figure .caption a {
+    color: rgba(0, 0, 0, 0.6);
+  }
+
+  .figure .caption b,
+  .figure .caption strong, {
+    font-weight: 600;
+    color: rgba(0, 0, 0, 1.0);
+  }
+
+  /* Citations */
+
+  d-article .citation {
+    color: inherit;
+    cursor: inherit;
+  }
+
+  div.hanging-indent{
+    margin-left: 1em; text-indent: -1em;
+  }
+
+  /* Citation hover box */
+
+  .tippy-box[data-theme~=light-border] {
+    background-color: rgba(250, 250, 250, 0.95);
+  }
+
+  .tippy-content > p {
+    margin-bottom: 0;
+    padding: 2px;
+  }
+
+
+  /* Tweak 1000px media break to show more text */
+
+  @media(min-width: 1000px) {
+    .base-grid,
+    distill-header,
+    d-title,
+    d-abstract,
+    d-article,
+    d-appendix,
+    distill-appendix,
+    d-byline,
+    d-footnote-list,
+    d-citation-list,
+    distill-footer {
+      grid-template-columns: [screen-start] 1fr [page-start kicker-start] 80px [middle-start] 50px [text-start kicker-end] 65px 65px 65px 65px 65px 65px 65px 65px [text-end gutter-start] 65px [middle-end] 65px [page-end gutter-end] 1fr [screen-end];
+      grid-column-gap: 16px;
+    }
+
+    .grid {
+      grid-column-gap: 16px;
+    }
+
+    d-article {
+      font-size: 1.06rem;
+      line-height: 1.7em;
+    }
+    figure .caption, .figure .caption, figure figcaption {
+      font-size: 13px;
+    }
+  }
+
+  @media(min-width: 1180px) {
+    .base-grid,
+    distill-header,
+    d-title,
+    d-abstract,
+    d-article,
+    d-appendix,
+    distill-appendix,
+    d-byline,
+    d-footnote-list,
+    d-citation-list,
+    distill-footer {
+      grid-template-columns: [screen-start] 1fr [page-start kicker-start] 60px [middle-start] 60px [text-start kicker-end] 60px 60px 60px 60px 60px 60px 60px 60px [text-end gutter-start] 60px [middle-end] 60px [page-end gutter-end] 1fr [screen-end];
+      grid-column-gap: 32px;
+    }
+
+    .grid {
+      grid-column-gap: 32px;
+    }
+  }
+
+
+  /* Get the citation styles for the appendix (not auto-injected on render since
+     we do our own rendering of the citation appendix) */
+
+  d-appendix .citation-appendix,
+  .d-appendix .citation-appendix {
+    font-size: 11px;
+    line-height: 15px;
+    border-left: 1px solid rgba(0, 0, 0, 0.1);
+    padding-left: 18px;
+    border: 1px solid rgba(0,0,0,0.1);
+    background: rgba(0, 0, 0, 0.02);
+    padding: 10px 18px;
+    border-radius: 3px;
+    color: rgba(150, 150, 150, 1);
+    overflow: hidden;
+    margin-top: -12px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+
+  /* Include appendix styles here so they can be overridden */
+
+  d-appendix {
+    contain: layout style;
+    font-size: 0.8em;
+    line-height: 1.7em;
+    margin-top: 60px;
+    margin-bottom: 0;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    color: rgba(0,0,0,0.5);
+    padding-top: 60px;
+    padding-bottom: 48px;
+  }
+
+  d-appendix h3 {
+    grid-column: page-start / text-start;
+    font-size: 15px;
+    font-weight: 500;
+    margin-top: 1em;
+    margin-bottom: 0;
+    color: rgba(0,0,0,0.65);
+  }
+
+  d-appendix h3 + * {
+    margin-top: 1em;
+  }
+
+  d-appendix ol {
+    padding: 0 0 0 15px;
+  }
+
+  @media (min-width: 768px) {
+    d-appendix ol {
+      padding: 0 0 0 30px;
+      margin-left: -30px;
+    }
+  }
+
+  d-appendix li {
+    margin-bottom: 1em;
+  }
+
+  d-appendix a {
+    color: rgba(0, 0, 0, 0.6);
+  }
+
+  d-appendix > * {
+    grid-column: text;
+  }
+
+  d-appendix > d-footnote-list,
+  d-appendix > d-citation-list,
+  d-appendix > distill-appendix {
+    grid-column: screen;
+  }
+
+  /* Include footnote styles here so they can be overridden */
+
+  d-footnote-list {
+    contain: layout style;
+  }
+
+  d-footnote-list > * {
+    grid-column: text;
+  }
+
+  d-footnote-list a.footnote-backlink {
+    color: rgba(0,0,0,0.3);
+    padding-left: 0.5em;
+  }
+
+
+
+  /* Anchor.js */
+
+  .anchorjs-link {
+    /*transition: all .25s linear; */
+    text-decoration: none;
+    border-bottom: none;
+  }
+  *:hover > .anchorjs-link {
+    margin-left: -1.125em !important;
+    text-decoration: none;
+    border-bottom: none;
+  }
+
+  /* Social footer */
+
+  .social_footer {
+    margin-top: 30px;
+    margin-bottom: 0;
+    color: rgba(0,0,0,0.67);
+  }
+
+  .disqus-comments {
+    margin-right: 30px;
+  }
+
+  .disqus-comment-count {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+  }
+
+  #disqus_thread {
+    margin-top: 30px;
+  }
+
+  .article-sharing a {
+    border-bottom: none;
+    margin-right: 8px;
+  }
+
+  .article-sharing a:hover {
+    border-bottom: none;
+  }
+
+  .sidebar-section.subscribe {
+    font-size: 12px;
+    line-height: 1.6em;
+  }
+
+  .subscribe p {
+    margin-bottom: 0.5em;
+  }
+
+
+  .article-footer .subscribe {
+    font-size: 15px;
+    margin-top: 45px;
+  }
+
+
+  .sidebar-section.custom {
+    font-size: 12px;
+    line-height: 1.6em;
+  }
+
+  .custom p {
+    margin-bottom: 0.5em;
+  }
+
+  /* Styles for listing layout (hide title) */
+  .layout-listing d-title, .layout-listing .d-title {
+    display: none;
+  }
+
+  /* Styles for posts lists (not auto-injected) */
+
+
+  .posts-with-sidebar {
+    padding-left: 45px;
+    padding-right: 45px;
+  }
+
+  .posts-list .description h2,
+  .posts-list .description p {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", Arial, sans-serif;
+  }
+
+  .posts-list .description h2 {
+    font-weight: 700;
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .posts-list h2.post-tag {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+    padding-bottom: 12px;
+  }
+  .posts-list {
+    margin-top: 60px;
+    margin-bottom: 24px;
+  }
+
+  .posts-list .post-preview {
+    text-decoration: none;
+    overflow: hidden;
+    display: block;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    padding: 24px 0;
+  }
+
+  .post-preview-last {
+    border-bottom: none !important;
+  }
+
+  .posts-list .posts-list-caption {
+    grid-column: screen;
+    font-weight: 400;
+  }
+
+  .posts-list .post-preview h2 {
+    margin: 0 0 6px 0;
+    line-height: 1.2em;
+    font-style: normal;
+    font-size: 24px;
+  }
+
+  .posts-list .post-preview p {
+    margin: 0 0 12px 0;
+    line-height: 1.4em;
+    font-size: 16px;
+  }
+
+  .posts-list .post-preview .thumbnail {
+    box-sizing: border-box;
+    margin-bottom: 24px;
+    position: relative;
+    max-width: 500px;
+  }
+  .posts-list .post-preview img {
+    width: 100%;
+    display: block;
+  }
+
+  .posts-list .metadata {
+    font-size: 12px;
+    line-height: 1.4em;
+    margin-bottom: 18px;
+  }
+
+  .posts-list .metadata > * {
+    display: inline-block;
+  }
+
+  .posts-list .metadata .publishedDate {
+    margin-right: 2em;
+  }
+
+  .posts-list .metadata .dt-authors {
+    display: block;
+    margin-top: 0.3em;
+    margin-right: 2em;
+  }
+
+  .posts-list .dt-tags {
+    display: block;
+    line-height: 1em;
+  }
+
+  .posts-list .dt-tags .dt-tag {
+    display: inline-block;
+    color: rgba(0,0,0,0.6);
+    padding: 0.3em 0.4em;
+    margin-right: 0.2em;
+    margin-bottom: 0.4em;
+    font-size: 60%;
+    border: 1px solid rgba(0,0,0,0.2);
+    border-radius: 3px;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  .posts-list img {
+    opacity: 1;
+  }
+
+  .posts-list img[data-src] {
+    opacity: 0;
+  }
+
+  .posts-more {
+    clear: both;
+  }
+
+
+  .posts-sidebar {
+    font-size: 16px;
+  }
+
+  .posts-sidebar h3 {
+    font-size: 16px;
+    margin-top: 0;
+    margin-bottom: 0.5em;
+    font-weight: 400;
+    text-transform: uppercase;
+  }
+
+  .sidebar-section {
+    margin-bottom: 30px;
+  }
+
+  .categories ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .categories li {
+    color: rgba(0, 0, 0, 0.8);
+    margin-bottom: 0;
+  }
+
+  .categories li>a {
+    border-bottom: none;
+  }
+
+  .categories li>a:hover {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.4);
+  }
+
+  .categories .active {
+    font-weight: 600;
+  }
+
+  .categories .category-count {
+    color: rgba(0, 0, 0, 0.4);
+  }
+
+
+  @media(min-width: 768px) {
+    .posts-list .post-preview h2 {
+      font-size: 26px;
+    }
+    .posts-list .post-preview .thumbnail {
+      float: right;
+      width: 30%;
+      margin-bottom: 0;
+    }
+    .posts-list .post-preview .description {
+      float: left;
+      width: 45%;
+    }
+    .posts-list .post-preview .metadata {
+      float: left;
+      width: 20%;
+      margin-top: 8px;
+    }
+    .posts-list .post-preview p {
+      margin: 0 0 12px 0;
+      line-height: 1.5em;
+      font-size: 16px;
+    }
+    .posts-with-sidebar .posts-list {
+      float: left;
+      width: 75%;
+    }
+    .posts-with-sidebar .posts-sidebar {
+      float: right;
+      width: 20%;
+      margin-top: 60px;
+      padding-top: 24px;
+      padding-bottom: 24px;
+    }
+  }
+
+
+  /* Improve display for browsers without grid (IE/Edge <= 15) */
+
+  .downlevel {
+    line-height: 1.6em;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", Arial, sans-serif;
+    margin: 0;
+  }
+
+  .downlevel .d-title {
+    padding-top: 6rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .downlevel .d-title h1 {
+    font-size: 50px;
+    font-weight: 700;
+    line-height: 1.1em;
+    margin: 0 0 0.5rem;
+  }
+
+  .downlevel .d-title p {
+    font-weight: 300;
+    font-size: 1.2rem;
+    line-height: 1.55em;
+    margin-top: 0;
+  }
+
+  .downlevel .d-byline {
+    padding-top: 0.8em;
+    padding-bottom: 0.8em;
+    font-size: 0.8rem;
+    line-height: 1.8em;
+  }
+
+  .downlevel .section-separator {
+    border: none;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+  }
+
+  .downlevel .d-article {
+    font-size: 1.06rem;
+    line-height: 1.7em;
+    padding-top: 1rem;
+    padding-bottom: 2rem;
+  }
+
+
+  .downlevel .d-appendix {
+    padding-left: 0;
+    padding-right: 0;
+    max-width: none;
+    font-size: 0.8em;
+    line-height: 1.7em;
+    margin-bottom: 0;
+    color: rgba(0,0,0,0.5);
+    padding-top: 40px;
+    padding-bottom: 48px;
+  }
+
+  .downlevel .footnotes ol {
+    padding-left: 13px;
+  }
+
+  .downlevel .base-grid,
+  .downlevel .distill-header,
+  .downlevel .d-title,
+  .downlevel .d-abstract,
+  .downlevel .d-article,
+  .downlevel .d-appendix,
+  .downlevel .distill-appendix,
+  .downlevel .d-byline,
+  .downlevel .d-footnote-list,
+  .downlevel .d-citation-list,
+  .downlevel .distill-footer,
+  .downlevel .appendix-bottom,
+  .downlevel .posts-container {
+    padding-left: 40px;
+    padding-right: 40px;
+  }
+
+  @media(min-width: 768px) {
+    .downlevel .base-grid,
+    .downlevel .distill-header,
+    .downlevel .d-title,
+    .downlevel .d-abstract,
+    .downlevel .d-article,
+    .downlevel .d-appendix,
+    .downlevel .distill-appendix,
+    .downlevel .d-byline,
+    .downlevel .d-footnote-list,
+    .downlevel .d-citation-list,
+    .downlevel .distill-footer,
+    .downlevel .appendix-bottom,
+    .downlevel .posts-container {
+    padding-left: 150px;
+    padding-right: 150px;
+    max-width: 900px;
+  }
+  }
+
+  .downlevel pre code {
+    display: block;
+    border-left: 2px solid rgba(0, 0, 0, .1);
+    padding: 0 0 0 20px;
+    font-size: 14px;
+  }
+
+  .downlevel code, .downlevel pre {
+    color: black;
+    background: none;
+    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+    text-align: left;
+    white-space: pre;
+    word-spacing: normal;
+    word-break: normal;
+    word-wrap: normal;
+    line-height: 1.5;
+
+    -moz-tab-size: 4;
+    -o-tab-size: 4;
+    tab-size: 4;
+
+    -webkit-hyphens: none;
+    -moz-hyphens: none;
+    -ms-hyphens: none;
+    hyphens: none;
+  }
+
+  .downlevel .posts-list .post-preview {
+    color: inherit;
+  }
+
+
+
+  </style>
+
+  <script type="application/javascript">
+
+  function is_downlevel_browser() {
+    if (bowser.isUnsupportedBrowser({ msie: "12", msedge: "16"},
+                                   window.navigator.userAgent)) {
+      return true;
+    } else {
+      return window.load_distill_framework === undefined;
+    }
+  }
+
+  // show body when load is complete
+  function on_load_complete() {
+
+    // add anchors
+    if (window.anchors) {
+      window.anchors.options.placement = 'left';
+      window.anchors.add('d-article > h2, d-article > h3, d-article > h4, d-article > h5');
+    }
+
+
+    // set body to visible
+    document.body.style.visibility = 'visible';
+
+    // force redraw for leaflet widgets
+    if (window.HTMLWidgets) {
+      var maps = window.HTMLWidgets.findAll(".leaflet");
+      $.each(maps, function(i, el) {
+        var map = this.getMap();
+        map.invalidateSize();
+        map.eachLayer(function(layer) {
+          if (layer instanceof L.TileLayer)
+            layer.redraw();
+        });
+      });
+    }
+
+    // trigger 'shown' so htmlwidgets resize
+    $('d-article').trigger('shown');
+  }
+
+  function init_distill() {
+
+    init_common();
+
+    // create front matter
+    var front_matter = $('<d-front-matter></d-front-matter>');
+    $('#distill-front-matter').wrap(front_matter);
+
+    // create d-title
+    $('.d-title').changeElementType('d-title');
+
+    // create d-byline
+    var byline = $('<d-byline></d-byline>');
+    $('.d-byline').replaceWith(byline);
+
+    // create d-article
+    var article = $('<d-article></d-article>');
+    $('.d-article').wrap(article).children().unwrap();
+
+    // move posts container into article
+    $('.posts-container').appendTo($('d-article'));
+
+    // create d-appendix
+    $('.d-appendix').changeElementType('d-appendix');
+
+    // flag indicating that we have appendix items
+    var appendix = $('.appendix-bottom').children('h3').length > 0;
+
+    // replace footnotes with <d-footnote>
+    $('.footnote-ref').each(function(i, val) {
+      appendix = true;
+      var href = $(this).attr('href');
+      var id = href.replace('#', '');
+      var fn = $('#' + id);
+      var fn_p = $('#' + id + '>p');
+      fn_p.find('.footnote-back').remove();
+      var text = fn_p.html();
+      var dtfn = $('<d-footnote></d-footnote>');
+      dtfn.html(text);
+      $(this).replaceWith(dtfn);
+    });
+    // remove footnotes
+    $('.footnotes').remove();
+
+    // move refs into #references-listing
+    $('#references-listing').replaceWith($('#refs'));
+
+    $('h1.appendix, h2.appendix').each(function(i, val) {
+      $(this).changeElementType('h3');
+    });
+    $('h3.appendix').each(function(i, val) {
+      var id = $(this).attr('id');
+      $('.d-contents a[href="#' + id + '"]').parent().remove();
+      appendix = true;
+      $(this).nextUntil($('h1, h2, h3')).addBack().appendTo($('d-appendix'));
+    });
+
+    // show d-appendix if we have appendix content
+    $("d-appendix").css('display', appendix ? 'grid' : 'none');
+
+    // localize layout chunks to just output
+    $('.layout-chunk').each(function(i, val) {
+
+      // capture layout
+      var layout = $(this).attr('data-layout');
+
+      // apply layout to markdown level block elements
+      var elements = $(this).children().not('details, div.sourceCode, pre, script');
+      elements.each(function(i, el) {
+        var layout_div = $('<div class="' + layout + '"></div>');
+        if (layout_div.hasClass('shaded')) {
+          var shaded_content = $('<div class="shaded-content"></div>');
+          $(this).wrap(shaded_content);
+          $(this).parent().wrap(layout_div);
+        } else {
+          $(this).wrap(layout_div);
+        }
+      });
+
+
+      // unwrap the layout-chunk div
+      $(this).children().unwrap();
+    });
+
+    // remove code block used to force  highlighting css
+    $('.distill-force-highlighting-css').parent().remove();
+
+    // remove empty line numbers inserted by pandoc when using a
+    // custom syntax highlighting theme
+    $('code.sourceCode a:empty').remove();
+
+    // load distill framework
+    load_distill_framework();
+
+    // wait for window.distillRunlevel == 4 to do post processing
+    function distill_post_process() {
+
+      if (!window.distillRunlevel || window.distillRunlevel < 4)
+        return;
+
+      // hide author/affiliations entirely if we have no authors
+      var front_matter = JSON.parse($("#distill-front-matter").html());
+      var have_authors = front_matter.authors && front_matter.authors.length > 0;
+      if (!have_authors)
+        $('d-byline').addClass('hidden');
+
+      // article with toc class
+      $('.d-contents').parent().addClass('d-article-with-toc');
+
+      // strip links that point to #
+      $('.authors-affiliations').find('a[href="#"]').removeAttr('href');
+
+      // add orcid ids
+      $('.authors-affiliations').find('.author').each(function(i, el) {
+        var orcid_id = front_matter.authors[i].orcidID;
+        if (orcid_id) {
+          var a = $('<a></a>');
+          a.attr('href', 'https://orcid.org/' + orcid_id);
+          var img = $('<img></img>');
+          img.addClass('orcid-id');
+          img.attr('alt', 'ORCID ID');
+          img.attr('src','data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2ZpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYwIDYxLjEzNDc3NywgMjAxMC8wMi8xMi0xNzozMjowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDo1N0NEMjA4MDI1MjA2ODExOTk0QzkzNTEzRjZEQTg1NyIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDozM0NDOEJGNEZGNTcxMUUxODdBOEVCODg2RjdCQ0QwOSIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDozM0NDOEJGM0ZGNTcxMUUxODdBOEVCODg2RjdCQ0QwOSIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ1M1IE1hY2ludG9zaCI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ4bXAuaWlkOkZDN0YxMTc0MDcyMDY4MTE5NUZFRDc5MUM2MUUwNEREIiBzdFJlZjpkb2N1bWVudElEPSJ4bXAuZGlkOjU3Q0QyMDgwMjUyMDY4MTE5OTRDOTM1MTNGNkRBODU3Ii8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+84NovQAAAR1JREFUeNpiZEADy85ZJgCpeCB2QJM6AMQLo4yOL0AWZETSqACk1gOxAQN+cAGIA4EGPQBxmJA0nwdpjjQ8xqArmczw5tMHXAaALDgP1QMxAGqzAAPxQACqh4ER6uf5MBlkm0X4EGayMfMw/Pr7Bd2gRBZogMFBrv01hisv5jLsv9nLAPIOMnjy8RDDyYctyAbFM2EJbRQw+aAWw/LzVgx7b+cwCHKqMhjJFCBLOzAR6+lXX84xnHjYyqAo5IUizkRCwIENQQckGSDGY4TVgAPEaraQr2a4/24bSuoExcJCfAEJihXkWDj3ZAKy9EJGaEo8T0QSxkjSwORsCAuDQCD+QILmD1A9kECEZgxDaEZhICIzGcIyEyOl2RkgwAAhkmC+eAm0TAAAAABJRU5ErkJggg==');
+          a.append(img);
+          $(this).append(a);
+        }
+      });
+
+      // hide elements of author/affiliations grid that have no value
+      function hide_byline_column(caption) {
+        $('d-byline').find('h3:contains("' + caption + '")').parent().css('visibility', 'hidden');
+      }
+
+      // affiliations
+      var have_affiliations = false;
+      for (var i = 0; i<front_matter.authors.length; ++i) {
+        var author = front_matter.authors[i];
+        if (author.affiliation !== "&nbsp;") {
+          have_affiliations = true;
+          break;
+        }
+      }
+      if (!have_affiliations)
+        $('d-byline').find('h3:contains("Affiliations")').css('visibility', 'hidden');
+
+      // published date
+      if (!front_matter.publishedDate)
+        hide_byline_column("Published");
+
+      // document object identifier
+      var doi = $('d-byline').find('h3:contains("DOI")');
+      var doi_p = doi.next().empty();
+      if (!front_matter.doi) {
+        // if we have a citation and valid citationText then link to that
+        if ($('#citation').length > 0 && front_matter.citationText) {
+          doi.html('Citation');
+          $('<a href="#citation"></a>')
+            .text(front_matter.citationText)
+            .appendTo(doi_p);
+        } else {
+          hide_byline_column("DOI");
+        }
+      } else {
+        $('<a></a>')
+           .attr('href', "https://doi.org/" + front_matter.doi)
+           .html(front_matter.doi)
+           .appendTo(doi_p);
+      }
+
+       // change plural form of authors/affiliations
+      if (front_matter.authors.length === 1) {
+        var grid = $('.authors-affiliations');
+        grid.children('h3:contains("Authors")').text('Author');
+        grid.children('h3:contains("Affiliations")').text('Affiliation');
+      }
+
+      // remove d-appendix and d-footnote-list local styles
+      $('d-appendix > style:first-child').remove();
+      $('d-footnote-list > style:first-child').remove();
+
+      // move appendix-bottom entries to the bottom
+      $('.appendix-bottom').appendTo('d-appendix').children().unwrap();
+      $('.appendix-bottom').remove();
+
+      // hoverable references
+      $('span.citation[data-cites]').each(function() {
+        var refHtml = $('#ref-' + $(this).attr('data-cites')).html();
+        window.tippy(this, {
+          allowHTML: true,
+          content: refHtml,
+          maxWidth: 500,
+          interactive: true,
+          interactiveBorder: 10,
+          theme: 'light-border',
+          placement: 'bottom-start'
+        });
+      });
+
+      // clear polling timer
+      clearInterval(tid);
+
+      // show body now that everything is ready
+      on_load_complete();
+    }
+
+    var tid = setInterval(distill_post_process, 50);
+    distill_post_process();
+
+  }
+
+  function init_downlevel() {
+
+    init_common();
+
+     // insert hr after d-title
+    $('.d-title').after($('<hr class="section-separator"/>'));
+
+    // check if we have authors
+    var front_matter = JSON.parse($("#distill-front-matter").html());
+    var have_authors = front_matter.authors && front_matter.authors.length > 0;
+
+    // manage byline/border
+    if (!have_authors)
+      $('.d-byline').remove();
+    $('.d-byline').after($('<hr class="section-separator"/>'));
+    $('.d-byline a').remove();
+
+    // remove toc
+    $('.d-contents').remove();
+
+    // move appendix elements
+    $('h1.appendix, h2.appendix').each(function(i, val) {
+      $(this).changeElementType('h3');
+    });
+    $('h3.appendix').each(function(i, val) {
+      $(this).nextUntil($('h1, h2, h3')).addBack().appendTo($('.d-appendix'));
+    });
+
+
+    // inject headers into references and footnotes
+    var refs_header = $('<h3></h3>');
+    refs_header.text('References');
+    $('#refs').prepend(refs_header);
+
+    var footnotes_header = $('<h3></h3');
+    footnotes_header.text('Footnotes');
+    $('.footnotes').children('hr').first().replaceWith(footnotes_header);
+
+    // move appendix-bottom entries to the bottom
+    $('.appendix-bottom').appendTo('.d-appendix').children().unwrap();
+    $('.appendix-bottom').remove();
+
+    // remove appendix if it's empty
+    if ($('.d-appendix').children().length === 0)
+      $('.d-appendix').remove();
+
+    // prepend separator above appendix
+    $('.d-appendix').before($('<hr class="section-separator" style="clear: both"/>'));
+
+    // trim code
+    $('pre>code').each(function(i, val) {
+      $(this).html($.trim($(this).html()));
+    });
+
+    // move posts-container right before article
+    $('.posts-container').insertBefore($('.d-article'));
+
+    $('body').addClass('downlevel');
+
+    on_load_complete();
+  }
+
+
+  function init_common() {
+
+    // jquery plugin to change element types
+    (function($) {
+      $.fn.changeElementType = function(newType) {
+        var attrs = {};
+
+        $.each(this[0].attributes, function(idx, attr) {
+          attrs[attr.nodeName] = attr.nodeValue;
+        });
+
+        this.replaceWith(function() {
+          return $("<" + newType + "/>", attrs).append($(this).contents());
+        });
+      };
+    })(jQuery);
+
+    // prevent underline for linked images
+    $('a > img').parent().css({'border-bottom' : 'none'});
+
+    // mark non-body figures created by knitr chunks as 100% width
+    $('.layout-chunk').each(function(i, val) {
+      var figures = $(this).find('img, .html-widget');
+      if ($(this).attr('data-layout') !== "l-body") {
+        figures.css('width', '100%');
+      } else {
+        figures.css('max-width', '100%');
+        figures.filter("[width]").each(function(i, val) {
+          var fig = $(this);
+          fig.css('width', fig.attr('width') + 'px');
+        });
+
+      }
+    });
+
+    // auto-append index.html to post-preview links in file: protocol
+    // and in rstudio ide preview
+    $('.post-preview').each(function(i, val) {
+      if (window.location.protocol === "file:")
+        $(this).attr('href', $(this).attr('href') + "index.html");
+    });
+
+    // get rid of index.html references in header
+    if (window.location.protocol !== "file:") {
+      $('.distill-site-header a[href]').each(function(i,val) {
+        $(this).attr('href', $(this).attr('href').replace("index.html", "./"));
+      });
+    }
+
+    // add class to pandoc style tables
+    $('tr.header').parent('thead').parent('table').addClass('pandoc-table');
+    $('.kable-table').children('table').addClass('pandoc-table');
+
+    // add figcaption style to table captions
+    $('caption').parent('table').addClass("figcaption");
+
+    // initialize posts list
+    if (window.init_posts_list)
+      window.init_posts_list();
+
+    // implmement disqus comment link
+    $('.disqus-comment-count').click(function() {
+      window.headroom_prevent_pin = true;
+      $('#disqus_thread').toggleClass('hidden');
+      if (!$('#disqus_thread').hasClass('hidden')) {
+        var offset = $(this).offset();
+        $(window).resize();
+        $('html, body').animate({
+          scrollTop: offset.top - 35
+        });
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    if (is_downlevel_browser())
+      init_downlevel();
+    else
+      window.addEventListener('WebComponentsReady', init_distill);
+  });
+
+  </script>
+
+  <!--/radix_placeholder_distill-->
+  <script src="dada2-pipeline-on-a1-data-for-the-2021-experiment_files/header-attrs-2.9/header-attrs.js"></script>
+  <script src="dada2-pipeline-on-a1-data-for-the-2021-experiment_files/jquery-1.11.3/jquery.min.js"></script>
+  <script src="dada2-pipeline-on-a1-data-for-the-2021-experiment_files/popper-2.6.0/popper.min.js"></script>
+  <link href="dada2-pipeline-on-a1-data-for-the-2021-experiment_files/tippy-6.2.7/tippy.css" rel="stylesheet" />
+  <link href="dada2-pipeline-on-a1-data-for-the-2021-experiment_files/tippy-6.2.7/tippy-light-border.css" rel="stylesheet" />
+  <script src="dada2-pipeline-on-a1-data-for-the-2021-experiment_files/tippy-6.2.7/tippy.umd.min.js"></script>
+  <script src="dada2-pipeline-on-a1-data-for-the-2021-experiment_files/anchor-4.2.2/anchor.min.js"></script>
+  <script src="dada2-pipeline-on-a1-data-for-the-2021-experiment_files/bowser-1.9.3/bowser.min.js"></script>
+  <script src="dada2-pipeline-on-a1-data-for-the-2021-experiment_files/webcomponents-2.0.0/webcomponents.js"></script>
+  <script src="dada2-pipeline-on-a1-data-for-the-2021-experiment_files/distill-2.2.21/template.v2.js"></script>
+  <!--radix_placeholder_site_in_header-->
+  <!--/radix_placeholder_site_in_header-->
+
+
+</head>
+
+<body>
+
+<!--radix_placeholder_front_matter-->
+
+<script id="distill-front-matter" type="text/json">
+{"title":"DADA2 pipeline on the A1 data for the 2021 experiment","description":"This document analyzes the amplicon data from the A1 sequencing center for the 2021 experiment following the workflow used for the 2019 experiment.","authors":[{"author":"Michael R. McLaren","authorURL":"#","affiliation":"&nbsp;","affiliationURL":"#","orcidID":""}],"publishedDate":"2021-09-18T00:00:00.000-04:00","citationText":"McLaren, 2021"}
+</script>
+
+<!--/radix_placeholder_front_matter-->
+<!--radix_placeholder_navigation_before_body-->
+<!--/radix_placeholder_navigation_before_body-->
+<!--radix_placeholder_site_before_body-->
+<!--/radix_placeholder_site_before_body-->
+
+<div class="d-title">
+<h1>DADA2 pipeline on the A1 data for the 2021 experiment</h1>
+<!--radix_placeholder_categories-->
+<div class="dt-tags">
+<div class="dt=tag">2021 experiment</div>
+<div class="dt=tag">bioinformatics</div>
+</div>
+<!--/radix_placeholder_categories-->
+<p><p>This document analyzes the amplicon data from the A1 sequencing center for the 2021 experiment following the workflow used for the 2019 experiment.</p></p>
+</div>
+
+<div class="d-byline">
+  Michael R. McLaren  
+  
+<br/>2021-09-18
+</div>
+
+<div class="d-article">
+<div class="d-contents d-contents-float">
+<nav class="l-text toc figcaption" id="TOC">
+<h3>Contents</h3>
+<ul>
+<li><a href="#setup">Setup</a></li>
+<li><a href="#check-sequences">Check sequences</a></li>
+<li><a href="#pick-truncation-params">Pick truncation params</a></li>
+<li><a href="#filter-and-trim">Filter and trim</a></li>
+<li><a href="#learn-the-error-rates">Learn the error rates</a></li>
+<li><a href="#sample-inference">Sample inference</a>
+<ul>
+<li><a href="#default-omega_c">Default <code>OMEGA_C</code></a></li>
+<li><a href="#omega_c-2"><code>OMEGA_C = 2</code></a></li>
+</ul></li>
+<li><a href="#session-info">Session info</a></li>
+</ul>
+</nav>
+</div>
+<p>This R-markdown document analyzes the amplicon data from the A1 sequencing center for the 2021 experiment, following the workflow in ‘analysis/2020-11-01-dada2/a1-dada2.html’ that was used for the 2019 experiment.</p>
+<h2 id="setup">Setup</h2>
+<p>Load non-bioinformatic libraries,</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://here.r-lib.org/'>here</a></span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; here() starts at /home/michael/research/vivo-vitro</code></pre>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://tidyverse.tidyverse.org'>tidyverse</a></span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; ── Attaching packages ─────────────────────────────────── tidyverse 1.3.1 ──
+#&gt; ✔ ggplot2 3.3.5     ✔ purrr   0.3.4
+#&gt; ✔ tibble  3.1.3     ✔ dplyr   1.0.7
+#&gt; ✔ tidyr   1.1.3     ✔ stringr 1.4.0
+#&gt; ✔ readr   2.0.0     ✔ forcats 0.5.1
+#&gt; ── Conflicts ────────────────────────────────────── tidyverse_conflicts() ──
+#&gt; ✖ dplyr::filter() masks stats::filter()
+#&gt; ✖ dplyr::lag()    masks stats::lag()</code></pre>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='http://fs.r-lib.org'>fs</a></span><span class='op'>)</span>
+</code></pre>
+</div>
+</div>
+<p>Next, I will install and load the previous DADA2 version that I used for the 2020-11-01 analysis of the 2019 data: version 1.18.0 from Bioconductor, which corresponds to the v1.18 tag (a20a676) on GitHub (<a href="https://github.com/benjjneb/dada2/releases/tag/v1.18" class="uri">https://github.com/benjjneb/dada2/releases/tag/v1.18</a>). (Only run if not previously done.)</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>dr</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://here.r-lib.org//reference/here.html'>here</a></span><span class='op'>(</span><span class='st'>'lib'</span>, <span class='st'>'R'</span>, <span class='st'>'library-for-dada2-1.18.0'</span><span class='op'>)</span>
+<span class='kw'>if</span> <span class='op'>(</span><span class='op'>!</span><span class='fu'><a href='http://fs.r-lib.org/reference/file_access.html'>dir_exists</a></span><span class='op'>(</span><span class='va'>dr</span><span class='op'>)</span><span class='op'>)</span> 
+  <span class='fu'><a href='http://fs.r-lib.org/reference/create.html'>dir_create</a></span><span class='op'>(</span><span class='va'>dr</span><span class='op'>)</span>
+<span class='fu'>devtools</span><span class='fu'>::</span><span class='fu'><a href='https://devtools.r-lib.org//reference/dev_mode.html'>dev_mode</a></span><span class='op'>(</span><span class='cn'>TRUE</span>, <span class='va'>dr</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; ✔ Dev mode: ON</code></pre>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='kw'>if</span> <span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/utils/packageDescription.html'>packageVersion</a></span><span class='op'>(</span><span class='st'>"dada2"</span><span class='op'>)</span> <span class='op'>!=</span> <span class='st'>"1.18.0"</span><span class='op'>)</span>
+  <span class='fu'>remotes</span><span class='fu'>::</span><span class='fu'><a href='https://remotes.r-lib.org/reference/install_github.html'>install_github</a></span><span class='op'>(</span><span class='st'>'benjjneb/dada2@v1.18'</span><span class='op'>)</span>
+</code></pre>
+</div>
+</div>
+<p>Load DADA2 and functions from bioinformatics libraries</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='fu'><a href='https://rdrr.io/r/base/stopifnot.html'>stopifnot</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/utils/packageDescription.html'>packageVersion</a></span><span class='op'>(</span><span class='st'>"dada2"</span><span class='op'>)</span> <span class='op'>==</span> <span class='st'>"1.18.0"</span><span class='op'>)</span>
+<span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='http://benjjneb.github.io/dada2/'>dada2</a></span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; Loading required package: Rcpp</code></pre>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r">
+<span class='fu'>import</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/import/man/importfunctions.html'>from</a></span><span class='op'>(</span><span class='va'>Biostrings</span>, <span class='va'>complement</span>, <span class='va'>reverseComplement</span>, <span class='va'>width</span>, <span class='va'>DNAString</span>,
+  <span class='va'>readDNAStringSet</span><span class='op'>)</span>
+<span class='fu'>import</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/import/man/importfunctions.html'>from</a></span><span class='op'>(</span><span class='va'>DECIPHER</span>, <span class='va'>TrimDNA</span><span class='op'>)</span>
+</code></pre>
+</div>
+</div>
+<p>Path for saving dada2 results:</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>results_path</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://here.r-lib.org//reference/here.html'>here</a></span><span class='op'>(</span><span class='st'>"output"</span>, <span class='st'>"2021"</span>, <span class='st'>"a1"</span>, <span class='st'>"dada2"</span><span class='op'>)</span>
+<span class='fu'><a href='https://rdrr.io/r/base/files2.html'>dir.create</a></span><span class='op'>(</span><span class='va'>results_path</span>, recursive <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>
+</code></pre>
+</div>
+</div>
+<p>Path to the fastq files:</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>reads_path</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://here.r-lib.org//reference/here.html'>here</a></span><span class='op'>(</span><span class='st'>"data"</span>, <span class='st'>"2021"</span>, <span class='st'>"a1"</span>, <span class='st'>"reads"</span><span class='op'>)</span>
+<span class='fu'><a href='http://fs.r-lib.org/reference/dir_ls.html'>dir_ls</a></span><span class='op'>(</span><span class='fu'><a href='http://fs.r-lib.org/reference/path.html'>path</a></span><span class='op'>(</span><span class='va'>reads_path</span>, <span class='st'>"raw"</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span> <span class='va'>path_file</span> <span class='op'>%&gt;%</span> <span class='va'>head</span>
+</code></pre>
+</div>
+<pre><code>#&gt; [1] &quot;Callahan_M06339R159_293024735.json&quot;
+#&gt; [2] &quot;F1-D0-1_S14_L001_R1_001.fastq.gz&quot;  
+#&gt; [3] &quot;F1-D0-1_S14_L001_R2_001.fastq.gz&quot;  
+#&gt; [4] &quot;F1-D0-2_S12_L001_R1_001.fastq.gz&quot;  
+#&gt; [5] &quot;F1-D0-2_S12_L001_R2_001.fastq.gz&quot;  
+#&gt; [6] &quot;F1-D0-3_S3_L001_R1_001.fastq.gz&quot;</code></pre>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>x</span> <span class='op'>&lt;-</span> <span class='fu'><a href='http://fs.r-lib.org/reference/dir_ls.html'>dir_ls</a></span><span class='op'>(</span><span class='fu'><a href='http://fs.r-lib.org/reference/path.html'>path</a></span><span class='op'>(</span><span class='va'>reads_path</span>, <span class='st'>"raw"</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span> <span class='va'>path_file</span>
+</code></pre>
+</div>
+</div>
+<p>Let’s get a data frame with the sample names, paths to the raw reads, and paths to the (to-be-created) filtered reads. Note the creation of DNA sample names from the sequence files: I revert the hyphens back to underscores, make the names of the A1 control samples lowercase, and prepend 2021 to ensure uniqueness and distinguishability from the 2019 DNA samples.</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>ftb</span> <span class='op'>&lt;-</span> <span class='fu'>tibble</span><span class='op'>(</span>path <span class='op'>=</span> <span class='fu'><a href='http://fs.r-lib.org/reference/dir_ls.html'>dir_ls</a></span><span class='op'>(</span><span class='fu'><a href='http://fs.r-lib.org/reference/path.html'>path</a></span><span class='op'>(</span><span class='va'>reads_path</span>, <span class='st'>"raw"</span><span class='op'>)</span>, glob <span class='op'>=</span> <span class='st'>"*.fastq.gz"</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>mutate</span><span class='op'>(</span>
+    read_direction <span class='op'>=</span> <span class='fu'>case_when</span><span class='op'>(</span>
+      <span class='fu'>str_detect</span><span class='op'>(</span><span class='va'>path</span>, <span class='st'>"_R1_"</span><span class='op'>)</span> <span class='op'>~</span> <span class='st'>"R1"</span>,
+      <span class='fu'>str_detect</span><span class='op'>(</span><span class='va'>path</span>, <span class='st'>"_R2_"</span><span class='op'>)</span> <span class='op'>~</span> <span class='st'>"R2"</span>
+    <span class='op'>)</span>,
+    fastq_sample_id <span class='op'>=</span> <span class='fu'>str_extract</span><span class='op'>(</span><span class='va'>path</span> <span class='op'>%&gt;%</span> <span class='va'>path_file</span>, <span class='st'>"[^_]+"</span><span class='op'>)</span>,
+    dna_sample_id <span class='op'>=</span> <span class='fu'>case_when</span><span class='op'>(</span>
+      <span class='va'>fastq_sample_id</span> <span class='op'>%in%</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'MockZymoPos'</span>, <span class='st'>'WaterNeg'</span><span class='op'>)</span> <span class='op'>~</span>
+        <span class='fu'>str_to_lower</span><span class='op'>(</span><span class='va'>fastq_sample_id</span><span class='op'>)</span>,
+      <span class='cn'>TRUE</span> <span class='op'>~</span> <span class='fu'>str_replace_all</span><span class='op'>(</span><span class='va'>fastq_sample_id</span>, <span class='st'>"-"</span>, <span class='st'>"_"</span><span class='op'>)</span>,
+      <span class='op'>)</span>,
+    dna_sample_id <span class='op'>=</span> <span class='fu'>str_c</span><span class='op'>(</span><span class='st'>"2021_"</span>, <span class='va'>dna_sample_id</span><span class='op'>)</span>,
+    sample_id <span class='op'>=</span> <span class='fu'>str_c</span><span class='op'>(</span><span class='st'>"A1_"</span>, <span class='va'>dna_sample_id</span><span class='op'>)</span>,
+    path_filt <span class='op'>=</span> <span class='fu'><a href='http://fs.r-lib.org/reference/path.html'>path</a></span><span class='op'>(</span><span class='va'>reads_path</span>, <span class='st'>"filtered"</span>, 
+      <span class='fu'>str_glue</span><span class='op'>(</span><span class='st'>"{fastq_sample_id}_{read_direction}_filt.fastq.gz"</span><span class='op'>)</span>
+    <span class='op'>)</span>
+  <span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>pivot_wider</span><span class='op'>(</span>names_from <span class='op'>=</span> <span class='va'>read_direction</span>, values_from <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>path</span>, <span class='va'>path_filt</span><span class='op'>)</span><span class='op'>)</span>
+<span class='co'># Check</span>
+<span class='va'>ftb</span> <span class='op'>%&gt;%</span> <span class='va'>head</span> <span class='op'>%&gt;%</span> <span class='fu'>mutate</span><span class='op'>(</span><span class='fu'>across</span><span class='op'>(</span><span class='fu'>starts_with</span><span class='op'>(</span><span class='st'>"path"</span><span class='op'>)</span>, <span class='va'>path_file</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span> <span class='va'>glimpse</span>
+</code></pre>
+</div>
+<pre><code>#&gt; Rows: 6
+#&gt; Columns: 7
+#&gt; $ fastq_sample_id &lt;chr&gt; &quot;F1-D0-1&quot;, &quot;F1-D0-2&quot;, &quot;F1-D0-3&quot;, &quot;F1-D0-4&quot;, …
+#&gt; $ dna_sample_id   &lt;chr&gt; &quot;2021_F1_D0_1&quot;, &quot;2021_F1_D0_2&quot;, &quot;2021_F1_D0_…
+#&gt; $ sample_id       &lt;chr&gt; &quot;A1_2021_F1_D0_1&quot;, &quot;A1_2021_F1_D0_2&quot;, &quot;A1_20…
+#&gt; $ path_R1         &lt;chr&gt; &quot;F1-D0-1_S14_L001_R1_001.fastq.gz&quot;, &quot;F1-D0-2…
+#&gt; $ path_R2         &lt;chr&gt; &quot;F1-D0-1_S14_L001_R2_001.fastq.gz&quot;, &quot;F1-D0-2…
+#&gt; $ path_filt_R1    &lt;chr&gt; &quot;F1-D0-1_R1_filt.fastq.gz&quot;, &quot;F1-D0-2_R1_filt…
+#&gt; $ path_filt_R2    &lt;chr&gt; &quot;F1-D0-1_R2_filt.fastq.gz&quot;, &quot;F1-D0-2_R2_filt…</code></pre>
+</div>
+<h2 id="check-sequences">Check sequences</h2>
+<p>The primers, from Kozich et al, are as previously,</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>primers</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span>
+  R1 <span class='op'>=</span> <span class='st'>"GTGCCAGCMGCCGCGGTAA"</span>,
+  R2 <span class='op'>=</span> <span class='st'>"TAATCTWTGGGVHCATCAGG"</span>
+<span class='op'>)</span>
+</code></pre>
+</div>
+</div>
+<p>The corresponding amplicon sequences in our reference 16S sequences (excluding the primer region) are</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>dna</span> <span class='op'>&lt;-</span> <span class='fu'>Biostrings</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/Biostrings/man/XStringSet-io.html'>readDNAStringSet</a></span><span class='op'>(</span>
+  <span class='fu'><a href='https://here.r-lib.org//reference/here.html'>here</a></span><span class='op'>(</span><span class='st'>"output"</span>, <span class='st'>"strain-data"</span>, <span class='st'>"reference-16s-genes.fasta"</span><span class='op'>)</span>
+<span class='op'>)</span>
+<span class='va'>primers.dna</span> <span class='op'>&lt;-</span> <span class='va'>primers</span> <span class='op'>%&gt;%</span> <span class='fu'>map</span><span class='op'>(</span><span class='va'>DNAString</span><span class='op'>)</span>
+<span class='va'>x</span> <span class='op'>&lt;-</span> <span class='fu'>TrimDNA</span><span class='op'>(</span><span class='va'>dna</span>, <span class='va'>primers.dna</span><span class='op'>[[</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>]</span>, <span class='va'>primers.dna</span><span class='op'>[[</span><span class='fl'>2</span><span class='op'>]</span><span class='op'>]</span> <span class='op'>%&gt;%</span> <span class='va'>complement</span>, 
+  type <span class='op'>=</span> <span class='st'>"sequences"</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; Finding left pattern: 81% internal, 0% flanking
+#&gt; 
+#&gt; Finding right pattern: 81% internal, 0% flanking
+#&gt; 
+#&gt; Time difference of 0.53 secs</code></pre>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='fu'>width</span><span class='op'>(</span><span class='va'>x</span><span class='op'>)</span> <span class='op'>%&gt;%</span> <span class='va'>summary</span>
+</code></pre>
+</div>
+<pre><code>#&gt;    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#&gt;    60.0   253.0   253.0   240.2   253.0   537.0</code></pre>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='fu'>width</span><span class='op'>(</span><span class='va'>x</span><span class='op'>)</span> <span class='op'>%&gt;%</span> <span class='va'>table</span>
+</code></pre>
+</div>
+<pre><code>#&gt; .
+#&gt;  60  61  62  74  75  86 110 175 183 197 199 220 253 254 354 360 380 
+#&gt;   1   1   1   1   1   2   1   1   1   1   1   1  64   3   1   1   1 
+#&gt; 537 
+#&gt;   1</code></pre>
+</div>
+<p>The length of the amplicon is 253-254 bp <em>excluding</em> the primer sequences.</p>
+<p>Next, let’s inspect the sequences for one sample and confirm that the primer sequences ar absent,</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>reads</span> <span class='op'>&lt;-</span> <span class='va'>ftb</span> <span class='op'>%&gt;%</span> 
+  <span class='fu'>slice</span><span class='op'>(</span><span class='fl'>1</span><span class='op'>)</span>  <span class='op'>%&gt;%</span> 
+  <span class='fu'>select</span><span class='op'>(</span>R1 <span class='op'>=</span> <span class='va'>path_R1</span>, R2 <span class='op'>=</span> <span class='va'>path_R2</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='va'>c</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>map</span><span class='op'>(</span><span class='va'>readDNAStringSet</span>, format <span class='op'>=</span> <span class='st'>"fastq"</span><span class='op'>)</span>
+<span class='va'>reads</span> <span class='op'>%&gt;%</span> <span class='fu'>map</span><span class='op'>(</span><span class='va'>head</span>, <span class='fl'>2</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; $R1
+#&gt; DNAStringSet object of length 2:
+#&gt;     width seq                                     names               
+#&gt; [1]   251 TACGGAGGATCCGAGCGT...AAGTGTGGGTATCAAACA M06339:159:000000...
+#&gt; [2]   251 TACGGAGGATCCGAGCGT...AAGTGTGGGTATCAAACA M06339:159:000000...
+#&gt; 
+#&gt; $R2
+#&gt; DNAStringSet object of length 2:
+#&gt;     width seq                                     names               
+#&gt; [1]   251 CCTGTTTGATACCCACAC...TAACGCTCGGATCCTCCG M06339:159:000000...
+#&gt; [2]   251 CCTGTTTGATACCCACAC...TAACGCTCGGATCCTCCG M06339:159:000000...</code></pre>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>x</span> <span class='op'>%&gt;%</span> <span class='fu'><a href='https://rdrr.io/r/utils/head.html'>head</a></span><span class='op'>(</span><span class='fl'>2</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; DNAStringSet object of length 2:
+#&gt;     width seq                                     names               
+#&gt; [1]   253 TACGGAGGATCCGAGCGT...GTGTGGGTATCAAACAGG GCF_000011065.1_1...
+#&gt; [2]   253 TACGGAGGATCCGAGCGT...GTGTGGGTATCAAACAGG GCF_000011065.1_1...</code></pre>
+</div>
+<p>As expected for this protocol, the primer sequences are not present in the reads and so do not need to be trimmed.</p>
+<h2 id="pick-truncation-params">Pick truncation params</h2>
+<p>Last time, I determined that the length of the target region (excluding primer sequences) in our reference genomes was 253-254 bp, and that aiming for an overlap of 30bp for a 260bp amplicon was a safe choice. For the 2019 data, we used the following truncation parameters, based on this choice and the observed quality profiles.</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>trim_left</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span>R1 <span class='op'>=</span> <span class='fl'>0</span>, R2 <span class='op'>=</span> <span class='fl'>0</span><span class='op'>)</span>
+<span class='va'>target_len</span> <span class='op'>&lt;-</span> <span class='fl'>260</span>
+<span class='va'>trunc_len</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span>R1 <span class='op'>=</span> <span class='fl'>145</span>, R2 <span class='op'>=</span> <span class='fl'>145</span><span class='op'>)</span>
+<span class='co'># should overlap by at least</span>
+<span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='va'>trunc_len</span><span class='op'>)</span> <span class='op'>-</span> <span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='va'>trim_left</span><span class='op'>)</span> <span class='op'>-</span> <span class='va'>target_len</span>
+</code></pre>
+</div>
+<pre><code>#&gt; [1] 30</code></pre>
+</div>
+<p>Let’s check some quality profiles to ensure these truncation lengths still look good,</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='fu'><a href='https://rdrr.io/r/base/Random.html'>set.seed</a></span><span class='op'>(</span><span class='fl'>42</span><span class='op'>)</span>
+<span class='va'>idx</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/sample.html'>sample</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/nrow.html'>nrow</a></span><span class='op'>(</span><span class='va'>ftb</span><span class='op'>)</span>, <span class='fl'>9</span><span class='op'>)</span>
+<span class='va'>idx</span>
+</code></pre>
+</div>
+<pre><code>#&gt; [1] 49 65 25 74 18 96 47 24 71</code></pre>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>ftb</span> <span class='op'>%&gt;%</span> <span class='fu'>slice</span><span class='op'>(</span><span class='va'>idx</span><span class='op'>)</span> <span class='op'>%&gt;%</span> <span class='fu'>pull</span><span class='op'>(</span><span class='va'>sample_id</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; [1] &quot;A1_2021_M1N_D1_3&quot; &quot;A1_2021_M2F_D2_3&quot; &quot;A1_2021_F3_D0_1&quot; 
+#&gt; [4] &quot;A1_2021_M2N_D1_4&quot; &quot;A1_2021_F2_D1_2&quot;  &quot;A1_2021_waterneg&quot;
+#&gt; [7] &quot;A1_2021_M1N_D1_1&quot; &quot;A1_2021_F2_D2_4&quot;  &quot;A1_2021_M2N_D1_1&quot;</code></pre>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>qps</span> <span class='op'>&lt;-</span> <span class='va'>ftb</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>slice</span><span class='op'>(</span><span class='va'>idx</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>select</span><span class='op'>(</span>R1 <span class='op'>=</span> <span class='va'>path_R1</span>, R2 <span class='op'>=</span> <span class='va'>path_R2</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='va'>c</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>map</span><span class='op'>(</span><span class='va'>plotQualityProfile</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; Warning: `guides(&lt;scale&gt; = FALSE)` is deprecated. Please use
+#&gt; `guides(&lt;scale&gt; = &quot;none&quot;)` instead.
+
+#&gt; Warning: `guides(&lt;scale&gt; = FALSE)` is deprecated. Please use
+#&gt; `guides(&lt;scale&gt; = &quot;none&quot;)` instead.</code></pre>
+</div>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>p1</span> <span class='op'>&lt;-</span> <span class='va'>qps</span><span class='op'>[[</span><span class='st'>"R1"</span><span class='op'>]</span><span class='op'>]</span> <span class='op'>+</span>
+  <span class='fu'>geom_hline</span><span class='op'>(</span>yintercept <span class='op'>=</span> <span class='fl'>30</span>, color <span class='op'>=</span> <span class='st'>"grey"</span><span class='op'>)</span> <span class='op'>+</span>
+  <span class='fu'>geom_vline</span><span class='op'>(</span>xintercept <span class='op'>=</span> <span class='va'>trunc_len</span><span class='op'>[</span><span class='fl'>1</span><span class='op'>]</span>, color <span class='op'>=</span> <span class='st'>"darkred"</span><span class='op'>)</span> <span class='op'>+</span>
+  <span class='fu'>ggtitle</span><span class='op'>(</span><span class='st'>"Forward reads"</span><span class='op'>)</span>
+<span class='va'>p2</span> <span class='op'>&lt;-</span> <span class='va'>qps</span><span class='op'>[[</span><span class='st'>"R2"</span><span class='op'>]</span><span class='op'>]</span> <span class='op'>+</span>
+  <span class='fu'>geom_hline</span><span class='op'>(</span>yintercept <span class='op'>=</span> <span class='fl'>30</span>, color <span class='op'>=</span> <span class='st'>"grey"</span><span class='op'>)</span> <span class='op'>+</span>
+  <span class='fu'>geom_vline</span><span class='op'>(</span>xintercept <span class='op'>=</span> <span class='va'>trunc_len</span><span class='op'>[</span><span class='fl'>2</span><span class='op'>]</span>, color <span class='op'>=</span> <span class='st'>"darkred"</span><span class='op'>)</span> <span class='op'>+</span>
+  <span class='fu'>ggtitle</span><span class='op'>(</span><span class='st'>"Reverse reads"</span><span class='op'>)</span>
+</code></pre>
+</div>
+</div>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>p1</span>
+</code></pre>
+</div>
+<p><img src="dada2-pipeline-on-a1-data-for-the-2021-experiment_files/figure-html5/unnamed-chunk-13-1.png" width="672" /></p>
+</div>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>p2</span>
+</code></pre>
+</div>
+<p><img src="dada2-pipeline-on-a1-data-for-the-2021-experiment_files/figure-html5/unnamed-chunk-14-1.png" width="672" /></p>
+</div>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='fu'>ggsave</span><span class='op'>(</span>plot <span class='op'>=</span> <span class='va'>p1</span>, <span class='fu'><a href='https://rdrr.io/r/base/file.path.html'>file.path</a></span><span class='op'>(</span><span class='va'>results_path</span>, <span class='st'>"quality-profiles-r1.pdf"</span><span class='op'>)</span>,
+    width <span class='op'>=</span> <span class='fl'>10</span>, height <span class='op'>=</span> <span class='fl'>10</span>, units <span class='op'>=</span> <span class='st'>"in"</span><span class='op'>)</span>
+<span class='fu'>ggsave</span><span class='op'>(</span>plot <span class='op'>=</span> <span class='va'>p2</span>, <span class='fu'><a href='https://rdrr.io/r/base/file.path.html'>file.path</a></span><span class='op'>(</span><span class='va'>results_path</span>, <span class='st'>"quality-profiles-r2.pdf"</span><span class='op'>)</span>,
+    width <span class='op'>=</span> <span class='fl'>10</span>, height <span class='op'>=</span> <span class='fl'>10</span>, units <span class='op'>=</span> <span class='st'>"in"</span><span class='op'>)</span>
+</code></pre>
+</div>
+</div>
+<p>The sequencing quality looks excellent, and these truncation parameters will work fine.</p>
+<h2 id="filter-and-trim">Filter and trim</h2>
+<p>First, delete the filtered reads from any previous runs (if they exist),</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='kw'>if</span> <span class='op'>(</span><span class='fu'><a href='http://fs.r-lib.org/reference/file_access.html'>dir_exists</a></span><span class='op'>(</span><span class='fu'><a href='http://fs.r-lib.org/reference/path.html'>path</a></span><span class='op'>(</span><span class='va'>reads_path</span>, <span class='st'>"filtered"</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span>
+  <span class='fu'><a href='http://fs.r-lib.org/reference/delete.html'>dir_delete</a></span><span class='op'>(</span><span class='fu'><a href='http://fs.r-lib.org/reference/path.html'>path</a></span><span class='op'>(</span><span class='va'>reads_path</span>, <span class='st'>"filtered"</span><span class='op'>)</span><span class='op'>)</span>
+</code></pre>
+</div>
+</div>
+<p>and set up lists with the paths to the forward and reverse reads (raw and filtered). Note, the file paths are named by sample id so that later DADA2 functions will name the samples by sample id instead of file name.</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>path_raw</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span>R1 <span class='op'>=</span> <span class='va'>ftb</span><span class='op'>$</span><span class='va'>path_R1</span>, R2 <span class='op'>=</span> <span class='va'>ftb</span><span class='op'>$</span><span class='va'>path_R2</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>map</span><span class='op'>(</span><span class='va'>set_names</span>, <span class='va'>ftb</span><span class='op'>$</span><span class='va'>sample_id</span><span class='op'>)</span>
+<span class='va'>path_filt</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span>R1 <span class='op'>=</span> <span class='va'>ftb</span><span class='op'>$</span><span class='va'>path_filt_R1</span>, R2 <span class='op'>=</span> <span class='va'>ftb</span><span class='op'>$</span><span class='va'>path_filt_R2</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>map</span><span class='op'>(</span><span class='va'>set_names</span>, <span class='va'>ftb</span><span class='op'>$</span><span class='va'>sample_id</span><span class='op'>)</span>
+<span class='co'># Check</span>
+<span class='va'>path_filt</span> <span class='op'>%&gt;%</span> <span class='fu'>map</span><span class='op'>(</span><span class='va'>tail</span>, <span class='fl'>4</span><span class='op'>)</span> <span class='op'>%&gt;%</span> <span class='fu'>map</span><span class='op'>(</span><span class='va'>names</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; $R1
+#&gt; [1] &quot;A1_2021_T1_D0_2&quot;  &quot;A1_2021_T1_D0_3&quot;  &quot;A1_2021_T1_D0_4&quot; 
+#&gt; [4] &quot;A1_2021_waterneg&quot;
+#&gt; 
+#&gt; $R2
+#&gt; [1] &quot;A1_2021_T1_D0_2&quot;  &quot;A1_2021_T1_D0_3&quot;  &quot;A1_2021_T1_D0_4&quot; 
+#&gt; [4] &quot;A1_2021_waterneg&quot;</code></pre>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>path_filt</span> <span class='op'>%&gt;%</span> <span class='fu'>map</span><span class='op'>(</span><span class='va'>tail</span>, <span class='fl'>4</span><span class='op'>)</span> <span class='op'>%&gt;%</span> <span class='fu'>map</span><span class='op'>(</span><span class='va'>path_file</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; $R1
+#&gt; [1] &quot;T1-D0-2_R1_filt.fastq.gz&quot;  &quot;T1-D0-3_R1_filt.fastq.gz&quot; 
+#&gt; [3] &quot;T1-D0-4_R1_filt.fastq.gz&quot;  &quot;WaterNeg_R1_filt.fastq.gz&quot;
+#&gt; 
+#&gt; $R2
+#&gt; [1] &quot;T1-D0-2_R2_filt.fastq.gz&quot;  &quot;T1-D0-3_R2_filt.fastq.gz&quot; 
+#&gt; [3] &quot;T1-D0-4_R2_filt.fastq.gz&quot;  &quot;WaterNeg_R2_filt.fastq.gz&quot;</code></pre>
+</div>
+<p>Then filter and trim.</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>max_ee</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span>R1 <span class='op'>=</span> <span class='fl'>2</span>, R2 <span class='op'>=</span> <span class='fl'>2</span><span class='op'>)</span>
+<span class='va'>out</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/pkg/dada2/man/filterAndTrim.html'>filterAndTrim</a></span><span class='op'>(</span>
+  <span class='va'>path_raw</span><span class='op'>[[</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>]</span>, <span class='va'>path_filt</span><span class='op'>[[</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>]</span>,
+  <span class='va'>path_raw</span><span class='op'>[[</span><span class='fl'>2</span><span class='op'>]</span><span class='op'>]</span>, <span class='va'>path_filt</span><span class='op'>[[</span><span class='fl'>2</span><span class='op'>]</span><span class='op'>]</span>,
+  trimLeft <span class='op'>=</span> <span class='va'>trim_left</span>, truncLen <span class='op'>=</span> <span class='va'>trunc_len</span>, 
+  maxN <span class='op'>=</span> <span class='fl'>0</span>, maxEE <span class='op'>=</span> <span class='va'>max_ee</span>, truncQ <span class='op'>=</span> <span class='fl'>2</span>, rm.phix <span class='op'>=</span> <span class='cn'>TRUE</span>, 
+  compress <span class='op'>=</span> <span class='cn'>TRUE</span>, multithread <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; Creating output directory: /home/michael/research/vivo-vitro/data/2021/a1/reads/filtered</code></pre>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='fu'><a href='https://rdrr.io/r/utils/head.html'>head</a></span><span class='op'>(</span><span class='va'>out</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt;                                  reads.in reads.out
+#&gt; F1-D0-1_S14_L001_R1_001.fastq.gz    65860     65448
+#&gt; F1-D0-2_S12_L001_R1_001.fastq.gz   120004    119160
+#&gt; F1-D0-3_S3_L001_R1_001.fastq.gz    101072    100523
+#&gt; F1-D0-4_S77_L001_R1_001.fastq.gz    96217     95597
+#&gt; F1-D1-1_S45_L001_R1_001.fastq.gz    94447     93885
+#&gt; F1-D1-2_S91_L001_R1_001.fastq.gz   157792    156812</code></pre>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='co'># Save in case of crash downstream</span>
+<span class='fu'><a href='https://rdrr.io/r/base/readRDS.html'>saveRDS</a></span><span class='op'>(</span><span class='va'>out</span>, <span class='fu'><a href='https://rdrr.io/r/base/file.path.html'>file.path</a></span><span class='op'>(</span><span class='va'>results_path</span>, <span class='st'>"filt-out.Rds"</span><span class='op'>)</span><span class='op'>)</span>
+</code></pre>
+</div>
+</div>
+<h2 id="learn-the-error-rates">Learn the error rates</h2>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>errs</span> <span class='op'>&lt;-</span> <span class='va'>path_filt</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>map</span><span class='op'>(</span><span class='va'>learnErrors</span>, multithread <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; 116563325 total bases in 803885 reads from 7 samples will be used for learning the error rates.
+#&gt; 116563325 total bases in 803885 reads from 7 samples will be used for learning the error rates.</code></pre>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='fu'><a href='https://rdrr.io/r/base/readRDS.html'>saveRDS</a></span><span class='op'>(</span><span class='va'>errs</span>, <span class='fu'><a href='https://rdrr.io/r/base/file.path.html'>file.path</a></span><span class='op'>(</span><span class='va'>results_path</span>, <span class='st'>"error-models.Rds"</span><span class='op'>)</span><span class='op'>)</span>
+</code></pre>
+</div>
+</div>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='fu'><a href='https://rdrr.io/pkg/dada2/man/plotErrors.html'>plotErrors</a></span><span class='op'>(</span><span class='va'>errs</span><span class='op'>[[</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>]</span>, nominalQ <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; Warning: Transformation introduced infinite values in continuous y-
+#&gt; axis
+
+#&gt; Warning: Transformation introduced infinite values in continuous y-
+#&gt; axis</code></pre>
+<img src="dada2-pipeline-on-a1-data-for-the-2021-experiment_files/figure-html5/unnamed-chunk-20-1.png" width="672" />
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='fu'>ggsave</span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/file.path.html'>file.path</a></span><span class='op'>(</span><span class='va'>results_path</span>, <span class='st'>"error-profile-r1.pdf"</span><span class='op'>)</span>,
+    width <span class='op'>=</span> <span class='fl'>9</span>, height <span class='op'>=</span> <span class='fl'>9</span>, units <span class='op'>=</span> <span class='st'>"in"</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; Warning: Transformation introduced infinite values in continuous y-
+#&gt; axis
+
+#&gt; Warning: Transformation introduced infinite values in continuous y-
+#&gt; axis</code></pre>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='fu'><a href='https://rdrr.io/pkg/dada2/man/plotErrors.html'>plotErrors</a></span><span class='op'>(</span><span class='va'>errs</span><span class='op'>[[</span><span class='fl'>2</span><span class='op'>]</span><span class='op'>]</span>, nominalQ <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; Warning: Transformation introduced infinite values in continuous y-
+#&gt; axis
+
+#&gt; Warning: Transformation introduced infinite values in continuous y-
+#&gt; axis</code></pre>
+<img src="dada2-pipeline-on-a1-data-for-the-2021-experiment_files/figure-html5/unnamed-chunk-20-2.png" width="672" />
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='fu'>ggsave</span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/file.path.html'>file.path</a></span><span class='op'>(</span><span class='va'>results_path</span>, <span class='st'>"error-profile-r2.pdf"</span><span class='op'>)</span>,
+    width <span class='op'>=</span> <span class='fl'>9</span>, height <span class='op'>=</span> <span class='fl'>9</span>, units <span class='op'>=</span> <span class='st'>"in"</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; Warning: Transformation introduced infinite values in continuous y-
+#&gt; axis
+
+#&gt; Warning: Transformation introduced infinite values in continuous y-
+#&gt; axis</code></pre>
+</div>
+<h2 id="sample-inference">Sample inference</h2>
+<p>The following settings for the <code>dada()</code> inference step are used:</p>
+<ul>
+<li>Pseudo-pooling used to increase sensitivity
+<ul>
+<li><code>pool = "pseudo"</code> option</li>
+<li><code>PSEUDO_PREVALENCE = 4</code> (increased from default of 2 to reduce the number of spurious low-prev ASVs seen in the pilot)</li>
+</ul></li>
+<li>The inference step (<code>dada()</code>) is run two different ways: The default settings, and with <code>OMEGA_C = 2</code> (which prevents error correction, so that we can assign abundances using just the error-free read-pairs).</li>
+</ul>
+<h3 id="default-omega_c">Default <code>OMEGA_C</code></h3>
+<p>Sample inference w/ <code>dada()</code></p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>dadas</span> <span class='op'>&lt;-</span> <span class='fu'>map2</span><span class='op'>(</span>
+  <span class='va'>path_filt</span>,
+  <span class='va'>errs</span>,
+  <span class='va'>dada</span>,
+  multithread <span class='op'>=</span> <span class='cn'>TRUE</span>, pool <span class='op'>=</span> <span class='st'>"pseudo"</span>,
+  PSEUDO_PREVALENCE <span class='op'>=</span> <span class='fl'>4</span>
+<span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; Sample 1 - 65448 reads in 4697 unique sequences.
+#&gt; Sample 2 - 119160 reads in 6958 unique sequences.
+#&gt; Sample 3 - 100523 reads in 5987 unique sequences.
+#&gt; Sample 4 - 95597 reads in 5475 unique sequences.
+#&gt; Sample 5 - 93885 reads in 5554 unique sequences.
+#&gt; Sample 6 - 156812 reads in 8185 unique sequences.
+#&gt; Sample 7 - 172460 reads in 8773 unique sequences.
+#&gt; Sample 8 - 75172 reads in 5204 unique sequences.
+#&gt; Sample 9 - 112189 reads in 5273 unique sequences.
+#&gt; Sample 10 - 101786 reads in 5156 unique sequences.
+#&gt; Sample 11 - 69304 reads in 3672 unique sequences.
+#&gt; Sample 12 - 94969 reads in 5264 unique sequences.
+#&gt; Sample 13 - 79630 reads in 4806 unique sequences.
+#&gt; Sample 14 - 77101 reads in 4642 unique sequences.
+#&gt; Sample 15 - 60255 reads in 4015 unique sequences.
+#&gt; Sample 16 - 97042 reads in 5296 unique sequences.
+#&gt; Sample 17 - 70579 reads in 4384 unique sequences.
+#&gt; Sample 18 - 159097 reads in 6688 unique sequences.
+#&gt; Sample 19 - 181698 reads in 8692 unique sequences.
+#&gt; Sample 20 - 77664 reads in 4430 unique sequences.
+#&gt; Sample 21 - 93618 reads in 4075 unique sequences.
+#&gt; Sample 22 - 88251 reads in 5373 unique sequences.
+#&gt; Sample 23 - 109799 reads in 6096 unique sequences.
+#&gt; Sample 24 - 77277 reads in 4997 unique sequences.
+#&gt; Sample 25 - 61529 reads in 4318 unique sequences.
+#&gt; Sample 26 - 114411 reads in 6287 unique sequences.
+#&gt; Sample 27 - 86825 reads in 5527 unique sequences.
+#&gt; Sample 28 - 100938 reads in 5780 unique sequences.
+#&gt; Sample 29 - 138388 reads in 5718 unique sequences.
+#&gt; Sample 30 - 121190 reads in 8078 unique sequences.
+#&gt; Sample 31 - 48321 reads in 3980 unique sequences.
+#&gt; Sample 32 - 74978 reads in 5842 unique sequences.
+#&gt; Sample 33 - 88192 reads in 6734 unique sequences.
+#&gt; Sample 34 - 59488 reads in 4517 unique sequences.
+#&gt; Sample 35 - 56798 reads in 4376 unique sequences.
+#&gt; Sample 36 - 4701 reads in 290 unique sequences.
+#&gt; Sample 37 - 123886 reads in 8729 unique sequences.
+#&gt; Sample 38 - 114778 reads in 7501 unique sequences.
+#&gt; Sample 39 - 89279 reads in 5516 unique sequences.
+#&gt; Sample 40 - 130957 reads in 8027 unique sequences.
+#&gt; Sample 41 - 95941 reads in 5509 unique sequences.
+#&gt; Sample 42 - 98169 reads in 7193 unique sequences.
+#&gt; Sample 43 - 37066 reads in 3260 unique sequences.
+#&gt; Sample 44 - 54188 reads in 4579 unique sequences.
+#&gt; Sample 45 - 49635 reads in 4208 unique sequences.
+#&gt; Sample 46 - 112161 reads in 7587 unique sequences.
+#&gt; Sample 47 - 56984 reads in 4502 unique sequences.
+#&gt; Sample 48 - 54202 reads in 4634 unique sequences.
+#&gt; Sample 49 - 83712 reads in 5694 unique sequences.
+#&gt; Sample 50 - 65605 reads in 5020 unique sequences.
+#&gt; Sample 51 - 120519 reads in 8416 unique sequences.
+#&gt; Sample 52 - 91230 reads in 6685 unique sequences.
+#&gt; Sample 53 - 105343 reads in 6683 unique sequences.
+#&gt; Sample 54 - 95711 reads in 6847 unique sequences.
+#&gt; Sample 55 - 23778 reads in 2618 unique sequences.
+#&gt; Sample 56 - 61644 reads in 4903 unique sequences.
+#&gt; Sample 57 - 100885 reads in 5821 unique sequences.
+#&gt; Sample 58 - 53540 reads in 4500 unique sequences.
+#&gt; Sample 59 - 61227 reads in 5157 unique sequences.
+#&gt; Sample 60 - 38705 reads in 3495 unique sequences.
+#&gt; Sample 61 - 73178 reads in 4775 unique sequences.
+#&gt; Sample 62 - 88770 reads in 6857 unique sequences.
+#&gt; Sample 63 - 95226 reads in 6404 unique sequences.
+#&gt; Sample 64 - 81273 reads in 5971 unique sequences.
+#&gt; Sample 65 - 104297 reads in 6893 unique sequences.
+#&gt; Sample 66 - 67016 reads in 4628 unique sequences.
+#&gt; Sample 67 - 45497 reads in 3738 unique sequences.
+#&gt; Sample 68 - 34725 reads in 3152 unique sequences.
+#&gt; Sample 69 - 27993 reads in 2958 unique sequences.
+#&gt; Sample 70 - 78087 reads in 5863 unique sequences.
+#&gt; Sample 71 - 86625 reads in 6852 unique sequences.
+#&gt; Sample 72 - 70246 reads in 5591 unique sequences.
+#&gt; Sample 73 - 38941 reads in 3813 unique sequences.
+#&gt; Sample 74 - 66999 reads in 5280 unique sequences.
+#&gt; Sample 75 - 88560 reads in 6612 unique sequences.
+#&gt; Sample 76 - 87663 reads in 6010 unique sequences.
+#&gt; Sample 77 - 79991 reads in 6059 unique sequences.
+#&gt; Sample 78 - 97182 reads in 6687 unique sequences.
+#&gt; Sample 79 - 61489 reads in 5473 unique sequences.
+#&gt; Sample 80 - 48628 reads in 4322 unique sequences.
+#&gt; Sample 81 - 66638 reads in 5540 unique sequences.
+#&gt; Sample 82 - 68799 reads in 5735 unique sequences.
+#&gt; Sample 83 - 89866 reads in 5665 unique sequences.
+#&gt; Sample 84 - 80522 reads in 6057 unique sequences.
+#&gt; Sample 85 - 4824 reads in 319 unique sequences.
+#&gt; Sample 86 - 49185 reads in 4062 unique sequences.
+#&gt; Sample 87 - 85803 reads in 6111 unique sequences.
+#&gt; Sample 88 - 112796 reads in 8017 unique sequences.
+#&gt; Sample 89 - 117994 reads in 8282 unique sequences.
+#&gt; Sample 90 - 59343 reads in 4683 unique sequences.
+#&gt; Sample 91 - 177694 reads in 16533 unique sequences.
+#&gt; Sample 92 - 91067 reads in 4404 unique sequences.
+#&gt; Sample 93 - 88728 reads in 3049 unique sequences.
+#&gt; Sample 94 - 111763 reads in 3283 unique sequences.
+#&gt; Sample 95 - 84576 reads in 2982 unique sequences.
+#&gt; Sample 96 - 3710 reads in 523 unique sequences.
+#&gt; 
+#&gt;    selfConsist step 2Sample 1 - 65448 reads in 6930 unique sequences.
+#&gt; Sample 2 - 119160 reads in 11140 unique sequences.
+#&gt; Sample 3 - 100523 reads in 8995 unique sequences.
+#&gt; Sample 4 - 95597 reads in 9606 unique sequences.
+#&gt; Sample 5 - 93885 reads in 8188 unique sequences.
+#&gt; Sample 6 - 156812 reads in 13259 unique sequences.
+#&gt; Sample 7 - 172460 reads in 14446 unique sequences.
+#&gt; Sample 8 - 75172 reads in 8646 unique sequences.
+#&gt; Sample 9 - 112189 reads in 8807 unique sequences.
+#&gt; Sample 10 - 101786 reads in 9200 unique sequences.
+#&gt; Sample 11 - 69304 reads in 5726 unique sequences.
+#&gt; Sample 12 - 94969 reads in 7484 unique sequences.
+#&gt; Sample 13 - 79630 reads in 6830 unique sequences.
+#&gt; Sample 14 - 77101 reads in 7140 unique sequences.
+#&gt; Sample 15 - 60255 reads in 6066 unique sequences.
+#&gt; Sample 16 - 97042 reads in 7874 unique sequences.
+#&gt; Sample 17 - 70579 reads in 7541 unique sequences.
+#&gt; Sample 18 - 159097 reads in 11461 unique sequences.
+#&gt; Sample 19 - 181698 reads in 13749 unique sequences.
+#&gt; Sample 20 - 77664 reads in 6483 unique sequences.
+#&gt; Sample 21 - 93618 reads in 6418 unique sequences.
+#&gt; Sample 22 - 88251 reads in 7713 unique sequences.
+#&gt; Sample 23 - 109799 reads in 11118 unique sequences.
+#&gt; Sample 24 - 77277 reads in 7216 unique sequences.
+#&gt; Sample 25 - 61529 reads in 7189 unique sequences.
+#&gt; Sample 26 - 114411 reads in 10504 unique sequences.
+#&gt; Sample 27 - 86825 reads in 8018 unique sequences.
+#&gt; Sample 28 - 100938 reads in 10309 unique sequences.
+#&gt; Sample 29 - 138388 reads in 8275 unique sequences.
+#&gt; Sample 30 - 121190 reads in 12088 unique sequences.
+#&gt; Sample 31 - 48321 reads in 6327 unique sequences.
+#&gt; Sample 32 - 74978 reads in 8381 unique sequences.
+#&gt; Sample 33 - 88192 reads in 10206 unique sequences.
+#&gt; Sample 34 - 59488 reads in 7697 unique sequences.
+#&gt; Sample 35 - 56798 reads in 6488 unique sequences.
+#&gt; Sample 36 - 4701 reads in 558 unique sequences.
+#&gt; Sample 37 - 123886 reads in 13134 unique sequences.
+#&gt; Sample 38 - 114778 reads in 11552 unique sequences.
+#&gt; Sample 39 - 89279 reads in 9599 unique sequences.
+#&gt; Sample 40 - 130957 reads in 14202 unique sequences.
+#&gt; Sample 41 - 95941 reads in 8125 unique sequences.
+#&gt; Sample 42 - 98169 reads in 10337 unique sequences.
+#&gt; Sample 43 - 37066 reads in 4795 unique sequences.
+#&gt; Sample 44 - 54188 reads in 6598 unique sequences.
+#&gt; Sample 45 - 49635 reads in 7092 unique sequences.
+#&gt; Sample 46 - 112161 reads in 11980 unique sequences.
+#&gt; Sample 47 - 56984 reads in 6673 unique sequences.
+#&gt; Sample 48 - 54202 reads in 6559 unique sequences.
+#&gt; Sample 49 - 83712 reads in 8368 unique sequences.
+#&gt; Sample 50 - 65605 reads in 8323 unique sequences.
+#&gt; Sample 51 - 120519 reads in 12104 unique sequences.
+#&gt; Sample 52 - 91230 reads in 9993 unique sequences.
+#&gt; Sample 53 - 105343 reads in 12323 unique sequences.
+#&gt; Sample 54 - 95711 reads in 10181 unique sequences.
+#&gt; Sample 55 - 23778 reads in 3690 unique sequences.
+#&gt; Sample 56 - 61644 reads in 6902 unique sequences.
+#&gt; Sample 57 - 100885 reads in 8843 unique sequences.
+#&gt; Sample 58 - 53540 reads in 6355 unique sequences.
+#&gt; Sample 59 - 61227 reads in 7515 unique sequences.
+#&gt; Sample 60 - 38705 reads in 5075 unique sequences.
+#&gt; Sample 61 - 73178 reads in 7442 unique sequences.
+#&gt; Sample 62 - 88770 reads in 10089 unique sequences.
+#&gt; Sample 63 - 95226 reads in 9272 unique sequences.
+#&gt; Sample 64 - 81273 reads in 8694 unique sequences.
+#&gt; Sample 65 - 104297 reads in 10830 unique sequences.
+#&gt; Sample 66 - 67016 reads in 6563 unique sequences.
+#&gt; Sample 67 - 45497 reads in 6175 unique sequences.
+#&gt; Sample 68 - 34725 reads in 4881 unique sequences.
+#&gt; Sample 69 - 27993 reads in 4327 unique sequences.
+#&gt; Sample 70 - 78087 reads in 8959 unique sequences.
+#&gt; Sample 71 - 86625 reads in 9790 unique sequences.
+#&gt; Sample 72 - 70246 reads in 7833 unique sequences.
+#&gt; Sample 73 - 38941 reads in 5987 unique sequences.
+#&gt; Sample 74 - 66999 reads in 7357 unique sequences.
+#&gt; Sample 75 - 88560 reads in 9136 unique sequences.
+#&gt; Sample 76 - 87663 reads in 9192 unique sequences.
+#&gt; Sample 77 - 79991 reads in 10162 unique sequences.
+#&gt; Sample 78 - 97182 reads in 10146 unique sequences.
+#&gt; Sample 79 - 61489 reads in 7489 unique sequences.
+#&gt; Sample 80 - 48628 reads in 6058 unique sequences.
+#&gt; Sample 81 - 66638 reads in 8953 unique sequences.
+#&gt; Sample 82 - 68799 reads in 9123 unique sequences.
+#&gt; Sample 83 - 89866 reads in 8589 unique sequences.
+#&gt; Sample 84 - 80522 reads in 8915 unique sequences.
+#&gt; Sample 85 - 4824 reads in 586 unique sequences.
+#&gt; Sample 86 - 49185 reads in 5891 unique sequences.
+#&gt; Sample 87 - 85803 reads in 8994 unique sequences.
+#&gt; Sample 88 - 112796 reads in 12151 unique sequences.
+#&gt; Sample 89 - 117994 reads in 11719 unique sequences.
+#&gt; Sample 90 - 59343 reads in 6868 unique sequences.
+#&gt; Sample 91 - 177694 reads in 19587 unique sequences.
+#&gt; Sample 92 - 91067 reads in 6673 unique sequences.
+#&gt; Sample 93 - 88728 reads in 6699 unique sequences.
+#&gt; Sample 94 - 111763 reads in 10166 unique sequences.
+#&gt; Sample 95 - 84576 reads in 7811 unique sequences.
+#&gt; Sample 96 - 3710 reads in 797 unique sequences.
+#&gt; 
+#&gt;    selfConsist step 2</code></pre>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='fu'><a href='https://rdrr.io/r/base/readRDS.html'>saveRDS</a></span><span class='op'>(</span><span class='va'>dadas</span>, <span class='fu'><a href='https://rdrr.io/r/base/file.path.html'>file.path</a></span><span class='op'>(</span><span class='va'>results_path</span>, <span class='st'>"dadas-1.Rds"</span><span class='op'>)</span><span class='op'>)</span>
+</code></pre>
+</div>
+</div>
+<p>Check the results:</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>dadas</span><span class='op'>[[</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>]</span><span class='op'>[[</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>]</span>
+</code></pre>
+</div>
+<pre><code>#&gt; dada-class: object describing DADA2 denoising results
+#&gt; 83 sequence variants were inferred from 4697 input unique sequences.
+#&gt; Key parameters: OMEGA_A = 1e-40, OMEGA_C = 1e-40, BAND_SIZE = 16</code></pre>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='fu'><a href='https://rdrr.io/r/utils/head.html'>head</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/pkg/dada2/man/getSequences.html'>getSequences</a></span><span class='op'>(</span><span class='va'>dadas</span><span class='op'>[[</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>]</span><span class='op'>[[</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>]</span><span class='op'>)</span>, <span class='fl'>2</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; [1] &quot;TACGGAGGATCCGAGCGTTATCCGGATTTATTGGGTTTAAAGGGAGCGTAGGTGGATTGTTAAGTCAGTTGTGAAAGTTTGCGGCTCAACCGTAAAATTGCAGTTGAAACTGGCAGTCTTGAGTACAGTAGAGGTGGGCGGAATT&quot;
+#&gt; [2] &quot;TACAGAGGTCTCAAGCGTTGTTCGGAATCACTGGGCGTAAAGCGTGCGTAGGCTGTTTCGTAAGTCGTGTGTGAAAGGCGCGGGCTCAACCCGCGGACGGCACATGATACTGCGAGACTAGAGTAATGGAGGGGGAACCGGAATT&quot;</code></pre>
+</div>
+<p>Merge paired reads,</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>mergers</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/pkg/dada2/man/mergePairs.html'>mergePairs</a></span><span class='op'>(</span>
+  <span class='va'>dadas</span><span class='op'>[[</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>]</span>, <span class='va'>path_filt</span><span class='op'>[[</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>]</span>, 
+  <span class='va'>dadas</span><span class='op'>[[</span><span class='fl'>2</span><span class='op'>]</span><span class='op'>]</span>, <span class='va'>path_filt</span><span class='op'>[[</span><span class='fl'>2</span><span class='op'>]</span><span class='op'>]</span>,
+  verbose <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>
+<span class='fu'><a href='https://rdrr.io/r/base/readRDS.html'>saveRDS</a></span><span class='op'>(</span><span class='va'>mergers</span>, <span class='fu'><a href='https://rdrr.io/r/base/file.path.html'>file.path</a></span><span class='op'>(</span><span class='va'>results_path</span>, <span class='st'>"mergers-1.Rds"</span><span class='op'>)</span><span class='op'>)</span>
+</code></pre>
+</div>
+</div>
+<p>Construct sequence table</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>seqtab</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/pkg/dada2/man/makeSequenceTable.html'>makeSequenceTable</a></span><span class='op'>(</span><span class='va'>mergers</span><span class='op'>)</span>
+<span class='fu'><a href='https://rdrr.io/r/base/readRDS.html'>saveRDS</a></span><span class='op'>(</span><span class='va'>seqtab</span>, <span class='fu'><a href='https://rdrr.io/r/base/file.path.html'>file.path</a></span><span class='op'>(</span><span class='va'>results_path</span>, <span class='st'>"seqtab-1.Rds"</span><span class='op'>)</span><span class='op'>)</span>
+<span class='fu'><a href='https://rdrr.io/r/base/dim.html'>dim</a></span><span class='op'>(</span><span class='va'>seqtab</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; [1]   96 5038</code></pre>
+</div>
+<p>Inspect distribution of sequence lengths</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='fu'><a href='https://rdrr.io/r/base/table.html'>table</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/nchar.html'>nchar</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/pkg/dada2/man/getSequences.html'>getSequences</a></span><span class='op'>(</span><span class='va'>seqtab</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; 
+#&gt;  223  225  248  252  253  254  255  257  274  277 
+#&gt;    1    1    1    5 5015   10    1    1    2    1</code></pre>
+</div>
+<p>Remove chimeras (with ‘pooled’ method)</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>seqtab.nochim</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/pkg/dada2/man/removeBimeraDenovo.html'>removeBimeraDenovo</a></span><span class='op'>(</span><span class='va'>seqtab</span>, method <span class='op'>=</span> <span class='st'>"pooled"</span>,
+    multithread <span class='op'>=</span> <span class='cn'>TRUE</span>, verbose <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; Identified 4844 bimeras out of 5038 input sequences.</code></pre>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='fu'><a href='https://rdrr.io/r/base/readRDS.html'>saveRDS</a></span><span class='op'>(</span><span class='va'>seqtab.nochim</span>, <span class='fu'><a href='https://rdrr.io/r/base/file.path.html'>file.path</a></span><span class='op'>(</span><span class='va'>results_path</span>, <span class='st'>"seqtab-nochim-1.Rds"</span><span class='op'>)</span><span class='op'>)</span>
+<span class='fu'><a href='https://rdrr.io/r/base/dim.html'>dim</a></span><span class='op'>(</span><span class='va'>seqtab.nochim</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; [1]  96 194</code></pre>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='va'>seqtab.nochim</span><span class='op'>)</span> <span class='op'>/</span> <span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='va'>seqtab</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; [1] 0.8524297</code></pre>
+</div>
+<p>Track reads through the pipeline,</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>getN</span> <span class='op'>&lt;-</span> <span class='kw'>function</span><span class='op'>(</span><span class='va'>x</span><span class='op'>)</span> <span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/pkg/dada2/man/getUniques.html'>getUniques</a></span><span class='op'>(</span><span class='va'>x</span><span class='op'>)</span><span class='op'>)</span>
+<span class='va'>track</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/cbind.html'>cbind</a></span><span class='op'>(</span><span class='va'>out</span>, <span class='fu'><a href='https://rdrr.io/r/base/lapply.html'>sapply</a></span><span class='op'>(</span><span class='va'>dadas</span><span class='op'>[[</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>]</span>, <span class='va'>getN</span><span class='op'>)</span>, <span class='fu'><a href='https://rdrr.io/r/base/lapply.html'>sapply</a></span><span class='op'>(</span><span class='va'>dadas</span><span class='op'>[[</span><span class='fl'>2</span><span class='op'>]</span><span class='op'>]</span>, <span class='va'>getN</span><span class='op'>)</span>, 
+    <span class='fu'><a href='https://rdrr.io/r/base/lapply.html'>sapply</a></span><span class='op'>(</span><span class='va'>mergers</span>, <span class='va'>getN</span><span class='op'>)</span>, <span class='fu'><a href='https://rdrr.io/r/base/colSums.html'>rowSums</a></span><span class='op'>(</span><span class='va'>seqtab.nochim</span><span class='op'>)</span><span class='op'>)</span>
+<span class='fu'><a href='https://rdrr.io/r/base/colnames.html'>colnames</a></span><span class='op'>(</span><span class='va'>track</span><span class='op'>)</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"input"</span>, <span class='st'>"filtered"</span>, <span class='st'>"denoised_r1"</span>, <span class='st'>"denoised_r2"</span>, <span class='st'>"merged"</span>,
+    <span class='st'>"nochim"</span><span class='op'>)</span>
+<span class='fu'><a href='https://rdrr.io/r/base/colnames.html'>rownames</a></span><span class='op'>(</span><span class='va'>track</span><span class='op'>)</span> <span class='op'>&lt;-</span> <span class='va'>ftb</span><span class='op'>$</span><span class='va'>sample_id</span>
+<span class='va'>track</span> <span class='op'>&lt;-</span> <span class='fu'>as_tibble</span><span class='op'>(</span><span class='va'>track</span>, rownames <span class='op'>=</span> <span class='st'>"sample_id"</span><span class='op'>)</span>
+<span class='fu'>write_csv</span><span class='op'>(</span><span class='va'>track</span>, <span class='fu'><a href='https://rdrr.io/r/base/file.path.html'>file.path</a></span><span class='op'>(</span><span class='va'>results_path</span>, <span class='st'>"track-1.csv"</span><span class='op'>)</span><span class='op'>)</span>
+<span class='fu'><a href='https://rdrr.io/r/utils/head.html'>head</a></span><span class='op'>(</span><span class='va'>track</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; # A tibble: 6 × 7
+#&gt;   sample_id       input filtered denoised_r1 denoised_r2 merged nochim
+#&gt;   &lt;chr&gt;           &lt;dbl&gt;    &lt;dbl&gt;       &lt;dbl&gt;       &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;
+#&gt; 1 A1_2021_F1_D0…  65860    65448       65403       65379  64343  50975
+#&gt; 2 A1_2021_F1_D0… 120004   119160      119111      119041 117161  96348
+#&gt; 3 A1_2021_F1_D0… 101072   100523      100475      100389  99163  78455
+#&gt; 4 A1_2021_F1_D0…  96217    95597       95525       95512  94257  79125
+#&gt; 5 A1_2021_F1_D1…  94447    93885       93850       93829  92748  78718
+#&gt; 6 A1_2021_F1_D1… 157792   156812      156704      156724 155064 135460</code></pre>
+</div>
+<h3 id="omega_c-2"><code>OMEGA_C = 2</code></h3>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='fu'><a href='https://rdrr.io/r/base/rm.html'>rm</a></span><span class='op'>(</span><span class='va'>dadas</span>, <span class='va'>mergers</span>, <span class='va'>seqtab</span>, <span class='va'>seqtab.nochim</span>, <span class='va'>track</span><span class='op'>)</span>
+</code></pre>
+</div>
+</div>
+<p>Sample inference w/ <code>dada()</code></p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>dadas</span> <span class='op'>&lt;-</span> <span class='fu'>map2</span><span class='op'>(</span>
+  <span class='va'>path_filt</span>,
+  <span class='va'>errs</span>,
+  <span class='va'>dada</span>,
+  multithread <span class='op'>=</span> <span class='cn'>TRUE</span>, pool <span class='op'>=</span> <span class='st'>"pseudo"</span>,
+  PSEUDO_PREVALENCE <span class='op'>=</span> <span class='fl'>4</span>,
+  OMEGA_C <span class='op'>=</span> <span class='fl'>2</span>
+<span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; Sample 1 - 65448 reads in 4697 unique sequences.
+#&gt; Sample 2 - 119160 reads in 6958 unique sequences.
+#&gt; Sample 3 - 100523 reads in 5987 unique sequences.
+#&gt; Sample 4 - 95597 reads in 5475 unique sequences.
+#&gt; Sample 5 - 93885 reads in 5554 unique sequences.
+#&gt; Sample 6 - 156812 reads in 8185 unique sequences.
+#&gt; Sample 7 - 172460 reads in 8773 unique sequences.
+#&gt; Sample 8 - 75172 reads in 5204 unique sequences.
+#&gt; Sample 9 - 112189 reads in 5273 unique sequences.
+#&gt; Sample 10 - 101786 reads in 5156 unique sequences.
+#&gt; Sample 11 - 69304 reads in 3672 unique sequences.
+#&gt; Sample 12 - 94969 reads in 5264 unique sequences.
+#&gt; Sample 13 - 79630 reads in 4806 unique sequences.
+#&gt; Sample 14 - 77101 reads in 4642 unique sequences.
+#&gt; Sample 15 - 60255 reads in 4015 unique sequences.
+#&gt; Sample 16 - 97042 reads in 5296 unique sequences.
+#&gt; Sample 17 - 70579 reads in 4384 unique sequences.
+#&gt; Sample 18 - 159097 reads in 6688 unique sequences.
+#&gt; Sample 19 - 181698 reads in 8692 unique sequences.
+#&gt; Sample 20 - 77664 reads in 4430 unique sequences.
+#&gt; Sample 21 - 93618 reads in 4075 unique sequences.
+#&gt; Sample 22 - 88251 reads in 5373 unique sequences.
+#&gt; Sample 23 - 109799 reads in 6096 unique sequences.
+#&gt; Sample 24 - 77277 reads in 4997 unique sequences.
+#&gt; Sample 25 - 61529 reads in 4318 unique sequences.
+#&gt; Sample 26 - 114411 reads in 6287 unique sequences.
+#&gt; Sample 27 - 86825 reads in 5527 unique sequences.
+#&gt; Sample 28 - 100938 reads in 5780 unique sequences.
+#&gt; Sample 29 - 138388 reads in 5718 unique sequences.
+#&gt; Sample 30 - 121190 reads in 8078 unique sequences.
+#&gt; Sample 31 - 48321 reads in 3980 unique sequences.
+#&gt; Sample 32 - 74978 reads in 5842 unique sequences.
+#&gt; Sample 33 - 88192 reads in 6734 unique sequences.
+#&gt; Sample 34 - 59488 reads in 4517 unique sequences.
+#&gt; Sample 35 - 56798 reads in 4376 unique sequences.
+#&gt; Sample 36 - 4701 reads in 290 unique sequences.
+#&gt; Sample 37 - 123886 reads in 8729 unique sequences.
+#&gt; Sample 38 - 114778 reads in 7501 unique sequences.
+#&gt; Sample 39 - 89279 reads in 5516 unique sequences.
+#&gt; Sample 40 - 130957 reads in 8027 unique sequences.
+#&gt; Sample 41 - 95941 reads in 5509 unique sequences.
+#&gt; Sample 42 - 98169 reads in 7193 unique sequences.
+#&gt; Sample 43 - 37066 reads in 3260 unique sequences.
+#&gt; Sample 44 - 54188 reads in 4579 unique sequences.
+#&gt; Sample 45 - 49635 reads in 4208 unique sequences.
+#&gt; Sample 46 - 112161 reads in 7587 unique sequences.
+#&gt; Sample 47 - 56984 reads in 4502 unique sequences.
+#&gt; Sample 48 - 54202 reads in 4634 unique sequences.
+#&gt; Sample 49 - 83712 reads in 5694 unique sequences.
+#&gt; Sample 50 - 65605 reads in 5020 unique sequences.
+#&gt; Sample 51 - 120519 reads in 8416 unique sequences.
+#&gt; Sample 52 - 91230 reads in 6685 unique sequences.
+#&gt; Sample 53 - 105343 reads in 6683 unique sequences.
+#&gt; Sample 54 - 95711 reads in 6847 unique sequences.
+#&gt; Sample 55 - 23778 reads in 2618 unique sequences.
+#&gt; Sample 56 - 61644 reads in 4903 unique sequences.
+#&gt; Sample 57 - 100885 reads in 5821 unique sequences.
+#&gt; Sample 58 - 53540 reads in 4500 unique sequences.
+#&gt; Sample 59 - 61227 reads in 5157 unique sequences.
+#&gt; Sample 60 - 38705 reads in 3495 unique sequences.
+#&gt; Sample 61 - 73178 reads in 4775 unique sequences.
+#&gt; Sample 62 - 88770 reads in 6857 unique sequences.
+#&gt; Sample 63 - 95226 reads in 6404 unique sequences.
+#&gt; Sample 64 - 81273 reads in 5971 unique sequences.
+#&gt; Sample 65 - 104297 reads in 6893 unique sequences.
+#&gt; Sample 66 - 67016 reads in 4628 unique sequences.
+#&gt; Sample 67 - 45497 reads in 3738 unique sequences.
+#&gt; Sample 68 - 34725 reads in 3152 unique sequences.
+#&gt; Sample 69 - 27993 reads in 2958 unique sequences.
+#&gt; Sample 70 - 78087 reads in 5863 unique sequences.
+#&gt; Sample 71 - 86625 reads in 6852 unique sequences.
+#&gt; Sample 72 - 70246 reads in 5591 unique sequences.
+#&gt; Sample 73 - 38941 reads in 3813 unique sequences.
+#&gt; Sample 74 - 66999 reads in 5280 unique sequences.
+#&gt; Sample 75 - 88560 reads in 6612 unique sequences.
+#&gt; Sample 76 - 87663 reads in 6010 unique sequences.
+#&gt; Sample 77 - 79991 reads in 6059 unique sequences.
+#&gt; Sample 78 - 97182 reads in 6687 unique sequences.
+#&gt; Sample 79 - 61489 reads in 5473 unique sequences.
+#&gt; Sample 80 - 48628 reads in 4322 unique sequences.
+#&gt; Sample 81 - 66638 reads in 5540 unique sequences.
+#&gt; Sample 82 - 68799 reads in 5735 unique sequences.
+#&gt; Sample 83 - 89866 reads in 5665 unique sequences.
+#&gt; Sample 84 - 80522 reads in 6057 unique sequences.
+#&gt; Sample 85 - 4824 reads in 319 unique sequences.
+#&gt; Sample 86 - 49185 reads in 4062 unique sequences.
+#&gt; Sample 87 - 85803 reads in 6111 unique sequences.
+#&gt; Sample 88 - 112796 reads in 8017 unique sequences.
+#&gt; Sample 89 - 117994 reads in 8282 unique sequences.
+#&gt; Sample 90 - 59343 reads in 4683 unique sequences.
+#&gt; Sample 91 - 177694 reads in 16533 unique sequences.
+#&gt; Sample 92 - 91067 reads in 4404 unique sequences.
+#&gt; Sample 93 - 88728 reads in 3049 unique sequences.
+#&gt; Sample 94 - 111763 reads in 3283 unique sequences.
+#&gt; Sample 95 - 84576 reads in 2982 unique sequences.
+#&gt; Sample 96 - 3710 reads in 523 unique sequences.
+#&gt; 
+#&gt;    selfConsist step 2Sample 1 - 65448 reads in 6930 unique sequences.
+#&gt; Sample 2 - 119160 reads in 11140 unique sequences.
+#&gt; Sample 3 - 100523 reads in 8995 unique sequences.
+#&gt; Sample 4 - 95597 reads in 9606 unique sequences.
+#&gt; Sample 5 - 93885 reads in 8188 unique sequences.
+#&gt; Sample 6 - 156812 reads in 13259 unique sequences.
+#&gt; Sample 7 - 172460 reads in 14446 unique sequences.
+#&gt; Sample 8 - 75172 reads in 8646 unique sequences.
+#&gt; Sample 9 - 112189 reads in 8807 unique sequences.
+#&gt; Sample 10 - 101786 reads in 9200 unique sequences.
+#&gt; Sample 11 - 69304 reads in 5726 unique sequences.
+#&gt; Sample 12 - 94969 reads in 7484 unique sequences.
+#&gt; Sample 13 - 79630 reads in 6830 unique sequences.
+#&gt; Sample 14 - 77101 reads in 7140 unique sequences.
+#&gt; Sample 15 - 60255 reads in 6066 unique sequences.
+#&gt; Sample 16 - 97042 reads in 7874 unique sequences.
+#&gt; Sample 17 - 70579 reads in 7541 unique sequences.
+#&gt; Sample 18 - 159097 reads in 11461 unique sequences.
+#&gt; Sample 19 - 181698 reads in 13749 unique sequences.
+#&gt; Sample 20 - 77664 reads in 6483 unique sequences.
+#&gt; Sample 21 - 93618 reads in 6418 unique sequences.
+#&gt; Sample 22 - 88251 reads in 7713 unique sequences.
+#&gt; Sample 23 - 109799 reads in 11118 unique sequences.
+#&gt; Sample 24 - 77277 reads in 7216 unique sequences.
+#&gt; Sample 25 - 61529 reads in 7189 unique sequences.
+#&gt; Sample 26 - 114411 reads in 10504 unique sequences.
+#&gt; Sample 27 - 86825 reads in 8018 unique sequences.
+#&gt; Sample 28 - 100938 reads in 10309 unique sequences.
+#&gt; Sample 29 - 138388 reads in 8275 unique sequences.
+#&gt; Sample 30 - 121190 reads in 12088 unique sequences.
+#&gt; Sample 31 - 48321 reads in 6327 unique sequences.
+#&gt; Sample 32 - 74978 reads in 8381 unique sequences.
+#&gt; Sample 33 - 88192 reads in 10206 unique sequences.
+#&gt; Sample 34 - 59488 reads in 7697 unique sequences.
+#&gt; Sample 35 - 56798 reads in 6488 unique sequences.
+#&gt; Sample 36 - 4701 reads in 558 unique sequences.
+#&gt; Sample 37 - 123886 reads in 13134 unique sequences.
+#&gt; Sample 38 - 114778 reads in 11552 unique sequences.
+#&gt; Sample 39 - 89279 reads in 9599 unique sequences.
+#&gt; Sample 40 - 130957 reads in 14202 unique sequences.
+#&gt; Sample 41 - 95941 reads in 8125 unique sequences.
+#&gt; Sample 42 - 98169 reads in 10337 unique sequences.
+#&gt; Sample 43 - 37066 reads in 4795 unique sequences.
+#&gt; Sample 44 - 54188 reads in 6598 unique sequences.
+#&gt; Sample 45 - 49635 reads in 7092 unique sequences.
+#&gt; Sample 46 - 112161 reads in 11980 unique sequences.
+#&gt; Sample 47 - 56984 reads in 6673 unique sequences.
+#&gt; Sample 48 - 54202 reads in 6559 unique sequences.
+#&gt; Sample 49 - 83712 reads in 8368 unique sequences.
+#&gt; Sample 50 - 65605 reads in 8323 unique sequences.
+#&gt; Sample 51 - 120519 reads in 12104 unique sequences.
+#&gt; Sample 52 - 91230 reads in 9993 unique sequences.
+#&gt; Sample 53 - 105343 reads in 12323 unique sequences.
+#&gt; Sample 54 - 95711 reads in 10181 unique sequences.
+#&gt; Sample 55 - 23778 reads in 3690 unique sequences.
+#&gt; Sample 56 - 61644 reads in 6902 unique sequences.
+#&gt; Sample 57 - 100885 reads in 8843 unique sequences.
+#&gt; Sample 58 - 53540 reads in 6355 unique sequences.
+#&gt; Sample 59 - 61227 reads in 7515 unique sequences.
+#&gt; Sample 60 - 38705 reads in 5075 unique sequences.
+#&gt; Sample 61 - 73178 reads in 7442 unique sequences.
+#&gt; Sample 62 - 88770 reads in 10089 unique sequences.
+#&gt; Sample 63 - 95226 reads in 9272 unique sequences.
+#&gt; Sample 64 - 81273 reads in 8694 unique sequences.
+#&gt; Sample 65 - 104297 reads in 10830 unique sequences.
+#&gt; Sample 66 - 67016 reads in 6563 unique sequences.
+#&gt; Sample 67 - 45497 reads in 6175 unique sequences.
+#&gt; Sample 68 - 34725 reads in 4881 unique sequences.
+#&gt; Sample 69 - 27993 reads in 4327 unique sequences.
+#&gt; Sample 70 - 78087 reads in 8959 unique sequences.
+#&gt; Sample 71 - 86625 reads in 9790 unique sequences.
+#&gt; Sample 72 - 70246 reads in 7833 unique sequences.
+#&gt; Sample 73 - 38941 reads in 5987 unique sequences.
+#&gt; Sample 74 - 66999 reads in 7357 unique sequences.
+#&gt; Sample 75 - 88560 reads in 9136 unique sequences.
+#&gt; Sample 76 - 87663 reads in 9192 unique sequences.
+#&gt; Sample 77 - 79991 reads in 10162 unique sequences.
+#&gt; Sample 78 - 97182 reads in 10146 unique sequences.
+#&gt; Sample 79 - 61489 reads in 7489 unique sequences.
+#&gt; Sample 80 - 48628 reads in 6058 unique sequences.
+#&gt; Sample 81 - 66638 reads in 8953 unique sequences.
+#&gt; Sample 82 - 68799 reads in 9123 unique sequences.
+#&gt; Sample 83 - 89866 reads in 8589 unique sequences.
+#&gt; Sample 84 - 80522 reads in 8915 unique sequences.
+#&gt; Sample 85 - 4824 reads in 586 unique sequences.
+#&gt; Sample 86 - 49185 reads in 5891 unique sequences.
+#&gt; Sample 87 - 85803 reads in 8994 unique sequences.
+#&gt; Sample 88 - 112796 reads in 12151 unique sequences.
+#&gt; Sample 89 - 117994 reads in 11719 unique sequences.
+#&gt; Sample 90 - 59343 reads in 6868 unique sequences.
+#&gt; Sample 91 - 177694 reads in 19587 unique sequences.
+#&gt; Sample 92 - 91067 reads in 6673 unique sequences.
+#&gt; Sample 93 - 88728 reads in 6699 unique sequences.
+#&gt; Sample 94 - 111763 reads in 10166 unique sequences.
+#&gt; Sample 95 - 84576 reads in 7811 unique sequences.
+#&gt; Sample 96 - 3710 reads in 797 unique sequences.
+#&gt; 
+#&gt;    selfConsist step 2</code></pre>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='fu'><a href='https://rdrr.io/r/base/readRDS.html'>saveRDS</a></span><span class='op'>(</span><span class='va'>dadas</span>, <span class='fu'><a href='https://rdrr.io/r/base/file.path.html'>file.path</a></span><span class='op'>(</span><span class='va'>results_path</span>, <span class='st'>"dadas-2.Rds"</span><span class='op'>)</span><span class='op'>)</span>
+</code></pre>
+</div>
+</div>
+<p>Check the results:</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>dadas</span><span class='op'>[[</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>]</span><span class='op'>[[</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>]</span>
+</code></pre>
+</div>
+<pre><code>#&gt; dada-class: object describing DADA2 denoising results
+#&gt; 157 sequence variants were inferred from 4697 input unique sequences.
+#&gt; Key parameters: OMEGA_A = 1e-40, OMEGA_C = 2, BAND_SIZE = 16</code></pre>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='fu'><a href='https://rdrr.io/r/utils/head.html'>head</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/pkg/dada2/man/getSequences.html'>getSequences</a></span><span class='op'>(</span><span class='va'>dadas</span><span class='op'>[[</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>]</span><span class='op'>[[</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>]</span><span class='op'>)</span>, <span class='fl'>2</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; [1] &quot;TACGGAGGATCCGAGCGTTATCCGGATTTATTGGGTTTAAAGGGAGCGTAGGTGGATTGTTAAGTCAGTTGTGAAAGTTTGCGGCTCAACCGTAAAATTGCAGTTGAAACTGGCAGTCTTGAGTACAGTAGAGGTGGGCGGAATT&quot;
+#&gt; [2] &quot;TACAGAGGTCTCAAGCGTTGTTCGGAATCACTGGGCGTAAAGCGTGCGTAGGCTGTTTCGTAAGTCGTGTGTGAAAGGCGCGGGCTCAACCCGCGGACGGCACATGATACTGCGAGACTAGAGTAATGGAGGGGGAACCGGAATT&quot;</code></pre>
+</div>
+<p>Merge paired reads,</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>mergers</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/pkg/dada2/man/mergePairs.html'>mergePairs</a></span><span class='op'>(</span>
+  <span class='va'>dadas</span><span class='op'>[[</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>]</span>, <span class='va'>path_filt</span><span class='op'>[[</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>]</span>, 
+  <span class='va'>dadas</span><span class='op'>[[</span><span class='fl'>2</span><span class='op'>]</span><span class='op'>]</span>, <span class='va'>path_filt</span><span class='op'>[[</span><span class='fl'>2</span><span class='op'>]</span><span class='op'>]</span>,
+  verbose <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>
+<span class='fu'><a href='https://rdrr.io/r/base/readRDS.html'>saveRDS</a></span><span class='op'>(</span><span class='va'>mergers</span>, <span class='fu'><a href='https://rdrr.io/r/base/file.path.html'>file.path</a></span><span class='op'>(</span><span class='va'>results_path</span>, <span class='st'>"mergers-2.Rds"</span><span class='op'>)</span><span class='op'>)</span>
+</code></pre>
+</div>
+</div>
+<p>Construct sequence table</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>seqtab</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/pkg/dada2/man/makeSequenceTable.html'>makeSequenceTable</a></span><span class='op'>(</span><span class='va'>mergers</span><span class='op'>)</span>
+<span class='fu'><a href='https://rdrr.io/r/base/readRDS.html'>saveRDS</a></span><span class='op'>(</span><span class='va'>seqtab</span>, <span class='fu'><a href='https://rdrr.io/r/base/file.path.html'>file.path</a></span><span class='op'>(</span><span class='va'>results_path</span>, <span class='st'>"seqtab-2.Rds"</span><span class='op'>)</span><span class='op'>)</span>
+<span class='fu'><a href='https://rdrr.io/r/base/dim.html'>dim</a></span><span class='op'>(</span><span class='va'>seqtab</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; [1]    96 13613</code></pre>
+</div>
+<p>Inspect distribution of sequence lengths</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='fu'><a href='https://rdrr.io/r/base/table.html'>table</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/nchar.html'>nchar</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/pkg/dada2/man/getSequences.html'>getSequences</a></span><span class='op'>(</span><span class='va'>seqtab</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; 
+#&gt;   171   223   225   248   252   253   254   255   257   274   277 
+#&gt;     1     1     1     1     7 13586    11     1     1     2     1</code></pre>
+</div>
+<p>Remove chimeras (with ‘pooled’ method)</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>seqtab.nochim</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/pkg/dada2/man/removeBimeraDenovo.html'>removeBimeraDenovo</a></span><span class='op'>(</span><span class='va'>seqtab</span>, method <span class='op'>=</span> <span class='st'>"pooled"</span>,
+    multithread <span class='op'>=</span> <span class='cn'>TRUE</span>, verbose <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; Identified 12137 bimeras out of 13613 input sequences.</code></pre>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='fu'><a href='https://rdrr.io/r/base/readRDS.html'>saveRDS</a></span><span class='op'>(</span><span class='va'>seqtab.nochim</span>, <span class='fu'><a href='https://rdrr.io/r/base/file.path.html'>file.path</a></span><span class='op'>(</span><span class='va'>results_path</span>, <span class='st'>"seqtab-nochim-2.Rds"</span><span class='op'>)</span><span class='op'>)</span>
+<span class='fu'><a href='https://rdrr.io/r/base/dim.html'>dim</a></span><span class='op'>(</span><span class='va'>seqtab.nochim</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; [1]   96 1476</code></pre>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='va'>seqtab.nochim</span><span class='op'>)</span> <span class='op'>/</span> <span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='va'>seqtab</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; [1] 0.8458642</code></pre>
+</div>
+<p>Track reads through the pipeline,</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>getN</span> <span class='op'>&lt;-</span> <span class='kw'>function</span><span class='op'>(</span><span class='va'>x</span><span class='op'>)</span> <span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/pkg/dada2/man/getUniques.html'>getUniques</a></span><span class='op'>(</span><span class='va'>x</span><span class='op'>)</span><span class='op'>)</span>
+<span class='va'>track</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/cbind.html'>cbind</a></span><span class='op'>(</span><span class='va'>out</span>, <span class='fu'><a href='https://rdrr.io/r/base/lapply.html'>sapply</a></span><span class='op'>(</span><span class='va'>dadas</span><span class='op'>[[</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>]</span>, <span class='va'>getN</span><span class='op'>)</span>, <span class='fu'><a href='https://rdrr.io/r/base/lapply.html'>sapply</a></span><span class='op'>(</span><span class='va'>dadas</span><span class='op'>[[</span><span class='fl'>2</span><span class='op'>]</span><span class='op'>]</span>, <span class='va'>getN</span><span class='op'>)</span>, 
+    <span class='fu'><a href='https://rdrr.io/r/base/lapply.html'>sapply</a></span><span class='op'>(</span><span class='va'>mergers</span>, <span class='va'>getN</span><span class='op'>)</span>, <span class='fu'><a href='https://rdrr.io/r/base/colSums.html'>rowSums</a></span><span class='op'>(</span><span class='va'>seqtab.nochim</span><span class='op'>)</span><span class='op'>)</span>
+<span class='fu'><a href='https://rdrr.io/r/base/colnames.html'>colnames</a></span><span class='op'>(</span><span class='va'>track</span><span class='op'>)</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"input"</span>, <span class='st'>"filtered"</span>, <span class='st'>"denoised_r1"</span>, <span class='st'>"denoised_r2"</span>, <span class='st'>"merged"</span>,
+    <span class='st'>"nochim"</span><span class='op'>)</span>
+<span class='fu'><a href='https://rdrr.io/r/base/colnames.html'>rownames</a></span><span class='op'>(</span><span class='va'>track</span><span class='op'>)</span> <span class='op'>&lt;-</span> <span class='va'>ftb</span><span class='op'>$</span><span class='va'>sample_id</span>
+<span class='va'>track</span> <span class='op'>&lt;-</span> <span class='fu'>as_tibble</span><span class='op'>(</span><span class='va'>track</span>, rownames <span class='op'>=</span> <span class='st'>"sample_id"</span><span class='op'>)</span>
+<span class='fu'>write_csv</span><span class='op'>(</span><span class='va'>track</span>, <span class='fu'><a href='https://rdrr.io/r/base/file.path.html'>file.path</a></span><span class='op'>(</span><span class='va'>results_path</span>, <span class='st'>"track-2.csv"</span><span class='op'>)</span><span class='op'>)</span>
+<span class='fu'><a href='https://rdrr.io/r/utils/head.html'>head</a></span><span class='op'>(</span><span class='va'>track</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; # A tibble: 6 × 7
+#&gt;   sample_id       input filtered denoised_r1 denoised_r2 merged nochim
+#&gt;   &lt;chr&gt;           &lt;dbl&gt;    &lt;dbl&gt;       &lt;dbl&gt;       &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;
+#&gt; 1 A1_2021_F1_D0…  65860    65448       56953       53833  49231  38926
+#&gt; 2 A1_2021_F1_D0… 120004   119160      105998       99343  92118  75238
+#&gt; 3 A1_2021_F1_D0… 101072   100523       89458       84665  78270  61601
+#&gt; 4 A1_2021_F1_D0…  96217    95597       85463       78493  73149  60683
+#&gt; 5 A1_2021_F1_D1…  94447    93885       83384       79319  73320  61523
+#&gt; 6 A1_2021_F1_D1… 157792   156812      141164      131686 123299 106007</code></pre>
+</div>
+<h2 id="session-info">Session info</h2>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='fu'>sessioninfo</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/sessioninfo/man/session_info.html'>session_info</a></span><span class='op'>(</span><span class='op'>)</span>
+</code></pre>
+</div>
+<pre><code>#&gt; ─ Session info ─────────────────────────────────────────────────────
+#&gt;  setting  value                       
+#&gt;  version  R version 4.1.1 (2021-08-10)
+#&gt;  os       Arch Linux                  
+#&gt;  system   x86_64, linux-gnu           
+#&gt;  ui       X11                         
+#&gt;  language (EN)                        
+#&gt;  collate  en_US.UTF-8                 
+#&gt;  ctype    en_US.UTF-8                 
+#&gt;  tz       America/New_York            
+#&gt;  date     2021-09-18                  
+#&gt; 
+#&gt; ─ Packages ─────────────────────────────────────────────────────────
+#&gt;  package              * version  date       lib
+#&gt;  assertthat             0.2.1    2019-03-21 [2]
+#&gt;  backports              1.2.1    2020-12-09 [2]
+#&gt;  Biobase                2.52.0   2021-05-19 [2]
+#&gt;  BiocGenerics           0.38.0   2021-05-19 [2]
+#&gt;  BiocParallel           1.26.1   2021-07-04 [2]
+#&gt;  Biostrings             2.60.1   2021-06-06 [2]
+#&gt;  bit                    4.0.4    2020-08-04 [2]
+#&gt;  bit64                  4.0.5    2020-08-30 [2]
+#&gt;  bitops                 1.0-7    2021-04-24 [2]
+#&gt;  blob                   1.2.2    2021-07-23 [2]
+#&gt;  broom                  0.7.9    2021-07-27 [2]
+#&gt;  bslib                  0.2.5.1  2021-05-18 [2]
+#&gt;  cachem                 1.0.5    2021-05-15 [2]
+#&gt;  callr                  3.7.0    2021-04-20 [2]
+#&gt;  cellranger             1.1.0    2016-07-27 [2]
+#&gt;  cli                    3.0.1    2021-07-17 [2]
+#&gt;  colorspace             2.0-2    2021-08-11 [2]
+#&gt;  crayon                 1.4.1    2021-02-08 [2]
+#&gt;  dada2                * 1.18.0   2021-09-18 [1]
+#&gt;  DBI                    1.1.1    2021-01-15 [2]
+#&gt;  dbplyr                 2.1.1    2021-04-06 [2]
+#&gt;  DECIPHER               2.20.0   2021-05-19 [2]
+#&gt;  DelayedArray           0.18.0   2021-05-19 [2]
+#&gt;  desc                   1.3.0    2021-03-05 [2]
+#&gt;  devtools               2.4.2    2021-06-07 [2]
+#&gt;  digest                 0.6.27   2020-10-24 [2]
+#&gt;  distill                1.2      2021-01-13 [2]
+#&gt;  downlit                0.2.1    2020-11-04 [2]
+#&gt;  dplyr                * 1.0.7    2021-06-18 [2]
+#&gt;  ellipsis               0.3.2    2021-04-29 [2]
+#&gt;  evaluate               0.14     2019-05-28 [2]
+#&gt;  fansi                  0.5.0    2021-05-25 [2]
+#&gt;  farver                 2.1.0    2021-02-28 [2]
+#&gt;  fastmap                1.1.0    2021-01-25 [2]
+#&gt;  forcats              * 0.5.1    2021-01-27 [2]
+#&gt;  fs                   * 1.5.0    2020-07-31 [2]
+#&gt;  generics               0.1.0    2020-10-31 [2]
+#&gt;  GenomeInfoDb           1.28.1   2021-07-01 [2]
+#&gt;  GenomeInfoDbData       1.2.6    2021-05-31 [2]
+#&gt;  GenomicAlignments      1.28.0   2021-05-19 [2]
+#&gt;  GenomicRanges          1.44.0   2021-05-19 [2]
+#&gt;  ggplot2              * 3.3.5    2021-06-25 [2]
+#&gt;  glue                   1.4.2    2020-08-27 [2]
+#&gt;  gtable                 0.3.0    2019-03-25 [2]
+#&gt;  haven                  2.4.1    2021-04-23 [2]
+#&gt;  here                 * 1.0.1    2020-12-13 [2]
+#&gt;  highr                  0.9      2021-04-16 [2]
+#&gt;  hms                    1.1.0    2021-05-17 [2]
+#&gt;  htmltools              0.5.1.1  2021-01-22 [2]
+#&gt;  httr                   1.4.2    2020-07-20 [2]
+#&gt;  hwriter                1.3.2    2014-09-10 [2]
+#&gt;  import                 1.2.0    2020-09-24 [2]
+#&gt;  IRanges                2.26.0   2021-05-19 [2]
+#&gt;  jpeg                   0.1-9    2021-07-24 [2]
+#&gt;  jquerylib              0.1.4    2021-04-26 [2]
+#&gt;  jsonlite               1.7.2    2020-12-09 [2]
+#&gt;  knitr                  1.33     2021-04-24 [2]
+#&gt;  labeling               0.4.2    2020-10-20 [2]
+#&gt;  lattice                0.20-44  2021-05-02 [3]
+#&gt;  latticeExtra           0.6-29   2019-12-19 [2]
+#&gt;  lifecycle              1.0.0    2021-02-15 [2]
+#&gt;  lubridate              1.7.10   2021-02-26 [2]
+#&gt;  magrittr               2.0.1    2020-11-17 [2]
+#&gt;  Matrix                 1.3-4    2021-06-01 [3]
+#&gt;  MatrixGenerics         1.4.0    2021-05-19 [2]
+#&gt;  matrixStats            0.60.0   2021-07-26 [2]
+#&gt;  memoise                2.0.0    2021-01-26 [2]
+#&gt;  modelr                 0.1.8    2020-05-19 [2]
+#&gt;  munsell                0.5.0    2018-06-12 [2]
+#&gt;  nvimcom              * 0.9-102  2021-08-10 [2]
+#&gt;  pillar                 1.6.2    2021-07-29 [2]
+#&gt;  pkgbuild               1.2.0    2020-12-15 [2]
+#&gt;  pkgconfig              2.0.3    2019-09-22 [2]
+#&gt;  pkgload                1.2.1    2021-04-06 [2]
+#&gt;  plyr                   1.8.6    2020-03-03 [2]
+#&gt;  png                    0.1-7    2013-12-03 [2]
+#&gt;  prettyunits            1.1.1    2020-01-24 [2]
+#&gt;  processx               3.5.2    2021-04-30 [2]
+#&gt;  ps                     1.6.0    2021-02-28 [2]
+#&gt;  purrr                * 0.3.4    2020-04-17 [2]
+#&gt;  R6                     2.5.0    2020-10-28 [2]
+#&gt;  ragg                   1.1.3    2021-06-09 [2]
+#&gt;  RColorBrewer           1.1-2    2014-12-07 [2]
+#&gt;  Rcpp                 * 1.0.7    2021-07-07 [2]
+#&gt;  RcppParallel           5.1.4    2021-05-04 [2]
+#&gt;  RCurl                  1.98-1.3 2021-03-16 [2]
+#&gt;  readr                * 2.0.0    2021-07-20 [2]
+#&gt;  readxl                 1.3.1    2019-03-13 [2]
+#&gt;  remotes                2.4.0    2021-06-02 [2]
+#&gt;  reprex                 2.0.0    2021-04-02 [2]
+#&gt;  reshape2               1.4.4    2020-04-09 [2]
+#&gt;  rlang                  0.4.11   2021-04-30 [2]
+#&gt;  rmarkdown            * 2.9      2021-06-15 [2]
+#&gt;  rprojroot              2.0.2    2020-11-15 [2]
+#&gt;  Rsamtools              2.8.0    2021-05-19 [2]
+#&gt;  RSQLite                2.2.7    2021-04-22 [2]
+#&gt;  rstudioapi             0.13     2020-11-12 [2]
+#&gt;  rvest                  1.0.1    2021-07-26 [2]
+#&gt;  S4Vectors              0.30.0   2021-05-19 [2]
+#&gt;  sass                   0.4.0    2021-05-12 [2]
+#&gt;  scales                 1.1.1    2020-05-11 [2]
+#&gt;  sessioninfo            1.1.1    2018-11-05 [2]
+#&gt;  ShortRead              1.50.0   2021-05-19 [2]
+#&gt;  stringi                1.7.3    2021-07-16 [2]
+#&gt;  stringr              * 1.4.0    2019-02-10 [2]
+#&gt;  SummarizedExperiment   1.22.0   2021-05-19 [2]
+#&gt;  systemfonts            1.0.2    2021-05-11 [2]
+#&gt;  testthat               3.0.4    2021-07-01 [2]
+#&gt;  textshaping            0.3.5    2021-06-09 [2]
+#&gt;  tibble               * 3.1.3    2021-07-23 [2]
+#&gt;  tidyr                * 1.1.3    2021-03-03 [2]
+#&gt;  tidyselect             1.1.1    2021-04-30 [2]
+#&gt;  tidyverse            * 1.3.1    2021-04-15 [2]
+#&gt;  tzdb                   0.1.2    2021-07-20 [2]
+#&gt;  usethis                2.0.1    2021-02-10 [2]
+#&gt;  utf8                   1.2.2    2021-07-24 [2]
+#&gt;  vctrs                  0.3.8    2021-04-29 [2]
+#&gt;  vroom                  1.5.3    2021-07-14 [2]
+#&gt;  withr                  2.4.2    2021-04-18 [2]
+#&gt;  xfun                   0.24     2021-06-15 [2]
+#&gt;  xml2                   1.3.2    2020-04-23 [2]
+#&gt;  XVector                0.32.0   2021-05-19 [2]
+#&gt;  yaml                   2.2.1    2020-02-01 [2]
+#&gt;  zlibbioc               1.38.0   2021-05-19 [2]
+#&gt;  source                         
+#&gt;  CRAN (R 4.0.0)                 
+#&gt;  CRAN (R 4.0.3)                 
+#&gt;  Bioconductor                   
+#&gt;  Bioconductor                   
+#&gt;  Bioconductor                   
+#&gt;  Bioconductor                   
+#&gt;  CRAN (R 4.0.2)                 
+#&gt;  CRAN (R 4.0.2)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.0.0)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  R-Forge (R 4.1.1)              
+#&gt;  CRAN (R 4.0.4)                 
+#&gt;  Github (benjjneb/dada2@a20a676)
+#&gt;  CRAN (R 4.0.4)                 
+#&gt;  CRAN (R 4.0.5)                 
+#&gt;  Bioconductor                   
+#&gt;  Bioconductor                   
+#&gt;  CRAN (R 4.0.4)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.0.3)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.0.3)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.0.0)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.0.4)                 
+#&gt;  CRAN (R 4.0.4)                 
+#&gt;  CRAN (R 4.0.4)                 
+#&gt;  CRAN (R 4.0.2)                 
+#&gt;  CRAN (R 4.0.3)                 
+#&gt;  Bioconductor                   
+#&gt;  Bioconductor                   
+#&gt;  Bioconductor                   
+#&gt;  Bioconductor                   
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.0.2)                 
+#&gt;  CRAN (R 4.0.0)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.0.5)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.0.3)                 
+#&gt;  CRAN (R 4.0.2)                 
+#&gt;  CRAN (R 4.0.0)                 
+#&gt;  CRAN (R 4.0.2)                 
+#&gt;  Bioconductor                   
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.0.3)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.0.3)                 
+#&gt;  CRAN (R 4.1.1)                 
+#&gt;  CRAN (R 4.0.0)                 
+#&gt;  CRAN (R 4.0.4)                 
+#&gt;  CRAN (R 4.0.4)                 
+#&gt;  CRAN (R 4.0.3)                 
+#&gt;  CRAN (R 4.1.1)                 
+#&gt;  Bioconductor                   
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.0.4)                 
+#&gt;  CRAN (R 4.0.0)                 
+#&gt;  CRAN (R 4.0.0)                 
+#&gt;  local                          
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.0.3)                 
+#&gt;  CRAN (R 4.0.0)                 
+#&gt;  CRAN (R 4.0.5)                 
+#&gt;  CRAN (R 4.0.0)                 
+#&gt;  CRAN (R 4.0.0)                 
+#&gt;  CRAN (R 4.0.0)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.0.4)                 
+#&gt;  CRAN (R 4.0.0)                 
+#&gt;  CRAN (R 4.0.3)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.0.0)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.0.5)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.0.0)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.0.5)                 
+#&gt;  CRAN (R 4.0.0)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.0.3)                 
+#&gt;  Bioconductor                   
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.0.3)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  Bioconductor                   
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.0.0)                 
+#&gt;  CRAN (R 4.0.0)                 
+#&gt;  Bioconductor                   
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.0.0)                 
+#&gt;  Bioconductor                   
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.0.4)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.0.4)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.0.5)                 
+#&gt;  CRAN (R 4.1.0)                 
+#&gt;  CRAN (R 4.0.0)                 
+#&gt;  Bioconductor                   
+#&gt;  CRAN (R 4.0.0)                 
+#&gt;  Bioconductor                   
+#&gt; 
+#&gt; [1] /home/michael/research/vivo-vitro/lib/R/library-for-dada2-1.18.0
+#&gt; [2] /home/michael/.local/lib/R/library
+#&gt; [3] /usr/lib/R/library</code></pre>
+</div>
+<div class="sourceCode" id="cb44"><pre class="sourceCode r distill-force-highlighting-css"><code class="sourceCode r"></code></pre></div>
+<!--radix_placeholder_article_footer-->
+<!--/radix_placeholder_article_footer-->
+</div>
+
+<div class="d-appendix">
+</div>
+
+
+<!--radix_placeholder_site_after_body-->
+<!--/radix_placeholder_site_after_body-->
+<!--radix_placeholder_appendices-->
+<div class="appendix-bottom"></div>
+<!--/radix_placeholder_appendices-->
+<!--radix_placeholder_navigation_after_body-->
+<!--/radix_placeholder_navigation_after_body-->
+
+</body>
+
+</html>
