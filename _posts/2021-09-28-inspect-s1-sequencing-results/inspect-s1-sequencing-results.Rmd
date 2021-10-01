@@ -1,0 +1,313 @@
+---
+title: "Inspect S1 sequencing and qPCR results"
+description: |
+
+author:
+  - name: Michael R. McLaren
+categories:
+  - 2021 experiment
+date: "2021-09-28"
+output:
+  distill::distill_article:
+    self_contained: false
+    toc: true
+---
+
+```{r, include = FALSE}
+# knitr chunk options
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  cache = FALSE,
+  include = TRUE, echo = TRUE,
+  warning = TRUE, message = TRUE, 
+  fig.width = 7, fig.height = 7
+)
+```
+
+
+```{r}
+library(tidyverse)
+library(here)
+library(fs)
+# library(tabulizer)
+
+library(cowplot)
+library(patchwork)
+theme_set(theme_cowplot())
+import::from(colorblindr, scale_color_OkabeIto, scale_fill_OkabeIto)
+```
+
+Note, to successfully install tabulizer I needed to switch from OpenJDK 8 to OpenJDK 11.
+
+# load data
+
+## Sample data
+
+```{r}
+sam <- here('data/2021/', 'sample-data', 'dna-sample-data.csv') %>%
+  read_csv
+```
+
+## Import the PicoGreen DNA concentration measurements
+
+These were provided as tables in pdf files.
+Let's try to use the R package tabulizer to read these tables into R.
+
+
+```{r}
+pcg <- here('data/2021/s1', 
+  c('NCSUMclaren_Plate_0002 PicoGreen QC.pdf', 
+    'NCSUMclaren_Plate_0003 PicoGreen QC.pdf'
+  )
+) %>%
+  map(tabulizer::extract_tables, output = 'data.frame') %>%
+  map(1) %>% 
+  map(as_tibble) %>%
+  bind_rows(.id = 'plate') %>%
+  janitor::clean_names()
+```
+
+```{r}
+pcg %>%
+  filter(sample_id == 'Empty') %>%
+  count(concentration_ng_ul)
+pcg %>% filter(sample_id == '')
+```
+
+```{r}
+pcg1 <- pcg %>%
+  filter(!(sample_id %in% c('Empty', ''))) %>%
+  rename(
+    dna_sample_id = sample_id,
+    dna_conc = concentration_ng_ul, 
+    well3 = well,
+  ) %>%
+  mutate(
+    dna_conc = case_when(
+      dna_conc == 'Undetected' ~ '0',
+      TRUE ~ dna_conc
+    ),
+    across(dna_conc, as.numeric),
+    across(dna_sample_id, str_replace_all, '_', '-')
+  )
+```
+
+
+
+## qPCR results
+
+```{r}
+qpcr <- here('data/2021/s1', 
+  c('NCSUMcLaren_Plate_0002_AbsQuant.csv', 
+    'NCSUMcLaren_Plate_0003_AbsQuant.csv')) %>%
+  map(read_csv) %>%
+  bind_rows(.id = 'plate') %>%
+  janitor::clean_names()
+```
+
+```{r}
+qpcr %>%
+  count(plate, fk_plate_id)
+```
+
+```{r}
+qpcr %>% filter(!is.na(sample_id) & is.na(c_copies))
+```
+
+These three samples have no qPCR measurements; these are all high-dilution fecal samples.
+My guess is that the 16s CN was below detection limit, or otherwise the qPCR failed due to low CN.
+Confirm with Eric, and ask if he has any info on what the detection limit is.
+
+Should ask exactly what the 'c_copies' and 'c_cv' files are; cv is presumably coefficient of variation - is this the standard error in 'c_copies' divided by 'c_copies'?
+I think that the estimated copies are per a specific volume - should check which, which I think came up in the email thread.
+
+todo: do more checks, such as that the right samples are in the right plates
+
+```{r}
+qpcr1 <- qpcr %>%
+  filter(!is.na(sample_id)) %>%
+  rename(
+    dna_sample_id = sample_id,
+    well3 = sample_well_three_character,
+    qpcr_copies = c_copies, 
+    qpcr_cv = c_cv
+  ) %>%
+  mutate(
+    across(dna_sample_id, str_replace_all, '_', '-'),
+  ) %>%
+  replace_na(list(qpcr_copies = 0)) %>%
+  select(-fk_plate_id)
+```
+
+## Reads
+
+
+```{r}
+overview <- here('data/2021/s1', 'sample_overview.txt') %>%
+  read_tsv %>%
+  janitor::clean_names()
+```
+
+note, only 89 samples; some were not processed in their pipeline due to insufficient reads / quality.
+
+might be better to instead calculate the reads w/ a tool; I think I have some code to do this with the shortread package somewhere.
+
+```{r}
+overview1 <- overview %>%
+  select(
+    dna_sample_id = sample_id,
+    read_depth
+  ) %>%
+  mutate(
+    across(dna_sample_id, str_replace_all, '\\.', '-'),
+  )
+```
+
+
+## combine
+
+
+```{r}
+sam1 <- sam %>%
+  left_join(pcg1, by = 'dna_sample_id') %>%
+  left_join(qpcr1, by = c('plate', 'well3', 'dna_sample_id')) %>%
+  left_join(overview1, by = 'dna_sample_id')
+```
+
+# Analysis
+
+Compare qPCR and PicoGreen measurements
+
+```{r}
+sam1 %>% count(dilution_power)
+sam1 %>% count(specimen_type)
+```
+
+
+```{r}
+sam1 %>%
+  ggplot(aes(dna_conc + 3e-2, qpcr_copies + 1e5, color = specimen_type, 
+      label = dilution_power)) +
+  geom_text() +
+  scale_x_log10() +
+  scale_y_log10() +
+  scale_color_OkabeIto(order = c(1:3, 8), use_black = TRUE) +
+  theme_minimal_grid() +
+  coord_fixed(clip = 'off')
+```
+
+Good concordance. Note that there are three overplotted samples where no DNA was measured by either method.
+
+Compare qPCR values versus dilution for each specimen. 
+Note - we have replicate aliquots in all cases, so we'll want to first average over those.
+
+```{r}
+library(ggdist)
+```
+
+I'll just use the median; a better job might be to do a weighted geometric mean where we use the CV for the weights (though we have structure because of the two extraction protocols; it might be useful to not combine these actually...)
+
+```{r}
+x <- sam1 %>%
+  mutate(across(qpcr_copies, pmax, 1e5)) %>%
+  group_by(specimen_name, specimen_base_id, specimen_type, dilution_factor) %>%
+  point_interval(qpcr_copies, .width = 1)
+```
+
+
+```{r}
+x %>% 
+  # add horizontal jitter
+  mutate(across(dilution_factor, ~ . * 10^rnorm(n(), sd = 0.02))) %>%
+  ggplot(aes(dilution_factor, qpcr_copies, color = specimen_type)) +
+  geom_line(aes(group = specimen_base_id)) +
+  geom_pointinterval(aes(ymin = .lower, ymax = .upper), 
+    point_size = 2, interval_size = 1) +
+  scale_x_log10() +
+  scale_y_log10() +
+  scale_color_OkabeIto(order = c(1:3, 8), use_black = TRUE) +
+  theme_minimal_grid() +
+  coord_fixed(clip = 'off')
+```
+
+These results indicate that the DNA yield overall was quite linear in input.
+Should explore this further, perhaps breaking down by protocol.
+But looks very promising for the value of qPCR for relative changes in input concentration when the composition (relative abundances) is consistent.
+
+These results also suggest that adding feces had little impact on bacterial extraction yield.
+
+These results also show that we succeeded in our aim of getting the concentration s of the mock and fecal types to overlap; the lowest dilution of the mocks gets below the undiluted fecal samples.
+
+todo - investigate the outlier
+
+
+Note, these error bars are misleadingly long b/c of how I grouped by extraction protocol.
+
+todo: in this case we should use a geometric mean -
+
+```{r}
+x <- sam1 %>%
+  mutate(across(qpcr_copies, pmax, 1e5)) %>%
+  group_by(specimen_name, specimen_base_id, specimen_type, dilution_factor,
+    extraction_protocol) %>%
+  point_interval(qpcr_copies, .width = 1, .point = metacal::gm_mean)
+```
+
+```{r}
+x %>% 
+  # add horizontal jitter
+  # mutate(across(dilution_factor, ~ . * 10^rnorm(n(), sd = 0.02))) %>%
+  ggplot(aes(dilution_factor, qpcr_copies, color = specimen_type)) +
+  facet_wrap(~extraction_protocol, labeller = 'label_both') +
+  geom_line(aes(group = specimen_base_id)) +
+  geom_point() +
+  # geom_pointinterval(aes(ymin = .lower, ymax = .upper), 
+  #   point_size = 2, interval_size = 1) +
+  scale_x_log10() +
+  scale_y_log10() +
+  scale_color_OkabeIto(order = c(1:3, 8), use_black = TRUE) +
+  theme_minimal_grid() +
+  coord_fixed(clip = 'off')
+```
+
+Note, in this case the error bars are a bit distracting b/c we don't have replicates for many of the points, so I dropped them.
+
+
+here we can see that extraction protocol 2 shows saturation; while protocol 1 may show a drop off at low biomass; these were perhaps canceling each other out in our earlier plot combining the two.
+
+
+```{r, include = FALSE, eval = FALSE}
+ggsave('/tmp/s1-qpcr-vs-dilution.pdf', units = 'in', width = 6.8, height = 5,
+  scale = 1.0)
+```
+
+## Reads
+
+It is somewhat strange that the couple samples with substantial DNA failed.
+
+```{r}
+sam1 %>% 
+  filter(is.na(read_depth)) %>%
+  select(dna_sample_id, dilution_power, dna_conc, qpcr_copies, comments)
+```
+
+```{r}
+sam1 %>% 
+  arrange(read_depth) %>%
+  select(dna_sample_id, read_depth, dna_conc, qpcr_copies, comments) %>%
+  print(n=30)
+```
+
+Also interesting just how unrelated read depth seems to be with qpcr copies.
+
+Generally though it makes sense that these are primarily the samples with low concentrations, and it seems like the failure rate in terms of reads below 600K is generally low - its just the three samples F1-D0-4, M2N-D0-2, and M3F-D1-2 that had sufficient DNA (by picogreen) but weren't successfully sequenced; all others with sufficient DNA got 1M+ reads.
+
+## Session info {.appendix}
+
+<details><summary>Click for session info</summary>
+```{r, R.options = list(width = 83)}
+sessioninfo::session_info()
+```
+</details>
+
