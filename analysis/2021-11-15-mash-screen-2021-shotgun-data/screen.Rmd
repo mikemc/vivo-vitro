@@ -1,0 +1,84 @@
+
+```{r}
+library(here)
+library(tidyverse)
+library(fs)
+```
+
+
+```{r}
+sam <- here("data/2021/sample-data/dna-sample-data.csv") %>% 
+  read_csv %>%
+  mutate(across(c(dna_sample_id, specimen_name), str_replace_all, '-', '_')) %>%
+  glimpse
+```
+
+
+Get the file list for each sample type and sequencing center.
+```{r}
+x <- tibble(center_id =  c('s1', 's2')) %>%
+  mutate(
+    reads_dir = here('data/2021', center_id, 'reads/raw'),
+    reads_path = map(reads_dir, dir_ls, glob = '*.fastq.gz'),
+  ) %>%
+  unnest(reads_path) %>%
+  mutate(
+    reads_file = path_file(reads_path),
+    dna_sample_id = str_extract(reads_file, '^[:alnum:]+_[:alnum:]+_[:alnum:]+')
+  ) %>%
+  left_join(sam, by = 'dna_sample_id')
+stopifnot(!any(x %>% pull(row) %>% is.na))
+```
+
+```{r}
+file_sets <- x %>%
+  filter(
+    aliquot_number %in% c(1,2) | center_id == 's1', 
+    dilution_power %in% c(0, 2)
+  ) %>%
+  with_groups(
+  c(center_id, specimen_type, dilution_power), summarize, 
+  paths = list(reads_path)
+)
+```
+
+
+Note: On the new cluster, when using "--exclusive" ("-x") to occupy a full node, we should also set "--mem=0" to get access to all memory on the node.
+
+The command I used previously for jobs without the 'winner' option was
+
+```
+sbatch --exclusive --job-name=screen-fecal --wrap="
+  mash screen -p 4 -v 0.00000001 -i 0.8 $msh_file $fecal_samples > output/s2-fecal-screen-gtdb.tsv
+"
+```
+
+We can do this with
+
+```{r}
+msh_file <- here('data/mash/gtdb-v95-k31s2000.msh')
+n_threads <- 16
+y <- file_sets %>%
+  filter(center_id == 's2') %>%
+  mutate(
+    file_list = map(paths, str_c, collapse = ' '),
+    specimen_type_mod = snakecase::to_any_case(specimen_type),
+    out_file = str_glue('{center_id}-{specimen_type_mod}-d{dilution_power}.tsv'),
+    command_mash = str_glue('mash screen -p {n_threads} -v 0.00000001 -i 0.8 {msh_file} {file_list} > output/{out_file}'),
+    command_sbatch = str_glue('sbatch --exclusive --mem=0 --job-name=screen-{out_file} --wrap="{command_mash}"')
+  )
+```
+
+```{r}
+y %>% pull(out_file)
+y %>% slice(1) %>% pull(command_mash)
+y %>% slice(1) %>% pull(command_sbatch)
+```
+
+
+```{r}
+y %>%
+  pull(command_sbatch) %>%
+  walk(system)
+```
+

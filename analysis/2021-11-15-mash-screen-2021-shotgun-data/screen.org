@@ -1,0 +1,27 @@
+#+TITLE: Screen the 2021 shotgun data
+This file applies the Mash Screen analysis from analysis/2020-07-16-mash/screen.org to the new shotgun sequencing data, in order to confirm that the strains are the same and assess whether there are notable new contaminants.
+
+* Setup
+#+PROPERTY: header-args:shell :eval never-export
+#+PROPERTY: header-args:R :results value :colnames yes :exports both :eval never-export
+
+#+BEGIN_SRC elisp :results silent
+;; Increase text width
+(setq visual-fill-column-width 100)
+;; Default inline image width
+(setq org-image-actual-width (list 800))
+#+END_SRC
+
+#+BEGIN_SRC shell :session mash :results silent
+msh_file=/home/michael/data/mash/refseq.genomes.k21s1000.msh
+mkdir output
+#+END_SRC
+* Do stuff
+
+Previously, I just used the S2 data, and I picked the 8 files corresponding to 4 fecal samples, and the 8 files corresponding to 4 inoculum samples.
+I ran Mash Screen with and without the '-w' option.
+
+instead of picking a subset of samples, perhaps we can subsample from all files?
+Or just screen everything (all fecal, and all mock samples)
+
+might be easier to work within Rmd rather than org mode
