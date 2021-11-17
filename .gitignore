@@ -2,6 +2,11 @@
 /notes
 **/extra
 
+# data
+*.fastq.gz
+*.fasta.gz
+*.fna.gz
+
 # **/output/*
 /output/figures
 # /analysis/*/output
@@ -18,3 +23,6 @@
 
 # Project-specific libraries
 lib/
+
+# slurm output files
+slurm*.out
