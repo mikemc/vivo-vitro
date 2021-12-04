@@ -46,12 +46,24 @@ SAMPLES=($(ls $DATA_PATH/s2/reads/raw | sed 's/_R[12]_001.fastq.gz//g'))
 typeset -aU SAMPLES
 #+END_SRC
 
-** Trim adapters + low quality read ends and filter PhiX reads with BBDuk
-*** sbatch command
+** Preprocess reads
+Before mapping against the bacterial reference genomes, I will trim adapters + low quality read ends and filter PhiX reads with BBDuk, then remove host reads with BBSplit.
 
-1. Remove adapter and transposase sequences, using BBMap's included adapter sequences
-2. Remove PhiX sequences, using BBMap's included PhiX genome
-3. Trim last bp and low quality read ends
+The sbatch command will be a pipe chain of four commands,
+
+1. Remove adapter and transposase sequences, using BBMap's included adapter sequences (bbduk.sh)
+2. Remove PhiX sequences, using BBMap's included PhiX genome (bbduk.sh)
+3. Trim last bp and low quality read ends (bbduk.sh)
+4. Remove host (mouse) reads (bbsplit.sh)
+
+The BBDuk params from the "Adapter trimming" example in the BBDuk Usage Guide. They are the same as for S1, expect for the addition of "tpe" and "tpo", which only apply to paired reads.
+
+The BBSplit params are based off the recommendation from the BBMap guide (below), and the removehuman.sh script included in BBMap.
+
+#+begin_quote
+To map quickly with very high precision and lower sensitivity, as when removing contaminant reads specific to a genome without risking false-positives:
+bbmap.sh minratio=0.9 maxindel=3 bwr=0.16 bw=12 fast minhits=2 qtrim=r trimq=10 untrim idtag printunmappedcount kfilter=25 maxsites=1 k=14
+#+end_quote
 
 #+BEGIN_SRC shell :session brc :results verbatim
 cd $DATA_PATH/s2/reads
@@ -76,16 +88,6 @@ sbatch --exclusive --job-name=$WELL-clean --output=slurm-out/slurm-%j-$WELL-clea
     "
 done
 #+END_SRC
-
-The BBDuk params from the "Adapter trimming" example in the BBDuk Usage Guide. They are the same as for S1, expect for the addition of "tpe" and "tpo", which only apply to paired reads.
-
-The BBSplit params are based off the recommendation from the BBMap guide (below), and the removehuman.sh script included in BBMap.
-
-#+begin_quote
-To map quickly with very high precision and lower sensitivity, as when removing contaminant reads specific to a genome without risking false-positives:
-bbmap.sh minratio=0.9 maxindel=3 bwr=0.16 bw=12 fast minhits=2 qtrim=r trimq=10 untrim idtag printunmappedcount kfilter=25 maxsites=1 k=14
-#+end_quote
-
 ** Align and bin reads against bacterial reference genomes with BBSplit
 *** sbatch command
 
