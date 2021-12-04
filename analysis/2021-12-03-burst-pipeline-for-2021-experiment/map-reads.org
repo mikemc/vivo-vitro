@@ -1,0 +1,318 @@
+#+TITLE:BURST shotgun analysis pipeline
+* Preface
+This Org file processes the shotgun data from the 2021 experiment using the same pipelien as the 2020 experiment.
+* Emacs setup
+** Interative display
+Get text and images to display nicely in emacs,
+#+BEGIN_SRC elisp :results silent
+;; Increase text width
+(setq visual-fill-column-width 100)
+;; Default inline image width
+(setq org-image-actual-width (list 800))
+#+END_SRC
+** Org-babel and remote shell setup
+#+PROPERTY: header-args:shell :eval never-export
+
+#+PROPERTY: header-args:R :results value :colnames yes :exports both :eval never-export
+* Preprocess reads with BBMap
+
+The `brc` shell session will be logged into the BRC computer cluster.
+#+BEGIN_SRC shell :session brc :results silent
+ssh brc
+#+END_SRC
+
+Path for the clone of the main project repo on the BRC,
+#+BEGIN_SRC shell :session brc :results silent
+main_path=/home/mrmclare/research/vivo-vitro
+#+END_SRC
+
+Before mapping against the bacterial reference genomes, I will trim adapters + low quality read ends and filter PhiX reads with BBDuk, then remove host reads with BBSplit.
+
+BBMap version 38.86 is used on the NCSU BRC cluster.
+** Setup
+
+Set and create paths on the BRC cluster,
+#+BEGIN_SRC shell :session brc :results silent
+DATA_PATH=/home/mrmclare/research/vivo-vitro/data
+mkdir $DATA_PATH/2021/s1/reads/clean
+mkdir $DATA_PATH/2021/s2/reads/clean
+#+END_SRC
+
+The bacterial and host (mouse) reference genomes have already been downloaded.
+The mouse genome has already been indexed for use with BBMap; however, due to some issues with the indexes I will regenerate the mouse index.
+
+Index mouse genome for use with BBSplit/BBMap,
+#+BEGIN_SRC shell :session brc :results value verbatim
+cd $DATA_PATH/references/mouse
+# Remove old indexes
+rm -rf ref
+sbatch --exclusive --mem=0 --wrap="bbsplit.sh -eoom ref=GCF_000001635.26_GRCm38.p6_genomic.fna.gz bloom=t"
+#+END_SRC
+
+(I'm not sure if passing bloom=t when building the index does anything)
+
+#+RESULTS:
+: sbatch --exclusive --mem=0 --wrap="bbsplit.sh -eoom ref=GCF_000001635.26_GRCm38.p6_genomic.fna.gz bloom=t"
+
+Note, the output in ref/ looks like only 7 chromosomes have been indexed, but these 'chromosomes' don't correspond to the actual chromosomes in the mouse genome; see https://www.biostars.org/p/442331/.
+
+** Process reads
+
+The sbatch command will be a pipe chain of four commands,
+
+1. Remove adapter and transposase sequences, using BBMap's included adapter sequences (bbduk.sh)
+2. Remove PhiX sequences, using BBMap's included PhiX genome (bbduk.sh)
+3. Trim last bp and low quality read ends (bbduk.sh)
+4. Remove host (mouse) reads (bbsplit.sh)
+
+The BBDuk params are from the "Adapter trimming" example in the BBDuk Usage Guide. They are the same for S1 and S2, except for the addition of "tpe" and "tpo" for S2 which only apply to paired reads.
+
+The BBSplit params are based off the recommendation from the BBMap guide (below), and the removehuman.sh script included in BBMap.
+
+#+begin_quote
+To map quickly with very high precision and lower sensitivity, as when removing contaminant reads specific to a genome without risking false-positives:
+bbmap.sh minratio=0.9 maxindel=3 bwr=0.16 bw=12 fast minhits=2 qtrim=r trimq=10 untrim idtag printunmappedcount kfilter=25 maxsites=1 k=14
+#+end_quote
+
+** S1
+
+Note the addition of the ~--mem=0~ flag to the sbatch command, to account for modified memory allocation in the new cluster.
+
+Note, I ran the first 3 samples one-by-one to make sure everything was working, then submitted the rest using the if-then clause to only submit jobs for the remaining samples.
+
+For some reason, the index was not available and had to be created in the first sample. The bloom filter also needed to be generated. These were then available for subsequent samples and did not need to be regenerated.
+
+#+BEGIN_SRC shell :session brc :results verbatim
+cd $DATA_PATH/2021/s1/reads
+# Get the list of sample ids from the fastq file names
+SAMPLES=($(ls ./raw | grep 'fastq.gz' | sed 's/.fastq.gz//g'))
+# for SAMPLE in ${SAMPLES[3]}
+# for SAMPLE in ${SAMPLES[@]:1:30}
+for SAMPLE in ${SAMPLES[*]}
+do
+if [[ ! -f clean/$SAMPLE.fastq.gz ]]; then
+sbatch --exclusive --mem=0 --job-name=$SAMPLE-clean --output=slurm-%j-$SAMPLE-clean.out --wrap="
+    bbduk.sh -eoom in=raw/$SAMPLE.fastq.gz out=stdout.fq ref=adapters ktrim=r \
+        k=23 mink=11 hdist=1 stats=clean/$SAMPLE-adapters-stats.tsv |
+    bbduk.sh -eoom in=stdin.fq out=stdout.fq interleaved=f ref=phix k=31 hdist=1 \
+        stats=clean/$SAMPLE-phix-stats.tsv |
+    bbduk.sh -eoom in=stdin.fq out=stdout.fq interleaved=f ftr=99 qtrim=r \
+        trimq=5 stats=clean/$SAMPLE-trim-stats.tsv |
+    bbsplit.sh -eoom path=$DATA_PATH/references/mouse \
+        in=stdin.fq interleaved=f outu=clean/$SAMPLE.fastq.gz \
+        refstats=clean/$SAMPLE-host-refstats.tsv \
+        minratio=0.9 maxindel=3 bwr=0.16 bw=12 fast minhits=2 qtrim=r trimq=10 \
+        untrim idtag printunmappedcount kfilter=25 maxsites=1 k=14 \
+        bloom pigz unpigz ziplevel=6
+    "
+fi
+done
+#+END_SRC
+
+#+RESULTS:
+(output deleted)
+
+** S2
+
+Note the addition of the ~--mem=0~ flag to the sbatch command, to account for modified memory allocation in the new cluster.
+
+Check the read files,
+#+BEGIN_SRC shell :session brc :results verbatim
+cd $DATA_PATH/2021/s2/reads
+ls raw | head -n 4
+#+END_SRC
+
+#+RESULTS:
+:
+: DATA_PATH/2021/s2/reads[?2004l
+: sisko% [?2004hls raw | head -n 4[?2004l
+: F1_D0_1_NCSU2243_S531_L007_R1_001.fastq.gz
+: F1_D0_1_NCSU2243_S531_L007_R2_001.fastq.gz
+: F1_D0_2_NCSU2243_S609_L007_R1_001.fastq.gz
+: F1_D0_2_NCSU2243_S609_L007_R2_001.fastq.gz
+
+Get a deduplicated list of the library names, up to the _R*_001.fastq.gz of the sequence file.
+#+BEGIN_SRC shell :session brc :results silent
+LIBRARIES=($(ls raw | grep 'fastq.gz' | sed 's/_R[12]_001.fastq.gz//g'))
+typeset -aU LIBRARIES
+#+END_SRC
+
+Submit jobs. Note, I ran the first sample first to test the command.
+#+BEGIN_SRC shell :session brc :results verbatim
+# for LIBRARY in ${LIBRARIES[1]}
+for LIBRARY in ${LIBRARIES[*]}
+do
+# Pull the sample name from the beginning of the library name
+SAMPLE=($(echo $LIBRARY | grep -Po '.+(?=_NCSU2243_)'))
+if [[ ! -f clean/$SAMPLE.fastq.gz ]]; then
+sbatch --exclusive --mem=0 --job-name=$SAMPLE-clean --output=slurm-%j-$SAMPLE-clean.out --wrap="
+    bbduk.sh -eoom \
+        in=raw/${LIBRARY}_R1_001.fastq.gz in2=raw/${LIBRARY}_R2_001.fastq.gz \
+        out=stdout.fq ref=adapters ktrim=r tpe tbo \
+        k=23 mink=11 hdist=1 stats=clean/$SAMPLE-adapters-stats.tsv |
+    bbduk.sh -eoom in=stdin.fq out=stdout.fq interleaved=t ref=phix k=31 hdist=1 \
+        stats=clean/$SAMPLE-phix-stats.tsv |
+    bbduk.sh -eoom in=stdin.fq out=stdout.fq interleaved=t ftr=99 qtrim=r \
+        trimq=5 stats=clean/$SAMPLE-trim-stats.tsv |
+    bbsplit.sh -eoom path=$DATA_PATH/references/mouse \
+        in=stdin.fq interleaved=t outu=clean/$SAMPLE.fastq.gz \
+        refstats=clean/$SAMPLE-host-refstats.tsv \
+        minratio=0.9 maxindel=3 bwr=0.16 bw=12 fast minhits=2 qtrim=r trimq=10 \
+        untrim idtag printunmappedcount kfilter=25 maxsites=1 k=14 \
+        bloom pigz unpigz ziplevel=6
+    "
+fi
+done
+#+END_SRC
+
+#+RESULTS:
+(output deleted)
+** Create checksums
+
+First let's create md5 checksums of the cleaned reads and the BBMap stats files on the server.
+
+#+begin_src shell :session brc :results silent
+ssh brc
+main_path=/home/mrmclare/research/vivo-vitro
+data_path=/home/mrmclare/research/vivo-vitro/data
+#+end_src
+
+#+begin_src shell :session brc :results silent
+cd $data_path/2021/s1/reads/clean
+md5sum *.fastq.gz > clean-reads.md5
+md5sum *.tsv > bbmap-stats-files.md5
+#+end_src
+
+#+begin_src shell :session brc :results silent
+cd $data_path/2021/s2/reads/clean
+md5sum *.fastq.gz > clean-reads.md5
+md5sum *.tsv > bbmap-stats-files.md5
+#+end_src
+* Map samples
+
+#+BEGIN_SRC shell :session brc :results silent
+ssh brc
+main_path=~/research/vivo-vitro
+analysis_dir=$main_path/analysis/2021-12-03-burst-pipeline-for-2021-experiment
+#+END_SRC
+
+Prep: Make sure software installed
+- [X] BURST aligner
+- [X] seqtk
+- [X] R packages for blast6-to-tibble.R: fs, readr
+
+Print seqtk and burst versions,
+
+#+BEGIN_SRC shell :session brc :results verbatim
+burst_linux_DB12 --version
+seqtk
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+> burst_linux_DB12 --version
+This is BURST [v1.0 DB 12]
+ERROR: Unrecognized command-line option: --version
+See help by running with just '-h'
+> seqtk
+<arguments>
+Version: 1.3-r107-dirty
+(...)
+#+end_example
+
+Get arrays with the cleaned Fastq files for S1 and S2,
+#+BEGIN_SRC shell :session brc :results output verbatim
+s1_fastq_files=($(ls -d $main_path/data/2021/s1/reads/clean/* | grep "\\.fastq\\.gz"))
+s2_fastq_files=($(ls -d $main_path/data/2021/s2/reads/clean/* | grep "\\.fastq\\.gz"))
+echo ${s1_fastq_files[1]}
+echo ${s2_fastq_files[1]}
+echo ${#s1_fastq_files[@]}
+echo ${#s2_fastq_files[@]}
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+
+(ls -d $main_path/data/2021/s1/reads/clean/* | grep "\\.fastq\\.gz"))[?2004l
+(ls -d $main_path/data/2021/s2/reads/clean/* | grep "\\.fastq\\.gz"))
+sisko% [?2004hs2_fastq_files=($(ls -d $main_path/data/2021/s2/reads/clean/* | grep "\\.fastq\\.gz"))[?2004l
+{s1_fastq_files[1]}
+sisko% [?2004hecho ${s1_fastq_files[1]}[?2004l
+/home1/mrmclare/research/vivo-vitro/data/2021/s1/reads/clean/F1_D0_1.fastq.gz
+sisko% [?2004hecho ${s2_fastq_files[1]}[?2004l
+/home1/mrmclare/research/vivo-vitro/data/2021/s2/reads/clean/F1_D0_1.fastq.gz
+sisko% [?2004hecho ${#s1_fastq_files[@]}[?2004l
+89
+sisko% [?2004hecho ${#s2_fastq_files[@]}[?2004l
+94
+#+end_example
+
+#+BEGIN_SRC shell :session brc :results output verbatim
+out_dir=$analysis_dir/output
+mkdir -p $out_dir
+cd $out_dir
+mkdir s1
+mkdir s2
+map_script=$analysis_dir/map-sample.sh
+compress_script=$main_path/code/utils/blast6-to-tibble.R
+burst_dir=$main_path/data/references/bacteria/v2/burst
+nproc=8
+#+END_SRC
+
+#+RESULTS: (deleted)
+
+Submit S1 jobs
+#+BEGIN_SRC shell :session brc :results verbatim
+for fastq_file in ${s1_fastq_files[@]}; do
+sbatch --job-name=map-$(basename $fastq_file) -c $nproc \
+    $map_script $burst_dir $fastq_file $out_dir/s1 $compress_script $nproc
+done
+#+END_SRC
+
+#+RESULTS: (deleted)
+
+Submit S2 jobs
+#+BEGIN_SRC shell :session brc :results verbatim
+for fastq_file in ${s2_fastq_files[@]}; do
+sbatch --job-name=map-$(basename $fastq_file) -c $nproc \
+    $map_script $burst_dir $fastq_file $out_dir/s2 $compress_script $nproc
+done
+#+END_SRC
+
+#+RESULTS: (deleted)
+* Download results
+** Download BURST results
+
+Download the BURST results in the analysis output folder on the BRC to the local machine,
+
+#+begin_src shell :session vv-download :results silent
+brc_out_dir=research/vivo-vitro/analysis/2021-12-03-burst-pipeline-for-2021-experiment/output
+rsync -rvu "brc:$brc_out_dir" .
+#+end_src
+
+Clean up the slurm output files,
+
+#+begin_src shell :results silent
+mkdir output/slurm-out
+mv output/*.out output/slurm-out
+#+end_src
+
+** BBMap stats files
+
+Download the BBMap 'stats' output files to the local machine; we'll leave the cleaned reads on the server.
+
+#+begin_src shell :session vv-download-bbmap :results silent
+data_dir=research/vivo-vitro/data/2021
+
+cd ~/$data_dir/s1/reads
+rsync -rvu --exclude '*.fastq.gz' "brc:$data_dir/s1/reads/clean" .
+#+end_src
+
+#+begin_src shell :session vv-download-bbmap :results silent
+cd ~/$data_dir/s2/reads
+rsync -rvu --exclude '*.fastq.gz' "brc:$data_dir/s2/reads/clean" .
+#+end_src
+* Postprocess mapping results
+
+At this point, we are ready to process the BURST mapping results and the BBMap stats for host reads into count matrices for each sequencing center.
+This processing will be done in R in 'process-maps.Rmd'.

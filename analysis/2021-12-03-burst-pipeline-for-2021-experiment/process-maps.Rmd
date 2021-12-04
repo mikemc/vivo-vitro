@@ -1,0 +1,391 @@
+---
+title: Process the BURST maps for the 2021 experiment
+---
+
+This notebook processes the BURST output from the 2021 experiment into a count matrix following the method used previously for the 2019 experiment.
+The result is a count matrix where each row is a sample and each column is a reference genome and counts denote the number of unambiguous insert maps to the reference.
+The filtered host insert counts are also included.
+
+# Setup
+
+```{r}
+library(here)
+library(fs)
+
+library(data.table)
+library(dplyr, warn.conflicts = FALSE)
+
+library(tidyverse)
+
+library(progress)
+```
+
+## Set up reference info
+
+```{r}
+ref_dir <- here("data", "references", "bacteria", "v2")
+refs <- here("output", "strain-data", "reference-genome-metadata.Rds") %>%
+  readRDS %>%
+  mutate(local_file = file.path(ref_dir, ftp_genome_file))
+```
+
+The BURST mappings refer to contigs; we therefore need to create a map linking contig names to genomes.
+For this we must pull the sequence headers from the reference Fasta files.
+The reference sequences should already be downloaded our analysis of the previous experiment; let's check the files against the md5's.
+
+```{r}
+current_dir <- getwd()
+setwd(ref_dir)
+system2('md5sum', c('-c', 'md5checksums.txt'))
+setwd(current_dir)
+```
+
+All are good.
+
+Now we can create the map from sequence names to assembly accessions for the reference genomes,
+
+```{r}
+seq_map <- refs %>%
+  transmute(
+    sseqid = map(local_file, ~names(Biostrings::readDNAStringSet(.x))),
+    target = assembly_accession
+  ) %>%
+  unnest(sseqid)
+setDT(seq_map)
+```
+
+Note that we convert the sequence map to a 'data.table' object to speed later operations.
+
+## Get paths to BURST results
+
+```{r}
+analysis_dir <- here("analysis/2021-12-03-burst-pipeline-for-2021-experiment")
+burst_out_dir <- path(analysis_dir, 'output')
+stopifnot(file_exists(path(burst_out_dir, c("s1", "s2"))))
+
+btb <- tibble(center_id = c("s1", "s2")) %>%
+  mutate(
+    dir = path(burst_out_dir, center_id),
+    file = map(dir, dir_ls, glob = "*-burst.Rds")
+  ) %>%
+  select(-dir) %>%
+  unnest(file) %>%
+  glimpse
+```
+
+# Compute the unambiguous maps for each sample
+
+The BURST output contains all tied best maps for each read, including forward
+(R1) and reverse (R2) reads for the S2 data. From the maps for a sample, the
+following functions count up the number of _unambiguous insert maps_ to each
+target (reference), for either single or paired-end reads.
+
+```{r}
+# the parameter x is a path to the Rds file containing a tibble, or the
+# already-loaded tibble
+count_unambig_single <- function(x) {
+  if (is.character(x)) 
+    x <- readRDS(x)
+  setDT(x)
+  x <- seq_map[x, on = "sseqid"]
+  setkey(x, qseqid, target)
+  x <- unique(x, by = c("qseqid", "target"))
+  x[, n := .N, by = qseqid]
+  # return unambiguous maps
+  x[n == 1][, .(unambiguous_maps = .N), by = target]
+}
+
+count_unambig_paired <- function(x) {
+  if (is.character(x)) 
+    x <- readRDS(x)
+  setDT(x)
+  x <- seq_map[x, on = "sseqid"]
+  x <- unique(x, by = c("qseqid", "target"))
+  x[, c("qseqid_insert", "qseqid_mate") := tstrsplit(qseqid, "_", fixed = TRUE)
+    ][, qseqid_mate := str_sub(qseqid_mate, 1, 1)]
+  setkey(x, qseqid_mate, qseqid_insert)
+  x <- x[, .(target = list(target)), by = .(qseqid_mate, qseqid_insert)]
+  x1 <- x[.("1")]
+  x2 <- x[.("2")]
+  x <- merge(x1, x2, by = "qseqid_insert") # only keeps inserts with both mates
+  x[, target.both := map2(target.x, target.y, intersect)]
+  # return unambiguous maps
+  x[map_int(target.both, length) == 1
+    ][, target := unlist(target.both)
+    ][, .(unambiguous_maps = .N), by = target]
+}
+```
+
+See the analysis of the 2019 experiment for development and testing of these functions.
+
+Process the S1 files,
+
+```{r}
+s1 <- btb %>%
+  filter(center_id == "s1")
+pb <- progress_bar$new(
+  format = "[:bar] :current/:total (:percent) in :elapsed",
+  total = nrow(s1), clear = FALSE, width= 60)
+s1 <- s1 %>%
+  mutate(
+    dna_sample_id = path_file(file) %>% str_extract("^[^\\.]+"),
+    counts = map(file, ~{pb$tick(); count_unambig_single(.x)})
+  ) %>%
+  select(-file) %>%
+  unnest(counts)
+saveRDS(s1, 
+  path(analysis_dir, "output", "s1-counts.Rds")
+)
+```
+
+Process the S2 files,
+
+```{r}
+s2 <- btb %>%
+  filter(center_id == "s2")
+pb <- progress_bar$new(
+  format = "[:bar] :current/:total (:percent) in :elapsed",
+  total = nrow(s2), clear = FALSE, width= 60)
+s2 <- s2 %>%
+  mutate(
+    dna_sample_id = path_file(file) %>% str_extract("^[^\\.]+"),
+    counts = map(file, ~{pb$tick(); count_unambig_paired(.x)})
+  ) %>%
+  select(-file) %>%
+  unnest(counts)
+saveRDS(s2, 
+  path(analysis_dir, "output", "s2-counts.Rds")
+)
+```
+
+Combine the results.
+Note, `center_id` should be made upper case before prepending to `dna_sample_id` to make the sample names.
+
+```{r}
+# Load results if continuing in a new R session
+# s1 <- readRDS(path(analysis_dir, "output", "s1-counts.Rds"))
+# s2 <- readRDS(path(analysis_dir, "output", "s2-counts.Rds"))
+res <- bind_rows(s1, s2) %>%
+  mutate(
+    across(center_id, str_to_upper),
+    sample_id = str_c(center_id, dna_sample_id, sep = "_")
+  ) %>%
+  select(sample_id, target, unambiguous_maps)
+```
+
+# Add the host read count
+
+Get the host reads from the V1 pipeline output,
+
+/home/michael/research/vivo-vitro/data/2021/s1/reads/clean
+
+```{r}
+host <- tibble(center_id = c("S1", "S2")) %>%
+  mutate(
+    refstats_dir = here("data/2021", str_to_lower(center_id), "reads/clean"),
+    file = map(refstats_dir, dir_ls, glob = "*-host-refstats.tsv"),
+  ) %>%
+  unnest(file) %>%
+  mutate(
+    dna_sample_id = path_file(file) %>% str_extract("^[^\\-]+"),
+    data = map(file, read_tsv, col_types = "cddddiiii")
+    ) %>%
+  select(-refstats_dir, -file) %>%
+  unnest(data) %>%
+  janitor::clean_names() %>%
+  rename(assembly_name = number_name) %>%
+  glimpse
+```
+
+Confirm that the S2 read counts are even (since they were mapped as pairs),
+
+```{r}
+x <- host %>% 
+  filter(center_id == "S2") %>% 
+  pull(unambiguous_reads)
+stopifnot(all(0 == x %% 2))
+```
+
+Munge the host reads and join with the bacterial counts.
+For consistency with the bacterial counts, the host reads for S2 will be divided by 2 to obtain insert counts.
+
+```{r}
+host0 <- host %>%
+  transmute(center_id, dna_sample_id, 
+    target = str_extract(assembly_name, "GC[AF]_[0-9]+.[0-9]+"),
+    unambiguous_maps = case_when(
+      center_id == "S1" ~ unambiguous_reads,
+      center_id == "S2" ~ unambiguous_reads %/% 2L
+    ),
+    sample_id = str_c(center_id, dna_sample_id, sep = "_")
+  ) %>%
+  select(sample_id, target, unambiguous_maps)
+res_with_host <- bind_rows(res, host0)
+```
+
+# Create count matrix
+
+```{r}
+mat <- res_with_host %>%
+  arrange(sample_id) %>%
+  # pivot into wide form, then convert to matrix
+  select(sample_id, target, unambiguous_maps) %>%
+  pivot_wider(names_from = target, values_from = unambiguous_maps,
+    names_sort = TRUE, values_fill = 0) %>%
+  column_to_rownames("sample_id") %>%
+  as("matrix")
+```
+
+Check resulting matrix columns (taxa),
+
+```{r}
+acc_host <- 'GCF_000001635.26'
+colnames(mat) %in% c(acc_host, refs$assembly_accession) %>% all
+#> [1] TRUE
+refs %>%
+  filter(assembly_accession %in% colnames(mat)) %>%
+  select(assembly_accession, genome_group, ncbi_organism_name) %>%
+  arrange(desc(genome_group), ncbi_organism_name) %>%
+  print(n=Inf)
+```
+
+and rows (samples),
+
+```{r}
+rownames(mat)
+dna_sam <- here('data/2021/sample-data/dna-sample-data.csv') %>%
+  read_csv
+expected_samples <- dna_sam %>% 
+  select(dna_sample_id) %>%
+  mutate(across(dna_sample_id, str_replace_all, '-', '_')) %>%
+  crossing(center_id = c('S1', 'S2')) %>%
+  mutate(sample_id = str_glue('{center_id}_{dna_sample_id}')) %>%
+  pull(sample_id)
+setequal(rownames(mat), expected_samples)
+#> [1] FALSE
+setdiff(rownames(mat), expected_samples)
+#> character(0)
+setdiff(expected_samples, rownames(mat))
+#> [1] "S1_F1_D0_4"  "S1_F2_D2_3"  "S1_M2N_D0_2" "S1_M3F_D1_2" "S1_M3F_D2_2"
+```
+
+Note, 5 samples from S1 are missing - this is because the raw reads for these samples were not received, presumably due to library-prep failure.
+
+Save results to analysis output and add a symlink from the main output folder,
+
+```{r}
+saveRDS(mat, path(analysis_dir, "output", "2022-01-20-count-matrix.Rds"))
+dir_create(here("output/2021/shotgun"))
+
+s <- analysis_dir %>% path_file
+link_create(
+  path('../../../analysis', s, "output", "2022-01-20-count-matrix.Rds"),
+  here("output/2021/shotgun", "2022-01-20-count-matrix.Rds"),
+  symbolic = TRUE
+)
+```
+
+# Session info
+
+Note, the on-disk versions don't always match because of package updates in another R session.
+
+```{r}
+sessioninfo::session_info()
+#> ─ Session info ───────────────────────────────────────────────────────────────
+#>  setting  value
+#>  version  R version 4.1.2 (2021-11-01)
+#>  os       Arch Linux
+#>  system   x86_64, linux-gnu
+#>  ui       X11
+#>  language (EN)
+#>  collate  en_US.UTF-8
+#>  ctype    en_US.UTF-8
+#>  tz       America/New_York
+#>  date     2022-01-20
+#>  pandoc   2.14.1 @ /usr/bin/pandoc
+#> 
+#> ─ Packages ───────────────────────────────────────────────────────────────────
+#>  ! package          * version  date (UTC) lib source
+#>    assertthat         0.2.1    2019-03-21 [1] CRAN (R 4.0.0)
+#>    backports          1.4.1    2021-12-13 [1] CRAN (R 4.1.2)
+#>    BiocGenerics       0.38.0   2021-05-19 [1] Bioconductor
+#>  V Biostrings         2.60.1   2021-08-05 [1] Bioconductor (on disk 2.60.2)
+#>    bit                4.0.4    2020-08-04 [1] CRAN (R 4.0.2)
+#>    bit64              4.0.5    2020-08-30 [1] CRAN (R 4.0.2)
+#>    bitops             1.0-7    2021-04-24 [1] CRAN (R 4.1.0)
+#>  V broom              0.7.10   2022-01-03 [1] CRAN (R 4.1.2) (on disk 0.7.11)
+#>    cellranger         1.1.0    2016-07-27 [1] CRAN (R 4.0.0)
+#>    cli                3.1.0    2021-10-27 [1] CRAN (R 4.1.1)
+#>    colorspace         2.0-2    2021-08-11 [1] R-Forge (R 4.1.1)
+#>    crayon             1.4.2    2021-10-29 [1] CRAN (R 4.1.1)
+#>    data.table       * 1.14.2   2021-09-27 [1] CRAN (R 4.1.1)
+#>  V DBI                1.1.1    2021-12-20 [1] CRAN (R 4.1.2) (on disk 1.1.2)
+#>    dbplyr             2.1.1    2021-04-06 [1] CRAN (R 4.0.5)
+#>    dplyr            * 1.0.7    2021-06-18 [1] CRAN (R 4.1.0)
+#>    ellipsis           0.3.2    2021-04-29 [1] CRAN (R 4.1.0)
+#>  V fansi              0.5.0    2022-01-14 [1] CRAN (R 4.1.2) (on disk 1.0.2)
+#>    forcats          * 0.5.1    2021-01-27 [1] CRAN (R 4.0.4)
+#>    fs               * 1.5.2    2021-12-08 [1] CRAN (R 4.1.2)
+#>    generics           0.1.1    2021-10-25 [1] CRAN (R 4.1.1)
+#>  V GenomeInfoDb       1.28.1   2021-09-05 [1] Bioconductor (on disk 1.28.4)
+#>    GenomeInfoDbData   1.2.6    2021-05-31 [1] Bioconductor
+#>    ggplot2          * 3.3.5    2021-06-25 [1] CRAN (R 4.1.0)
+#>  V glue               1.5.1    2021-12-17 [1] CRAN (R 4.1.2) (on disk 1.6.0)
+#>    gtable             0.3.0    2019-03-25 [1] CRAN (R 4.0.0)
+#>    haven              2.4.3    2021-08-04 [1] CRAN (R 4.1.1)
+#>    here             * 1.0.1    2020-12-13 [1] CRAN (R 4.0.5)
+#>    hms                1.1.1    2021-09-26 [1] CRAN (R 4.1.1)
+#>    httr               1.4.2    2020-07-20 [1] CRAN (R 4.0.2)
+#>    IRanges            2.26.0   2021-05-19 [1] Bioconductor
+#>    janitor            2.1.0    2021-01-05 [1] CRAN (R 4.0.4)
+#>  V jsonlite           1.7.2    2022-01-17 [1] CRAN (R 4.1.2) (on disk 1.7.3)
+#>    lifecycle          1.0.1    2021-09-24 [1] CRAN (R 4.1.1)
+#>    lubridate          1.8.0    2021-10-07 [1] CRAN (R 4.1.1)
+#>    magrittr           2.0.1    2020-11-17 [1] CRAN (R 4.0.3)
+#>    modelr             0.1.8    2020-05-19 [1] CRAN (R 4.0.0)
+#>    munsell            0.5.0    2018-06-12 [1] CRAN (R 4.0.0)
+#>    nvimcom          * 0.9-102  2021-11-12 [1] local
+#>    pillar             1.6.4    2021-10-18 [1] CRAN (R 4.1.1)
+#>    pkgconfig          2.0.3    2019-09-22 [1] CRAN (R 4.0.0)
+#>    plyr               1.8.6    2020-03-03 [1] CRAN (R 4.0.0)
+#>    prettyunits        1.1.1    2020-01-24 [1] CRAN (R 4.0.0)
+#>    progress         * 1.2.2    2019-05-16 [1] CRAN (R 4.0.2)
+#>    purrr            * 0.3.4    2020-04-17 [1] CRAN (R 4.0.0)
+#>    R6                 2.5.1    2021-08-19 [1] CRAN (R 4.1.1)
+#>  V Rcpp               1.0.7    2022-01-13 [1] CRAN (R 4.1.2) (on disk 1.0.8)
+#>    RCurl              1.98-1.5 2021-09-17 [1] CRAN (R 4.1.1)
+#>    readr            * 2.1.1    2021-11-30 [1] CRAN (R 4.1.2)
+#>    readxl             1.3.1    2019-03-13 [1] CRAN (R 4.0.0)
+#>    reprex             2.0.1    2021-08-05 [1] CRAN (R 4.1.1)
+#>    rlang              0.4.12   2021-10-18 [1] CRAN (R 4.1.1)
+#>    rprojroot          2.0.2    2020-11-15 [1] CRAN (R 4.0.3)
+#>    rstudioapi         0.13     2020-11-12 [1] CRAN (R 4.0.3)
+#>    rvest              1.0.2    2021-10-16 [1] CRAN (R 4.1.1)
+#>  V S4Vectors          0.30.0   2021-10-03 [1] Bioconductor (on disk 0.30.2)
+#>    scales             1.1.1    2020-05-11 [1] CRAN (R 4.0.0)
+#>    sessioninfo        1.2.2    2021-12-06 [1] CRAN (R 4.1.2)
+#>    snakecase          0.11.0   2019-05-25 [1] CRAN (R 4.0.0)
+#>    stringi            1.7.6    2021-11-29 [1] CRAN (R 4.1.2)
+#>    stringr          * 1.4.0    2019-02-10 [1] CRAN (R 4.0.0)
+#>    tibble           * 3.1.6    2021-11-07 [1] CRAN (R 4.1.2)
+#>    tidyr            * 1.1.4    2021-09-27 [1] CRAN (R 4.1.1)
+#>    tidyselect         1.1.1    2021-04-30 [1] CRAN (R 4.1.0)
+#>    tidyverse        * 1.3.1    2021-04-15 [1] CRAN (R 4.1.0)
+#>    tzdb               0.2.0    2021-10-27 [1] CRAN (R 4.1.2)
+#>    useful             1.2.6    2018-10-08 [1] CRAN (R 4.0.0)
+#>    utf8               1.2.2    2021-07-24 [1] CRAN (R 4.1.0)
+#>    vctrs              0.3.8    2021-04-29 [1] CRAN (R 4.1.0)
+#>    vroom              1.5.7    2021-11-30 [1] CRAN (R 4.1.2)
+#>    withr              2.4.3    2021-11-30 [1] CRAN (R 4.1.2)
+#>    xml2               1.3.3    2021-11-30 [1] CRAN (R 4.1.2)
+#>    XVector            0.32.0   2021-05-19 [1] Bioconductor
+#>    zlibbioc           1.38.0   2021-05-19 [1] Bioconductor
+#> 
+#>  [1] /home/michael/.local/lib/R/library
+#>  [2] /usr/lib/R/library
+#> 
+#>  V ── Loaded and on-disk version mismatch.
+#> 
+#> ──────────────────────────────────────────────────────────────────────────────
+```
+
