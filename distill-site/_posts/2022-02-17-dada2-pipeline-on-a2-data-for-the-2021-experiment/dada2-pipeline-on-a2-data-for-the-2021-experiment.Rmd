@@ -1,0 +1,404 @@
+---
+title: "DADA2 pipeline on the As data for the 2021 experiment"
+description: |
+  This document analyzes the amplicon data from the A2 sequencing center for the 2021 experiment following the workflow used for the 2019 experiment.
+author:
+  - name: Michael R. McLaren
+categories:
+  - 2021 experiment
+  - bioinformatics
+date: "2022-02-17"
+output:
+  distill::distill_article:
+    self_contained: false
+    toc: true
+---
+
+```{r, include = FALSE}
+# knitr chunk options
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  cache = FALSE,
+  include = TRUE, echo = TRUE,
+  warning = TRUE, message = TRUE, 
+  fig.width = 7, fig.height = 7
+)
+```
+
+We follow the workflow in 'analysis/2020-11-01-dada2/a2-dada2.html' that was used for the 2019 experiment.
+
+## Setup
+
+Load non-bioinformatic libraries,
+
+```{r}
+library(here)
+library(tidyverse)
+library(fs)
+```
+
+Next, I will install and load the previous DADA2 version that I used for the 2020-11-01 analysis of the 2019 data: version 1.18.0 from Bioconductor, which corresponds to the v1.18 tag (a20a676) on GitHub (https://github.com/benjjneb/dada2/releases/tag/v1.18).
+(Only run if not previously done.)
+
+```{r}
+dr <- here('lib', 'R', 'library-for-dada2-1.18.0')
+if (!dir_exists(dr)) 
+  dir_create(dr)
+devtools::dev_mode(TRUE, dr)
+if (packageVersion("dada2") != "1.18.0")
+  remotes::install_github('benjjneb/dada2@v1.18')
+```
+
+Load DADA2 and functions from bioinformatics libraries
+
+```{r}
+stopifnot(packageVersion("dada2") == "1.18.0")
+library(dada2)
+
+import::from(Biostrings, complement, reverseComplement, width, DNAString,
+  readDNAStringSet, subseq)
+import::from(DECIPHER, TrimDNA)
+```
+
+Path for saving dada2 results:
+
+```{r}
+results_path <- here("output", "2021", "a2", "dada2")
+dir.create(results_path, recursive = TRUE)
+```
+
+Path to the fastq files:
+
+```{r path}
+reads_path <- here("data", "2021", "a2", "reads")
+dir_ls(path(reads_path, "raw")) %>% path_file %>% head
+x <- dir_ls(path(reads_path, "raw")) %>% path_file
+```
+
+Let's get a data frame with the sample names, paths to the raw reads, and paths to the (to-be-created) filtered reads.
+Note the creation of DNA sample names from the sequence files: I revert the hyphens back to underscores, make the names of the A2 control samples lowercase, and prepend 2021 to ensure uniqueness and distinguishability from the 2019 DNA samples.
+The sequencing center supplied the reads that could not be demultiplxed in files prefixed 'Undetermined'; I will not include these in the analysis.
+
+```{r}
+ftb <- tibble(path = dir_ls(path(reads_path, "raw"), glob = "*.fastq.gz")) %>%
+  mutate(
+    read_direction = case_when(
+      str_detect(path, "_R1_") ~ "R1",
+      str_detect(path, "_R2_") ~ "R2"
+    ),
+    fastq_sample_id = str_extract(path %>% path_file, "[^_]+"),
+    dna_sample_id = case_when(
+      fastq_sample_id %in% c('MockZymoPos', 'WaterNeg') ~
+        str_to_lower(fastq_sample_id),
+      TRUE ~ str_replace_all(fastq_sample_id, "-", "_"),
+      ),
+    dna_sample_id = str_c("2021_", dna_sample_id),
+    sample_id = str_c("A2_", dna_sample_id),
+    path_filt = path(reads_path, "filtered", 
+      str_glue("{fastq_sample_id}_{read_direction}_filt.fastq.gz")
+    )
+  ) %>%
+  pivot_wider(names_from = read_direction, values_from = c(path, path_filt)) %>%
+  filter(fastq_sample_id != 'Undetermined')
+# Check
+ftb %>% head %>% mutate(across(starts_with("path"), path_file)) %>% glimpse
+```
+
+## Check sequences
+
+The [Illumina manual](https://support.illumina.com/documents/documentation/chemistry_documentation/16s/16s-metagenomic-library-prep-guide-15044223-b.pdf) lists the primer sequences as
+
+> 16S Amplicon PCR Forward Primer = 5'
+> TCGTCGGCAGCGTCAGATGTGTATAAGAGACAGCCTACGGGNGGCWGCAG
+> 16S Amplicon PCR Reverse Primer = 5'
+> GTCTCGTGGGCTCGGAGATGTGTATAAGAGACAGGACTACHVGGGTATCTAATCC
+
+and states that the sequenced region is V3-V4 and approximately 460 bp long.
+
+Let's check to see if the same substrings of the primer sequences as last time are present.
+
+```{r}
+reads <- ftb %>% 
+  filter(dna_sample_id == "2021_M3F_D0_1") %>% 
+  select(R1 = path_R1, R2 = path_R2) %>%
+  c %>%
+  map(readDNAStringSet, format = "fastq")
+reads %>% map(subseq, end = 30)
+```
+
+We can see that as before, the following parts of the described primer sequences arepresent and need to be trimmed:
+
+```{r}
+primers <- c(R1 = "CCTACGGGNGGCWGCAG", R2 = "GACTACHVGGGTATCTAATCC")
+trim_left <- primers %>% map_int(nchar) %>% print
+```
+
+## Pick truncation params
+
+Previously, I determined that the length of the target region (excluding primer sequences) in our reference genomes was 420-430 bp.
+Also, I ran FIGARO on the 2019 data to pick the following truncation and maxEE parameters,
+
+```{r}
+target_len <- 430
+trunc_len <- c(R1 = 276, R2 = 222)
+max_ee <- c(R1 = 4, R2 = 3)
+# should overlap by at least
+sum(trunc_len) - sum(trim_left) - target_len
+```
+
+Here we'll aim to use the same parameters.
+Let's check some quality profiles to ensure these truncation lengths still look good,
+
+```{r}
+set.seed(42)
+idx <- sample(nrow(ftb), 9)
+idx
+ftb %>% slice(idx) %>% pull(sample_id)
+qps <- ftb %>%
+  slice(idx) %>%
+  select(R1 = path_R1, R2 = path_R2) %>%
+  c %>%
+  map(plotQualityProfile)
+```
+
+```{r}
+p1 <- qps[["R1"]] +
+  geom_hline(yintercept = 30, color = "grey") +
+  geom_vline(xintercept = trunc_len[1], color = "darkred") +
+  ggtitle("Forward reads")
+p2 <- qps[["R2"]] +
+  geom_hline(yintercept = 30, color = "grey") +
+  geom_vline(xintercept = trunc_len[2], color = "darkred") +
+  ggtitle("Reverse reads")
+```
+
+```{r, dim = c(10, 10)}
+p1
+```
+
+```{r, dim = c(10, 10)}
+p2
+```
+
+```{r}
+ggsave(plot = p1, file.path(results_path, "quality-profiles-r1.pdf"),
+    width = 10, height = 10, units = "in")
+ggsave(plot = p2, file.path(results_path, "quality-profiles-r2.pdf"),
+    width = 10, height = 10, units = "in")
+```
+
+The sequencing quality looks good and profiles are similar to the 2019 experiment, so these truncation parameters should work fine.
+
+## Filter and trim
+
+First, delete the filtered reads from any previous runs (if they exist),
+
+```{r}
+if (dir_exists(path(reads_path, "filtered")))
+  dir_delete(path(reads_path, "filtered"))
+```
+
+and set up lists with the paths to the forward and reverse reads (raw and filtered). Note, the file paths are named by sample id so that later DADA2 functions will name the samples by sample id instead of file name.
+
+```{r}
+path_raw <- list(R1 = ftb$path_R1, R2 = ftb$path_R2) %>%
+  map(set_names, ftb$sample_id)
+path_filt <- list(R1 = ftb$path_filt_R1, R2 = ftb$path_filt_R2) %>%
+  map(set_names, ftb$sample_id)
+# Check
+path_filt %>% map(tail, 4) %>% map(names)
+path_filt %>% map(tail, 4) %>% map(path_file)
+```
+
+Then filter and trim.
+
+```{r}
+out <- filterAndTrim(
+  path_raw[[1]], path_filt[[1]],
+  path_raw[[2]], path_filt[[2]],
+  trimLeft = trim_left, truncLen = trunc_len, 
+  maxN = 0, maxEE = max_ee, truncQ = 2, rm.phix = TRUE, 
+  compress = TRUE, multithread = TRUE)
+head(out)
+# Save in case of crash downstream
+saveRDS(out, file.path(results_path, "filt-out.Rds"))
+```
+
+## Learn the error rates
+
+```{r}
+errs <- path_filt %>%
+  map(learnErrors, multithread = TRUE)
+saveRDS(errs, file.path(results_path, "error-models.Rds"))
+```
+
+```{r}
+plotErrors(errs[[1]], nominalQ = TRUE)
+ggsave(file.path(results_path, "error-profile-r1.pdf"),
+    width = 9, height = 9, units = "in")
+plotErrors(errs[[2]], nominalQ = TRUE)
+ggsave(file.path(results_path, "error-profile-r2.pdf"),
+    width = 9, height = 9, units = "in")
+```
+
+## Sample inference
+
+The following settings for the `dada()` inference step are used:
+
+- Pseudo-pooling used to increase sensitivity
+  - `pool = "pseudo"` option 
+  - `PSEUDO_PREVALENCE = 4` (increased from default of 2 to reduce the number
+    of spurious low-prev ASVs seen in the pilot)
+- The inference step (`dada()`) is run two different ways: The default settings, and with `OMEGA_C = 2` (which prevents error correction, so that we can assign abundances using just the error-free read-pairs).
+
+### Default `OMEGA_C`
+
+Sample inference w/ `dada()`
+
+```{r dada}
+dadas <- map2(
+  path_filt,
+  errs,
+  dada,
+  multithread = TRUE, pool = "pseudo",
+  PSEUDO_PREVALENCE = 4
+)
+saveRDS(dadas, file.path(results_path, "dadas-1.Rds"))
+```
+
+Check the results:
+
+```{r see-dada}
+dadas[[1]][[1]]
+head(getSequences(dadas[[1]][[1]]), 2)
+```
+
+Merge paired reads,
+
+```{r merge, message=FALSE}
+mergers <- mergePairs(
+  dadas[[1]], path_filt[[1]], 
+  dadas[[2]], path_filt[[2]],
+  verbose = TRUE)
+saveRDS(mergers, file.path(results_path, "mergers-1.Rds"))
+```
+
+Construct sequence table
+
+```{r seqtab}
+seqtab <- makeSequenceTable(mergers)
+saveRDS(seqtab, file.path(results_path, "seqtab-1.Rds"))
+dim(seqtab)
+```
+
+Inspect distribution of sequence lengths
+
+```{r seqlens}
+table(nchar(getSequences(seqtab)))
+```
+
+Remove chimeras (with 'pooled' method)
+
+```{r}
+seqtab.nochim <- removeBimeraDenovo(seqtab, method = "pooled",
+    multithread = TRUE, verbose = TRUE)
+saveRDS(seqtab.nochim, file.path(results_path, "seqtab-nochim-1.Rds"))
+dim(seqtab.nochim)
+sum(seqtab.nochim) / sum(seqtab)
+```
+
+Track reads through the pipeline,
+
+```{r track}
+getN <- function(x) sum(getUniques(x))
+track <- cbind(out, sapply(dadas[[1]], getN), sapply(dadas[[2]], getN), 
+    sapply(mergers, getN), rowSums(seqtab.nochim))
+colnames(track) <- c("input", "filtered", "denoised_r1", "denoised_r2", "merged",
+    "nochim")
+rownames(track) <- ftb$sample_id
+track <- as_tibble(track, rownames = "sample_id")
+write_csv(track, file.path(results_path, "track-1.csv"))
+head(track)
+```
+
+### `OMEGA_C = 2`
+
+```{r}
+rm(dadas, mergers, seqtab, seqtab.nochim, track)
+```
+
+Sample inference w/ `dada()`
+
+```{r dada-2}
+dadas <- map2(
+  path_filt,
+  errs,
+  dada,
+  multithread = TRUE, pool = "pseudo",
+  PSEUDO_PREVALENCE = 4,
+  OMEGA_C = 2
+)
+saveRDS(dadas, file.path(results_path, "dadas-2.Rds"))
+```
+
+Check the results:
+
+```{r see-dada-2}
+dadas[[1]][[1]]
+head(getSequences(dadas[[1]][[1]]), 2)
+```
+
+Merge paired reads,
+
+```{r merge-2, message=FALSE}
+mergers <- mergePairs(
+  dadas[[1]], path_filt[[1]], 
+  dadas[[2]], path_filt[[2]],
+  verbose = TRUE)
+saveRDS(mergers, file.path(results_path, "mergers-2.Rds"))
+```
+
+Construct sequence table
+
+```{r seqtab-2}
+seqtab <- makeSequenceTable(mergers)
+saveRDS(seqtab, file.path(results_path, "seqtab-2.Rds"))
+dim(seqtab)
+```
+
+Inspect distribution of sequence lengths
+
+```{r seqlens-2}
+table(nchar(getSequences(seqtab)))
+```
+
+Remove chimeras (with 'pooled' method)
+
+```{r}
+seqtab.nochim <- removeBimeraDenovo(seqtab, method = "pooled",
+    multithread = TRUE, verbose = TRUE)
+saveRDS(seqtab.nochim, file.path(results_path, "seqtab-nochim-2.Rds"))
+dim(seqtab.nochim)
+sum(seqtab.nochim) / sum(seqtab)
+```
+
+Track reads through the pipeline,
+
+```{r track-2}
+getN <- function(x) sum(getUniques(x))
+track <- cbind(out, sapply(dadas[[1]], getN), sapply(dadas[[2]], getN), 
+    sapply(mergers, getN), rowSums(seqtab.nochim))
+colnames(track) <- c("input", "filtered", "denoised_r1", "denoised_r2", "merged",
+    "nochim")
+rownames(track) <- ftb$sample_id
+track <- as_tibble(track, rownames = "sample_id")
+write_csv(track, file.path(results_path, "track-2.csv"))
+head(track)
+```
+
+## Session info
+
+```{r}
+sessioninfo::session_info()
+```
